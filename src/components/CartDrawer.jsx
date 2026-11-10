@@ -34,6 +34,17 @@ export const CartDrawer = ({
   });
   const [errors, setErrors] = useState({});
 
+  // Bloquear el scroll del fondo mientras la tienda esté abierta para que nunca se asome la página principal
+  useEffect(() => {
+    if (isOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isOpen]);
+
   // Al cerrar el drawer o vaciar el carrito, volver al primer paso
   useEffect(() => {
     if (!isOpen) {
@@ -72,14 +83,14 @@ export const CartDrawer = ({
   // Validar etapa de entrega antes de pasar a datos
   const handleProceedToCheckout = () => {
     if (deliveryType === 'delivery' && !deliveryInfo) {
-      setLocationError('Marcá tu casa en el mapa satelital para continuar');
+      setLocationError('Marcá tu casa en el mapa para continuar');
       return;
     }
     setLocationError('');
     setStep('checkout');
   };
 
-  // Validar y enviar pedido final a WhatsApp
+  // Validar y enviar pedido final a WhatsApp (Mensaje limpio, preciso y sin relleno)
   const handleFinalSubmit = (ev) => {
     ev.preventDefault();
     const e = {};
@@ -98,7 +109,6 @@ export const CartDrawer = ({
       /* sin confeti */
     }
 
-    // Mensaje limpio, preciso y directo: sin número de teléfono, sin km, sin agradecimientos
     const L = [];
     L.push(`🍔 *PEDIDO TRICO'S*`);
     L.push(`*Cliente:* ${formData.name.trim()}`);
@@ -137,52 +147,51 @@ export const CartDrawer = ({
   };
 
   const inputClass = (hasError) =>
-    `w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border-3 font-sub text-sm text-cartoon-ink focus:outline-none shadow-cartoon-sm ${
+    `w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white border-2 sm:border-3 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-sm ${
       hasError ? 'border-cartoon-red' : 'border-cartoon-ink'
     }`;
 
-  // Título dinámico del encabezado según etapa
   const headerTitle =
     step === 'cart' ? 'Tu Pedido' : step === 'location' ? 'Entrega' : 'Tus Datos y Pago';
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div onClick={onClose} className="fixed inset-0 bg-cartoon-ink/65 backdrop-blur-sm animate-fadeIn" />
+    <div className="fixed inset-0 z-50 overflow-hidden bg-cartoon-cream sm:bg-cartoon-ink/65 sm:backdrop-blur-sm flex justify-end">
+      {/* Fondo clicable para cerrar solo en versión escritorio */}
+      <div onClick={onClose} className="hidden sm:block absolute inset-0 -z-10" />
 
       <aside
         aria-label="Carrito de compras"
-        className={`fixed inset-y-0 right-0 w-full bg-cartoon-cream border-l-0 sm:border-l-4 border-cartoon-ink shadow-2xl flex flex-col animate-slideInRight h-[100dvh] max-h-[100dvh] z-10 overflow-hidden ${
-          step !== 'cart' ? 'sm:max-w-xl' : 'sm:max-w-md'
+        className={`relative w-full bg-cartoon-cream border-0 sm:border-l-4 border-cartoon-ink shadow-2xl flex flex-col h-full z-10 overflow-hidden ${
+          step !== 'cart' ? 'sm:max-w-lg' : 'sm:max-w-md'
         }`}
-        style={{ transition: 'max-width 260ms var(--ease-drawer)' }}
       >
         {/* Encabezado limpio con navegación */}
-        <div className="p-3.5 sm:p-5 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="p-3.5 sm:p-4 bg-cartoon-yellow border-b-2 sm:border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2.5">
             {step === 'location' ? (
               <button
                 onClick={() => setStep('cart')}
                 aria-label="Volver a los productos"
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
               >
-                <Icon name="arrow_back" size={20} />
+                <Icon name="arrow_back" size={18} />
               </button>
             ) : step === 'checkout' ? (
               <button
                 onClick={() => setStep('location')}
                 aria-label="Volver a la ubicación"
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
               >
-                <Icon name="arrow_back" size={20} />
+                <Icon name="arrow_back" size={18} />
               </button>
             ) : (
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center">
-                <Icon name="shopping_bag" size={20} className="text-cartoon-ink" />
+              <div className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center">
+                <Icon name="shopping_bag" size={18} className="text-cartoon-ink" />
               </div>
             )}
             <div>
-              <h2 className="font-display text-lg sm:text-xl text-cartoon-ink leading-tight">{headerTitle}</h2>
-              <span className="font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink/70">
+              <h2 className="font-display text-base sm:text-lg text-cartoon-ink leading-tight">{headerTitle}</h2>
+              <span className="font-sub font-bold text-[10px] sm:text-xs text-cartoon-ink/70">
                 {items.length === 1 ? '1 producto' : `${items.length} productos`}
               </span>
             </div>
@@ -190,10 +199,10 @@ export const CartDrawer = ({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white hover:bg-cartoon-cream-dark border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink transition-transform active:scale-95 cursor-pointer"
+            className="w-9 h-9 rounded-xl bg-white hover:bg-cartoon-cream-dark border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink transition-transform active:scale-95 cursor-pointer"
             aria-label="Cerrar carrito"
           >
-            <Icon name="close" size={20} />
+            <Icon name="close" size={18} />
           </button>
         </div>
 
@@ -202,36 +211,36 @@ export const CartDrawer = ({
         {/* ============================================================== */}
         {step === 'cart' && (
           <>
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 min-h-0">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3 min-h-0">
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 mb-4 animate-bob">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 mb-3 animate-bob">
                     <img src="/assets/sticker_personaje.png" alt="Carrito Vacío" className="w-full h-full object-contain" />
                   </div>
-                  <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink mb-1">Tu carrito está vacío</h3>
-                  <p className="font-sub text-xs sm:text-sm text-cartoon-ink/70 max-w-xs mb-6">
+                  <h3 className="font-display text-lg sm:text-xl text-cartoon-ink mb-1">Tu carrito está vacío</h3>
+                  <p className="font-sub text-xs text-cartoon-ink/70 max-w-xs mb-5">
                     Agregá tus platos favoritos desde la carta para armar tu pedido.
                   </p>
-                  <button onClick={onClose} className="btn-cartoon-primary text-xs sm:text-sm py-2 px-5">
+                  <button onClick={onClose} className="btn-cartoon-primary text-xs py-2 px-5">
                     Ver Carta
                   </button>
                 </div>
               ) : (
                 <>
                   {/* Progreso hacia el delivery gratis */}
-                  <div className={`rounded-2xl border-3 border-cartoon-ink p-3 shadow-cartoon-sm ${free ? 'bg-cartoon-green' : 'bg-white'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon name="two_wheeler" size={20} className="text-cartoon-ink" />
-                      <p className="font-display text-sm text-cartoon-ink">
+                  <div className={`rounded-xl border-2 sm:border-3 border-cartoon-ink p-2.5 shadow-cartoon-sm ${free ? 'bg-cartoon-green' : 'bg-white'}`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Icon name="two_wheeler" size={18} className="text-cartoon-ink" />
+                      <p className="font-display text-xs sm:text-sm text-cartoon-ink">
                         {free ? '¡Tenés delivery gratis!' : `Te faltan ${money(threshold - subtotal)} para delivery gratis`}
                       </p>
                     </div>
-                    <div className="h-3 rounded-full bg-cartoon-cream-dark border-2 border-cartoon-ink overflow-hidden">
+                    <div className="h-2.5 rounded-full bg-cartoon-cream-dark border-2 border-cartoon-ink overflow-hidden">
                       <div
                         className="h-full bg-cartoon-yellow border-r-2 border-cartoon-ink"
                         style={{
                           width: `${progress}%`,
-                          transition: 'width 500ms cubic-bezier(0.23, 1, 0.32, 1)',
+                          transition: 'width 400ms cubic-bezier(0.23, 1, 0.32, 1)',
                           borderRightWidth: progress >= 100 ? 0 : undefined,
                         }}
                       />
@@ -239,35 +248,35 @@ export const CartDrawer = ({
                   </div>
 
                   {/* Lista de productos agregados */}
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {items.map(({ product, quantity }) => (
                       <div
                         key={product.id}
-                        className="bg-white p-3 rounded-2xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-sm flex items-center gap-2.5 sm:gap-3"
+                        className="bg-white p-2.5 sm:p-3 rounded-xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-sm flex items-center gap-2.5"
                       >
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-cartoon-cream-dark border-2 border-cartoon-ink flex-shrink-0 flex items-center justify-center">
-                          <span className="text-2xl sm:text-3xl select-none">{product.emoji || '🍔'}</span>
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-cartoon-cream-dark border-2 border-cartoon-ink flex-shrink-0 flex items-center justify-center">
+                          <span className="text-xl sm:text-2xl select-none">{product.emoji || '🍔'}</span>
                         </div>
                         <div className="flex-1 min-w-0 pr-1">
-                          <h4 className="font-display text-sm sm:text-base text-cartoon-ink truncate leading-tight">{product.name}</h4>
-                          <div className="font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink/60 mb-1">
+                          <h4 className="font-display text-xs sm:text-sm text-cartoon-ink truncate leading-tight">{product.name}</h4>
+                          <div className="font-sub font-bold text-[10px] sm:text-xs text-cartoon-ink/60 mb-1">
                             {money(product.price)} c/u
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => onUpdateQuantity(product.id, quantity - 1)}
                               aria-label="Restar"
-                              className="w-7 h-7 rounded-lg bg-cartoon-cream hover:bg-cartoon-cream-dark border-2 border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer"
+                              className="w-6 h-6 rounded-md bg-cartoon-cream hover:bg-cartoon-cream-dark border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer"
                             >
-                              <Icon name="remove" size={14} />
+                              <Icon name="remove" size={12} />
                             </button>
-                            <span className="font-display text-sm sm:text-base text-cartoon-ink w-5 text-center">{quantity}</span>
+                            <span className="font-display text-xs sm:text-sm text-cartoon-ink w-4 text-center">{quantity}</span>
                             <button
                               onClick={() => onUpdateQuantity(product.id, quantity + 1)}
                               aria-label="Sumar"
-                              className="w-7 h-7 rounded-lg bg-cartoon-cream hover:bg-cartoon-cream-dark border-2 border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer"
+                              className="w-6 h-6 rounded-md bg-cartoon-cream hover:bg-cartoon-cream-dark border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer"
                             >
-                              <Icon name="add" size={14} />
+                              <Icon name="add" size={12} />
                             </button>
                           </div>
                         </div>
@@ -277,38 +286,38 @@ export const CartDrawer = ({
                             className="text-cartoon-ink/40 hover:text-cartoon-red transition-colors p-1 cursor-pointer"
                             title="Eliminar producto"
                           >
-                            <Icon name="delete" size={16} />
+                            <Icon name="delete" size={15} />
                           </button>
-                          <span className="font-display text-sm sm:text-base text-cartoon-ink">{money(product.price * quantity)}</span>
+                          <span className="font-display text-xs sm:text-sm text-cartoon-ink">{money(product.price * quantity)}</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
                   {/* Cupón */}
-                  <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-cartoon-ink/30">
+                  <div className="bg-white p-2.5 rounded-xl border border-cartoon-ink/30">
                     <form onSubmit={handleApplyCoupon} className="flex gap-2">
                       <div className="relative flex-1">
                         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cartoon-ink/40 flex items-center">
-                          <Icon name="local_offer" size={14} />
+                          <Icon name="local_offer" size={13} />
                         </div>
                         <input
                           type="text"
                           placeholder="Cupón (ej: TRICO10)"
                           value={couponInput}
                           onChange={(e) => setCouponInput(e.target.value)}
-                          className="w-full pl-8 pr-2 py-1.5 rounded-xl bg-cartoon-cream border-2 border-cartoon-ink/40 font-sub text-xs uppercase focus:outline-none focus:border-cartoon-ink"
+                          className="w-full pl-7 pr-2 py-1.5 rounded-lg bg-cartoon-cream border border-cartoon-ink/40 font-sub text-xs uppercase focus:outline-none focus:border-cartoon-ink"
                         />
                       </div>
                       <button
                         type="submit"
-                        className="px-3 py-1.5 bg-cartoon-ink text-white font-sub font-bold text-xs rounded-xl hover:bg-cartoon-ink/90 cursor-pointer flex-shrink-0"
+                        className="px-3 py-1.5 bg-cartoon-ink text-white font-sub font-bold text-xs rounded-lg hover:bg-cartoon-ink/90 cursor-pointer flex-shrink-0"
                       >
                         Aplicar
                       </button>
                     </form>
                     {appliedCoupon && (
-                      <div className="mt-1.5 text-xs font-sub text-cartoon-green-dark font-bold flex items-center justify-between">
+                      <div className="mt-1 text-[11px] font-sub text-cartoon-green-dark font-bold flex items-center justify-between">
                         <span>✓ {appliedCoupon.label}</span>
                         <button onClick={() => setAppliedCoupon(null)} className="text-cartoon-red hover:underline text-[10px] cursor-pointer">
                           Quitar
@@ -322,8 +331,8 @@ export const CartDrawer = ({
             </div>
 
             {items.length > 0 && (
-              <div className="p-3.5 sm:p-5 bg-white border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
-                <div className="space-y-1 text-xs sm:text-sm font-sub">
+              <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
+                <div className="space-y-1 text-xs font-sub">
                   <div className="flex justify-between text-cartoon-ink/80">
                     <span>Subtotal</span>
                     <span>{money(subtotal)}</span>
@@ -334,17 +343,17 @@ export const CartDrawer = ({
                       <span>-{money(discountAmount)}</span>
                     </div>
                   )}
-                  <div className="pt-1.5 border-t-2 border-cartoon-ink/20 flex justify-between items-center text-cartoon-ink">
-                    <span className="font-display text-base sm:text-lg">TOTAL</span>
-                    <span className="font-display text-xl sm:text-2xl text-cartoon-red">{money(subtotal - discountAmount)}</span>
+                  <div className="pt-1 border-t border-cartoon-ink/15 flex justify-between items-center text-cartoon-ink font-display text-base">
+                    <span>TOTAL</span>
+                    <span className="text-cartoon-red">{money(subtotal - discountAmount)}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setStep('location')}
-                  className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 group cursor-pointer"
+                  className="w-full btn-cartoon-red text-xs sm:text-sm py-2.5 sm:py-3 flex items-center justify-center gap-1.5 group cursor-pointer"
                 >
                   <span>CONTINUAR</span>
-                  <Icon name="arrow_forward" size={18} className="transition-transform group-hover:translate-x-1" />
+                  <Icon name="arrow_forward" size={16} className="transition-transform group-hover:translate-x-1" />
                 </button>
               </div>
             )}
@@ -352,13 +361,14 @@ export const CartDrawer = ({
         )}
 
         {/* ============================================================== */}
-        {/* ETAPA 2: MODALIDAD Y UBICACIÓN CON MAPA SATELITAL AMPLIO */}
+        {/* ETAPA 2: MODALIDAD Y UBICACIÓN DESPEJADA (Estilo Uber) */}
         {/* ============================================================== */}
         {step === 'location' && (
           <div className="flex-1 flex flex-col min-h-0 animate-modalIn">
-            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4 min-h-0">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3 min-h-0">
+              
               {/* Selector de Modalidad */}
-              <div className="grid grid-cols-2 gap-2 p-1 bg-white rounded-2xl border-3 border-cartoon-ink shadow-cartoon-sm">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-white rounded-xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-sm">
                 {[
                   { id: 'delivery', label: 'A Domicilio', icon: 'two_wheeler' },
                   { id: 'takeaway', label: 'Retiro en Local', icon: 'storefront' },
@@ -370,13 +380,13 @@ export const CartDrawer = ({
                       setDeliveryType(opt.id);
                       setLocationError('');
                     }}
-                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-sub font-bold text-sm cursor-pointer transition-colors duration-150 ${
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-sub font-bold text-xs sm:text-sm cursor-pointer transition-colors duration-150 ${
                       deliveryType === opt.id
                         ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink shadow-cartoon-sm'
                         : 'text-cartoon-ink/60 border-2 border-transparent hover:text-cartoon-ink'
                     }`}
                   >
-                    <Icon name={opt.icon} size={18} />
+                    <Icon name={opt.icon} size={16} />
                     <span>{opt.label}</span>
                   </button>
                 ))}
@@ -384,43 +394,27 @@ export const CartDrawer = ({
 
               {/* Contenido según modalidad */}
               {deliveryType === 'delivery' ? (
-                <div className="space-y-3">
-                  <DeliveryLocationPicker
-                    subtotal={subtotal}
-                    value={deliveryInfo}
-                    onChange={(info) => {
-                      setDeliveryInfo(info);
-                      setLocationError('');
-                    }}
-                    error={locationError}
-                  />
-
-                  {/* Referencia opcional para el cadete */}
-                  <div className="relative pt-1">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center pointer-events-none">
-                      <Icon name="home" size={18} />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Piso, depto, color de reja o timbre (opcional)…"
-                      value={formData.addressNotes}
-                      onChange={(e) => setFormData({ ...formData, addressNotes: e.target.value })}
-                      className={inputClass(false)}
-                    />
-                  </div>
-                </div>
+                <DeliveryLocationPicker
+                  subtotal={subtotal}
+                  value={deliveryInfo}
+                  onChange={(info) => {
+                    setDeliveryInfo(info);
+                    setLocationError('');
+                  }}
+                  error={locationError}
+                />
               ) : (
-                <div className="bg-white rounded-2xl border-3 border-cartoon-ink shadow-cartoon p-4 space-y-3 text-center sm:text-left">
+                <div className="bg-white rounded-xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-sm p-4 space-y-2.5">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center flex-shrink-0">
-                      <Icon name="storefront" size={24} className="text-cartoon-ink" />
+                    <div className="w-10 h-10 rounded-xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center flex-shrink-0">
+                      <Icon name="storefront" size={20} className="text-cartoon-ink" />
                     </div>
                     <div>
-                      <h4 className="font-display text-base text-cartoon-ink">Retiro en Local Oficial</h4>
-                      <p className="font-sub text-xs text-cartoon-ink/70">Prepararemos tu pedido para que lo retires caliente y crujiente.</p>
+                      <h4 className="font-display text-sm text-cartoon-ink">Retiro en Local</h4>
+                      <p className="font-sub text-[11px] text-cartoon-ink/70">Prepararemos tu pedido para que lo retires caliente.</p>
                     </div>
                   </div>
-                  <div className="pt-2 border-t border-cartoon-ink/15 font-sub text-xs text-cartoon-ink/80 space-y-1">
+                  <div className="pt-2 border-t border-cartoon-ink/15 font-sub text-xs text-cartoon-ink/80 space-y-0.5">
                     <p><strong>Dirección:</strong> {RESTAURANT_INFO.address}</p>
                     <p><strong>Horarios:</strong> {RESTAURANT_INFO.schedule}</p>
                   </div>
@@ -429,8 +423,8 @@ export const CartDrawer = ({
             </div>
 
             {/* Barra inferior de Entrega */}
-            <div className="p-3.5 sm:p-5 bg-white border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
-              <div className="space-y-1 text-xs sm:text-sm font-sub">
+            <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
+              <div className="space-y-1 text-xs font-sub">
                 <div className="flex justify-between text-cartoon-ink/80">
                   <span>Subtotal</span>
                   <span>{money(subtotal - discountAmount)}</span>
@@ -445,19 +439,19 @@ export const CartDrawer = ({
                     )}
                   </div>
                 )}
-                <div className="pt-1.5 border-t-2 border-cartoon-ink/20 flex justify-between items-center text-cartoon-ink">
-                  <span className="font-display text-base sm:text-lg">TOTAL ESTIMADO</span>
-                  <span className="font-display text-xl sm:text-2xl text-cartoon-red">{money(total)}</span>
+                <div className="pt-1 border-t border-cartoon-ink/15 flex justify-between items-center text-cartoon-ink font-display text-base">
+                  <span>TOTAL ESTIMADO</span>
+                  <span className="text-cartoon-red">{money(total)}</span>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleProceedToCheckout}
-                className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 group cursor-pointer"
+                className="w-full btn-cartoon-red text-xs sm:text-sm py-2.5 sm:py-3 flex items-center justify-center gap-1.5 group cursor-pointer"
               >
                 <span>CONTINUAR</span>
-                <Icon name="arrow_forward" size={18} className="transition-transform group-hover:translate-x-1" />
+                <Icon name="arrow_forward" size={16} className="transition-transform group-hover:translate-x-1" />
               </button>
             </div>
           </div>
@@ -468,16 +462,16 @@ export const CartDrawer = ({
         {/* ============================================================== */}
         {step === 'checkout' && (
           <form onSubmit={handleFinalSubmit} className="flex-1 flex flex-col min-h-0 animate-modalIn">
-            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4 min-h-0">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3 min-h-0">
               
               {/* Nombre del Cliente */}
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1.5">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1">
                   Tu Nombre:
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
-                    <Icon name="person" size={18} />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
+                    <Icon name="person" size={16} />
                   </div>
                   <input
                     type="text"
@@ -493,9 +487,30 @@ export const CartDrawer = ({
                 {errors.name && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.name}</p>}
               </div>
 
+              {/* Referencia de dirección (si es delivery) */}
+              {deliveryType === 'delivery' && (
+                <div>
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1">
+                    Referencia de tu casa (opcional):
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
+                      <Icon name="home" size={16} />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Piso, depto, color de puerta o reja…"
+                      value={formData.addressNotes}
+                      onChange={(e) => setFormData({ ...formData, addressNotes: e.target.value })}
+                      className={inputClass(false)}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Forma de Pago: Solo Efectivo o Transferencia */}
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1.5">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1">
                   Forma de Pago:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -507,7 +522,7 @@ export const CartDrawer = ({
                       key={method.id}
                       type="button"
                       onClick={() => setFormData({ ...formData, paymentMethod: method.id })}
-                      className={`py-2.5 px-2 rounded-xl border-2 sm:border-3 border-cartoon-ink font-sub font-bold text-xs sm:text-sm cursor-pointer transition-all duration-150 active:scale-[0.97] flex items-center justify-center gap-1.5 ${
+                      className={`py-2 px-2 rounded-xl border-2 border-cartoon-ink font-sub font-bold text-xs cursor-pointer transition-all duration-150 active:scale-[0.97] flex items-center justify-center gap-1.5 ${
                         formData.paymentMethod === method.id
                           ? 'bg-cartoon-yellow text-cartoon-ink shadow-cartoon-sm'
                           : 'bg-white text-cartoon-ink/70 hover:bg-cartoon-cream-dark'
@@ -524,11 +539,11 @@ export const CartDrawer = ({
                     placeholder="¿Con cuánto abonás? (ej: $20.000 para el vuelto)"
                     value={formData.changeAmount}
                     onChange={(e) => setFormData({ ...formData, changeAmount: e.target.value })}
-                    className="mt-2 w-full px-3.5 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/40 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink shadow-sm"
+                    className="mt-2 w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink/40 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink shadow-sm"
                   />
                 ) : (
-                  <div className="mt-2 p-2.5 rounded-xl bg-[#FFF9D2] border-2 border-cartoon-ink/40 font-sub text-xs text-cartoon-ink flex items-center gap-2 shadow-sm">
-                    <span className="text-base select-none">💡</span>
+                  <div className="mt-2 p-2 rounded-xl bg-[#FFF9D2] border border-cartoon-ink/40 font-sub text-[11px] text-cartoon-ink flex items-center gap-2 shadow-sm">
+                    <span className="text-sm select-none">💡</span>
                     <span>Al confirmar tu pedido te enviamos el <strong>Alias / CBU</strong> para transferir al instante.</span>
                   </div>
                 )}
@@ -536,7 +551,7 @@ export const CartDrawer = ({
 
               {/* Aclaraciones opcionales */}
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1.5">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1">
                   Aclaraciones del pedido (opcional):
                 </label>
                 <textarea
@@ -544,24 +559,21 @@ export const CartDrawer = ({
                   placeholder="Sin cebolla, salsas extras, etc…"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-white border-3 border-cartoon-ink font-sub text-sm text-cartoon-ink focus:outline-none shadow-cartoon-sm"
+                  className="w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-sm"
                 />
               </div>
 
               {/* Resumen rápido de la entrega elegida */}
-              <div className="bg-white p-3 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs space-y-1 text-cartoon-ink/80">
+              <div className="bg-white p-2.5 rounded-xl border border-cartoon-ink/30 font-sub text-xs text-cartoon-ink/80">
                 <p>
-                  <strong>Entrega:</strong> {deliveryType === 'delivery' ? (deliveryInfo?.address ? `A Domicilio (${deliveryInfo.address})` : 'A Domicilio') : 'Retiro en Local Oficial'}
+                  <strong>Entrega:</strong> {deliveryType === 'delivery' ? (deliveryInfo?.address ? `A Domicilio (${deliveryInfo.address})` : 'A Domicilio') : 'Retiro en Local'}
                 </p>
-                {formData.addressNotes && (
-                  <p><strong>Ref:</strong> {formData.addressNotes}</p>
-                )}
               </div>
             </div>
 
             {/* Resumen de totales + Botón a WhatsApp */}
-            <div className="p-3.5 sm:p-5 bg-white border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
-              <div className="space-y-1 text-xs sm:text-sm font-sub">
+            <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
+              <div className="space-y-1 text-xs font-sub">
                 <div className="flex justify-between text-cartoon-ink/80">
                   <span>Subtotal</span>
                   <span>{money(subtotal - discountAmount)}</span>
@@ -576,17 +588,17 @@ export const CartDrawer = ({
                     )}
                   </div>
                 )}
-                <div className="pt-1.5 border-t-2 border-cartoon-ink/20 flex justify-between items-center text-cartoon-ink">
-                  <span className="font-display text-base sm:text-lg">TOTAL A PAGAR</span>
-                  <span className="font-display text-xl sm:text-2xl text-cartoon-red">{money(total)}</span>
+                <div className="pt-1 border-t border-cartoon-ink/15 flex justify-between items-center text-cartoon-ink font-display text-base">
+                  <span>TOTAL A PAGAR</span>
+                  <span className="text-cartoon-red">{money(total)}</span>
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer"
+                className="w-full btn-cartoon-red text-xs sm:text-sm py-2.5 sm:py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer"
               >
-                <Icon name="chat" size={20} />
+                <Icon name="chat" size={18} />
                 <span>CONFIRMAR PEDIDO</span>
               </button>
             </div>
