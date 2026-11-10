@@ -19,13 +19,14 @@ export const CartDrawer = ({
   setAppliedCoupon,
   onOrderSuccess,
 }) => {
-  const [step, setStep] = useState('cart'); // 'cart' | 'checkout'
+  // Etapas del flujo: 'cart' -> 'location' -> 'checkout' (sin rótulos numéricos visuales)
+  const [step, setStep] = useState('cart');
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [deliveryInfo, setDeliveryInfo] = useState(null);
+  const [locationError, setLocationError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
-    phone: '',
     addressNotes: '',
     notes: '',
     paymentMethod: 'Efectivo',
@@ -33,19 +34,22 @@ export const CartDrawer = ({
   });
   const [errors, setErrors] = useState({});
 
-  // Al cerrar, volver siempre al primer paso
+  // Al cerrar el drawer o vaciar el carrito, volver al primer paso
   useEffect(() => {
-    if (!isOpen) setStep('cart');
+    if (!isOpen) {
+      setStep('cart');
+      setLocationError('');
+      setErrors({});
+    }
   }, [isOpen]);
 
-  // Si el carrito queda vacío, volver al paso 1
   useEffect(() => {
     if (items.length === 0) setStep('cart');
   }, [items.length]);
 
   if (!isOpen) return null;
 
-  // Totales
+  // Cálculos de totales
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const discountAmount = appliedCoupon ? Math.round(subtotal * appliedCoupon.discount) : 0;
   const free = isFreeDelivery(subtotal);
@@ -65,57 +69,66 @@ export const CartDrawer = ({
     }
   };
 
-  const validate = () => {
-    const e = {};
-    if (!formData.name.trim()) e.name = 'Ingresá tu nombre';
-    if (!formData.phone.trim()) e.phone = 'Ingresá tu teléfono';
-    if (deliveryType === 'delivery' && !deliveryInfo) e.location = 'Marcá tu casa en el mapa para calcular el envío';
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  // Validar etapa de entrega antes de pasar a datos
+  const handleProceedToCheckout = () => {
+    if (deliveryType === 'delivery' && !deliveryInfo) {
+      setLocationError('Marcá tu casa en el mapa satelital para continuar');
+      return;
+    }
+    setLocationError('');
+    setStep('checkout');
   };
 
-  const handleSubmit = (ev) => {
+  // Validar y enviar pedido final a WhatsApp
+  const handleFinalSubmit = (ev) => {
     ev.preventDefault();
-    if (!validate()) return;
+    const e = {};
+    if (!formData.name.trim()) e.name = 'Ingresá tu nombre';
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
 
     try {
-      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 }, colors: ['#FFC93C', '#FF4757', '#2ED573', '#1E90FF'] });
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FFC93C', '#FF4757', '#2ED573', '#1E90FF'],
+      });
     } catch {
       /* sin confeti */
     }
 
+    // Mensaje limpio, preciso y directo: sin número de teléfono, sin km, sin agradecimientos
     const L = [];
-    L.push(`🍔 *¡HOLA TRICO'S! QUIERO CONFIRMAR MI PEDIDO* 🍔`);
-    L.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    L.push(`👤 *Cliente:* ${formData.name.trim()}`);
-    L.push(`📱 *Teléfono:* ${formData.phone.trim()}`);
-    L.push(`🛵 *Modalidad:* ${deliveryType === 'delivery' ? 'Envío a Domicilio' : 'Retiro en Local'}`);
+    L.push(`🍔 *PEDIDO TRICO'S*`);
+    L.push(`*Cliente:* ${formData.name.trim()}`);
+    L.push(`*Entrega:* ${deliveryType === 'delivery' ? 'A Domicilio' : 'Retiro en Local'}`);
+
     if (deliveryType === 'delivery' && deliveryInfo) {
-      if (deliveryInfo.address) L.push(`📍 *Dirección:* ${deliveryInfo.address}`);
-      if (formData.addressNotes.trim()) L.push(`🏠 *Referencia:* ${formData.addressNotes.trim()}`);
-      L.push(`📏 *Distancia:* ${deliveryInfo.km.toFixed(1).replace('.', ',')} km`);
-      L.push(`🗺️ *Ubicación:* https://maps.google.com/?q=${deliveryInfo.lat.toFixed(6)},${deliveryInfo.lng.toFixed(6)}`);
+      if (deliveryInfo.address) L.push(`*Dirección:* ${deliveryInfo.address}`);
+      if (formData.addressNotes.trim()) L.push(`*Referencia:* ${formData.addressNotes.trim()}`);
+      L.push(`*Ubicación:* https://maps.google.com/?q=${deliveryInfo.lat.toFixed(6)},${deliveryInfo.lng.toFixed(6)}`);
     }
-    L.push(`💳 *Forma de Pago:* ${formData.paymentMethod}`);
-    if (formData.paymentMethod === 'Efectivo' && formData.changeAmount.trim()) {
-      L.push(`💵 *Paga con:* $${formData.changeAmount.trim()}`);
-    }
-    if (formData.notes.trim()) L.push(`📝 *Aclaraciones:* ${formData.notes.trim()}`);
+
+    L.push(
+      `*Pago:* ${formData.paymentMethod}${
+        formData.paymentMethod === 'Efectivo' && formData.changeAmount.trim()
+          ? ` (Paga con: $${formData.changeAmount.trim()})`
+          : ''
+      }`
+    );
+
+    if (formData.notes.trim()) L.push(`*Aclaraciones:* ${formData.notes.trim()}`);
+
     L.push('');
-    L.push(`🛒 *DETALLE DEL PEDIDO:*`);
+    L.push(`*Detalle:*`);
     items.forEach((item) => {
-      L.push(`• ${item.quantity}x ${item.product.name} - ${money(item.product.price * item.quantity)}`);
-      if (item.note) L.push(`  ↳ _Nota: ${item.note}_`);
+      L.push(`• ${item.quantity}x ${item.product.name} (${money(item.product.price * item.quantity)})`);
+      if (item.note) L.push(`  ↳ _${item.note}_`);
     });
-    L.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    L.push(`Subtotal: ${money(subtotal)}`);
-    if (appliedCoupon) L.push(`🎉 Descuento (${appliedCoupon.code}): -${money(discountAmount)}`);
-    if (deliveryType === 'delivery') {
-      L.push(`🛵 Envío: ${shippingFee === 0 ? `¡GRATIS! (pedido desde ${money(threshold)})` : money(shippingFee)}`);
-    }
-    L.push(`💰 *TOTAL A PAGAR: ${money(total)}*`);
-    L.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    L.push(`¡Muchas gracias! Aguardo confirmación del pedido. ✨`);
+
+    L.push('');
+    L.push(`*TOTAL: ${money(total)}*`);
 
     window.open(`https://wa.me/${RESTAURANT_INFO.phone}?text=${encodeURIComponent(L.join('\n'))}`, '_blank');
     onOrderSuccess({ customerName: formData.name, total, deliveryType });
@@ -128,27 +141,36 @@ export const CartDrawer = ({
       hasError ? 'border-cartoon-red' : 'border-cartoon-ink'
     }`;
 
+  // Título dinámico del encabezado según etapa
+  const headerTitle =
+    step === 'cart' ? 'Tu Pedido' : step === 'location' ? 'Entrega' : 'Tus Datos y Pago';
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div
-        onClick={onClose}
-        className="fixed inset-0 bg-cartoon-ink/65 backdrop-blur-sm animate-fadeIn"
-      />
+      <div onClick={onClose} className="fixed inset-0 bg-cartoon-ink/65 backdrop-blur-sm animate-fadeIn" />
 
       <aside
         aria-label="Carrito de compras"
         className={`fixed inset-y-0 right-0 w-full bg-cartoon-cream border-l-0 sm:border-l-4 border-cartoon-ink shadow-2xl flex flex-col animate-slideInRight h-[100dvh] max-h-[100dvh] z-10 overflow-hidden ${
-          step === 'checkout' ? 'sm:max-w-xl' : 'sm:max-w-md'
+          step !== 'cart' ? 'sm:max-w-xl' : 'sm:max-w-md'
         }`}
-        style={{ transition: 'max-width 320ms var(--ease-drawer)' }}
+        style={{ transition: 'max-width 260ms var(--ease-drawer)' }}
       >
-        {/* Header */}
+        {/* Encabezado limpio con navegación */}
         <div className="p-3.5 sm:p-5 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3">
-            {step === 'checkout' ? (
+            {step === 'location' ? (
               <button
                 onClick={() => setStep('cart')}
-                aria-label="Volver al carrito"
+                aria-label="Volver a los productos"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
+              >
+                <Icon name="arrow_back" size={20} />
+              </button>
+            ) : step === 'checkout' ? (
+              <button
+                onClick={() => setStep('location')}
+                aria-label="Volver a la ubicación"
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
               >
                 <Icon name="arrow_back" size={20} />
@@ -159,9 +181,7 @@ export const CartDrawer = ({
               </div>
             )}
             <div>
-              <h2 className="font-display text-lg sm:text-xl text-cartoon-ink leading-tight">
-                {step === 'checkout' ? 'Finalizar Pedido' : 'Tu Pedido'}
-              </h2>
+              <h2 className="font-display text-lg sm:text-xl text-cartoon-ink leading-tight">{headerTitle}</h2>
               <span className="font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink/70">
                 {items.length === 1 ? '1 producto' : `${items.length} productos`}
               </span>
@@ -177,9 +197,11 @@ export const CartDrawer = ({
           </button>
         </div>
 
-        {step === 'cart' ? (
+        {/* ============================================================== */}
+        {/* ETAPA 1: REVISIÓN DE PRODUCTOS */}
+        {/* ============================================================== */}
+        {step === 'cart' && (
           <>
-            {/* PASO 1: Carrito */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 min-h-0">
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -197,11 +219,7 @@ export const CartDrawer = ({
               ) : (
                 <>
                   {/* Progreso hacia el delivery gratis */}
-                  <div
-                    className={`rounded-2xl border-3 border-cartoon-ink p-3 shadow-cartoon-sm ${
-                      free ? 'bg-cartoon-green' : 'bg-white'
-                    }`}
-                  >
+                  <div className={`rounded-2xl border-3 border-cartoon-ink p-3 shadow-cartoon-sm ${free ? 'bg-cartoon-green' : 'bg-white'}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <Icon name="two_wheeler" size={20} className="text-cartoon-ink" />
                       <p className="font-display text-sm text-cartoon-ink">
@@ -220,7 +238,7 @@ export const CartDrawer = ({
                     </div>
                   </div>
 
-                  {/* Productos */}
+                  {/* Lista de productos agregados */}
                   <div className="space-y-2.5">
                     {items.map(({ product, quantity }) => (
                       <div
@@ -316,34 +334,30 @@ export const CartDrawer = ({
                       <span>-{money(discountAmount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-cartoon-ink/80">
-                    <span>Envío</span>
-                    {free ? (
-                      <span className="text-cartoon-green-dark font-bold">GRATIS</span>
-                    ) : (
-                      <span>Según distancia</span>
-                    )}
-                  </div>
                   <div className="pt-1.5 border-t-2 border-cartoon-ink/20 flex justify-between items-center text-cartoon-ink">
                     <span className="font-display text-base sm:text-lg">TOTAL</span>
                     <span className="font-display text-xl sm:text-2xl text-cartoon-red">{money(subtotal - discountAmount)}</span>
                   </div>
                 </div>
                 <button
-                  onClick={() => setStep('checkout')}
-                  className="w-full btn-cartoon-red text-sm sm:text-base py-2.5 sm:py-3 flex items-center justify-center gap-2 group cursor-pointer"
+                  onClick={() => setStep('location')}
+                  className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 group cursor-pointer"
                 >
-                  <span>CONTINUAR PEDIDO</span>
+                  <span>CONTINUAR</span>
                   <Icon name="arrow_forward" size={18} className="transition-transform group-hover:translate-x-1" />
                 </button>
               </div>
             )}
           </>
-        ) : (
-          /* PASO 2: Datos + mapa de entrega */
-          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 animate-modalIn">
+        )}
+
+        {/* ============================================================== */}
+        {/* ETAPA 2: MODALIDAD Y UBICACIÓN CON MAPA SATELITAL AMPLIO */}
+        {/* ============================================================== */}
+        {step === 'location' && (
+          <div className="flex-1 flex flex-col min-h-0 animate-modalIn">
             <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4 min-h-0">
-              {/* Modalidad */}
+              {/* Selector de Modalidad */}
               <div className="grid grid-cols-2 gap-2 p-1 bg-white rounded-2xl border-3 border-cartoon-ink shadow-cartoon-sm">
                 {[
                   { id: 'delivery', label: 'A Domicilio', icon: 'two_wheeler' },
@@ -352,9 +366,14 @@ export const CartDrawer = ({
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => setDeliveryType(opt.id)}
-                    className={`flex items-center justify-center gap-1.5 py-2 rounded-xl font-sub font-bold text-sm cursor-pointer transition-colors duration-150 ${
-                      deliveryType === opt.id ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink' : 'text-cartoon-ink/60 border-2 border-transparent'
+                    onClick={() => {
+                      setDeliveryType(opt.id);
+                      setLocationError('');
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-sub font-bold text-sm cursor-pointer transition-colors duration-150 ${
+                      deliveryType === opt.id
+                        ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink shadow-cartoon-sm'
+                        : 'text-cartoon-ink/60 border-2 border-transparent hover:text-cartoon-ink'
                     }`}
                   >
                     <Icon name={opt.icon} size={18} />
@@ -363,83 +382,122 @@ export const CartDrawer = ({
                 ))}
               </div>
 
-              {/* Mapa (solo a domicilio) */}
+              {/* Contenido según modalidad */}
               {deliveryType === 'delivery' ? (
-                <>
+                <div className="space-y-3">
                   <DeliveryLocationPicker
                     subtotal={subtotal}
                     value={deliveryInfo}
                     onChange={(info) => {
                       setDeliveryInfo(info);
-                      setErrors((e) => ({ ...e, location: undefined }));
+                      setLocationError('');
                     }}
-                    error={errors.location}
+                    error={locationError}
                   />
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
+
+                  {/* Referencia opcional para el cadete */}
+                  <div className="relative pt-1">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center pointer-events-none">
                       <Icon name="home" size={18} />
                     </div>
                     <input
                       type="text"
-                      placeholder="Piso, depto, color de casa, entre calles…"
+                      placeholder="Piso, depto, color de reja o timbre (opcional)…"
                       value={formData.addressNotes}
                       onChange={(e) => setFormData({ ...formData, addressNotes: e.target.value })}
                       className={inputClass(false)}
                     />
                   </div>
-                </>
+                </div>
               ) : (
-                <div className="bg-white rounded-2xl border-3 border-cartoon-ink shadow-cartoon-sm p-3 flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center flex-shrink-0">
-                    <Icon name="storefront" size={22} className="text-cartoon-ink" />
+                <div className="bg-white rounded-2xl border-3 border-cartoon-ink shadow-cartoon p-4 space-y-3 text-center sm:text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center flex-shrink-0">
+                      <Icon name="storefront" size={24} className="text-cartoon-ink" />
+                    </div>
+                    <div>
+                      <h4 className="font-display text-base text-cartoon-ink">Retiro en Local Oficial</h4>
+                      <p className="font-sub text-xs text-cartoon-ink/70">Prepararemos tu pedido para que lo retires caliente y crujiente.</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-display text-sm text-cartoon-ink">{RESTAURANT_INFO.address}</p>
-                    <p className="font-sub font-bold text-xs text-cartoon-ink/60">{RESTAURANT_INFO.schedule}</p>
+                  <div className="pt-2 border-t border-cartoon-ink/15 font-sub text-xs text-cartoon-ink/80 space-y-1">
+                    <p><strong>Dirección:</strong> {RESTAURANT_INFO.address}</p>
+                    <p><strong>Horarios:</strong> {RESTAURANT_INFO.schedule}</p>
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Nombre y teléfono */}
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
-                      <Icon name="person" size={18} />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Tu nombre"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className={inputClass(errors.name)}
-                    />
-                  </div>
-                  {errors.name && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.name}</p>}
+            {/* Barra inferior de Entrega */}
+            <div className="p-3.5 sm:p-5 bg-white border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
+              <div className="space-y-1 text-xs sm:text-sm font-sub">
+                <div className="flex justify-between text-cartoon-ink/80">
+                  <span>Subtotal</span>
+                  <span>{money(subtotal - discountAmount)}</span>
                 </div>
-                <div>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
-                      <Icon name="call" size={18} />
-                    </div>
-                    <input
-                      type="tel"
-                      placeholder="Tu WhatsApp"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className={inputClass(errors.phone)}
-                    />
+                {deliveryType === 'delivery' && (
+                  <div className="flex justify-between text-cartoon-ink/80">
+                    <span>Envío</span>
+                    {free || shippingFee === 0 ? (
+                      <span className="text-cartoon-green-dark font-bold">¡GRATIS!</span>
+                    ) : (
+                      <span>{shippingFee ? money(shippingFee) : 'Marcá en el mapa'}</span>
+                    )}
                   </div>
-                  {errors.phone && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.phone}</p>}
+                )}
+                <div className="pt-1.5 border-t-2 border-cartoon-ink/20 flex justify-between items-center text-cartoon-ink">
+                  <span className="font-display text-base sm:text-lg">TOTAL ESTIMADO</span>
+                  <span className="font-display text-xl sm:text-2xl text-cartoon-red">{money(total)}</span>
                 </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleProceedToCheckout}
+                className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 group cursor-pointer"
+              >
+                <span>CONTINUAR</span>
+                <Icon name="arrow_forward" size={18} className="transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* ETAPA 3: DATOS DEL CLIENTE Y FORMA DE PAGO */}
+        {/* ============================================================== */}
+        {step === 'checkout' && (
+          <form onSubmit={handleFinalSubmit} className="flex-1 flex flex-col min-h-0 animate-modalIn">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4 min-h-0">
+              
+              {/* Nombre del Cliente */}
+              <div>
+                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1.5">
+                  Tu Nombre:
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
+                    <Icon name="person" size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="¿A nombre de quién es el pedido?"
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (errors.name) setErrors({ ...errors, name: '' });
+                    }}
+                    className={inputClass(errors.name)}
+                  />
+                </div>
+                {errors.name && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.name}</p>}
               </div>
 
               {/* Forma de Pago: Solo Efectivo o Transferencia */}
               <div>
-                <p className="font-sub font-bold text-xs text-cartoon-ink/75 mb-1.5 flex items-center gap-1.5">
-                  <Icon name="payments" size={16} />
-                  <span>Forma de Pago:</span>
-                </p>
+                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1.5">
+                  Forma de Pago:
+                </label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: 'Efectivo', label: '💵 Efectivo' },
@@ -459,6 +517,7 @@ export const CartDrawer = ({
                     </button>
                   ))}
                 </div>
+
                 {formData.paymentMethod === 'Efectivo' ? (
                   <input
                     type="text"
@@ -470,21 +529,37 @@ export const CartDrawer = ({
                 ) : (
                   <div className="mt-2 p-2.5 rounded-xl bg-[#FFF9D2] border-2 border-cartoon-ink/40 font-sub text-xs text-cartoon-ink flex items-center gap-2 shadow-sm">
                     <span className="text-base select-none">💡</span>
-                    <span>Te enviamos el <strong>Alias / CBU</strong> al confirmar tu pedido por WhatsApp para transferir al instante.</span>
+                    <span>Al confirmar tu pedido te enviamos el <strong>Alias / CBU</strong> para transferir al instante.</span>
                   </div>
                 )}
               </div>
 
-              <textarea
-                rows="2"
-                placeholder="Aclaraciones: sin cebolla, tocar timbre…"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-2xl bg-white border-3 border-cartoon-ink font-sub text-sm text-cartoon-ink focus:outline-none shadow-cartoon-sm"
-              />
+              {/* Aclaraciones opcionales */}
+              <div>
+                <label className="block font-sub font-bold text-xs text-cartoon-ink/75 mb-1.5">
+                  Aclaraciones del pedido (opcional):
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="Sin cebolla, salsas extras, etc…"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-2xl bg-white border-3 border-cartoon-ink font-sub text-sm text-cartoon-ink focus:outline-none shadow-cartoon-sm"
+                />
+              </div>
+
+              {/* Resumen rápido de la entrega elegida */}
+              <div className="bg-white p-3 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs space-y-1 text-cartoon-ink/80">
+                <p>
+                  <strong>Entrega:</strong> {deliveryType === 'delivery' ? (deliveryInfo?.address ? `A Domicilio (${deliveryInfo.address})` : 'A Domicilio') : 'Retiro en Local Oficial'}
+                </p>
+                {formData.addressNotes && (
+                  <p><strong>Ref:</strong> {formData.addressNotes}</p>
+                )}
+              </div>
             </div>
 
-            {/* Resumen + enviar */}
+            {/* Resumen de totales + Botón a WhatsApp */}
             <div className="p-3.5 sm:p-5 bg-white border-t-3 border-cartoon-ink space-y-2 flex-shrink-0 pb-6 sm:pb-5">
               <div className="space-y-1 text-xs sm:text-sm font-sub">
                 <div className="flex justify-between text-cartoon-ink/80">
@@ -493,11 +568,9 @@ export const CartDrawer = ({
                 </div>
                 {deliveryType === 'delivery' && (
                   <div className="flex justify-between text-cartoon-ink/80">
-                    <span>Envío{deliveryInfo ? ` (${deliveryInfo.km.toFixed(1).replace('.', ',')} km)` : ''}</span>
-                    {shippingFee === 0 ? (
-                      <span className="text-cartoon-green-dark font-bold">GRATIS</span>
-                    ) : shippingFee == null ? (
-                      <span>Marcá tu casa</span>
+                    <span>Envío</span>
+                    {free || shippingFee === 0 ? (
+                      <span className="text-cartoon-green-dark font-bold">¡GRATIS!</span>
                     ) : (
                       <span>{money(shippingFee)}</span>
                     )}
@@ -508,12 +581,13 @@ export const CartDrawer = ({
                   <span className="font-display text-xl sm:text-2xl text-cartoon-red">{money(total)}</span>
                 </div>
               </div>
+
               <button
                 type="submit"
-                className="w-full btn-cartoon-green text-sm sm:text-base py-2.5 sm:py-3 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer"
               >
-                <Icon name="send" size={18} className="text-cartoon-ink" />
-                <span>ENVIAR PEDIDO POR WHATSAPP</span>
+                <Icon name="chat" size={20} />
+                <span>CONFIRMAR PEDIDO</span>
               </button>
             </div>
           </form>

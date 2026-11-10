@@ -8,8 +8,8 @@ const DeliveryMap = lazy(() => import('./DeliveryMap'));
 const money = (n) => `$${n.toLocaleString('es-AR')}`;
 
 /**
- * Selector de domicilio: buscador + "mi ubicación" + mapa 3D.
- * Devuelve por onChange: { lat, lng, km, fee, approx, address } o null.
+ * Selector de domicilio satelital estilo Uber:
+ * Buscador + mi ubicación + Mapa satelital amplio visto desde arriba.
  */
 export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => {
   const [point, setPoint] = useState(value ? { lat: value.lat, lng: value.lng } : null);
@@ -53,7 +53,7 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [point]);
 
-  // Buscador con debounce (Nominatim pide máx. 1 consulta por segundo)
+  // Buscador con debounce
   useEffect(() => {
     const q = query.trim();
     if (q.length < 4) {
@@ -88,7 +88,7 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {/* Buscador + Mi ubicación */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -99,7 +99,7 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscá tu calle y número"
+            placeholder="Buscá tu calle y número…"
             className="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-white border-3 border-cartoon-ink font-sub text-sm text-cartoon-ink focus:outline-none shadow-cartoon-sm"
           />
           {(results.length > 0 || searching) && (
@@ -129,7 +129,7 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
         <button
           type="button"
           onClick={useMyLocation}
-          title="Usar mi ubicación"
+          title="Usar mi ubicación actual"
           aria-label="Usar mi ubicación"
           className="w-11 flex-shrink-0 rounded-2xl bg-cartoon-yellow border-3 border-cartoon-ink shadow-cartoon-sm flex items-center justify-center text-cartoon-ink active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer transition-transform duration-150"
         >
@@ -139,16 +139,16 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
 
       {geoError && <p className="text-xs font-sub font-bold text-cartoon-red">{geoError}</p>}
 
-      {/* Mapa 3D */}
+      {/* Ventana Amplia del Mapa Satelital estilo Uber (Ocupa el espacio principal y se ve hermosa) */}
       <div
-        className={`relative h-64 sm:h-72 rounded-3xl border-3 overflow-hidden shadow-cartoon bg-cartoon-cream-dark ${
+        className={`relative h-[340px] sm:h-[420px] rounded-3xl border-3 overflow-hidden shadow-cartoon bg-[#1A1815] ${
           error ? 'border-cartoon-red' : 'border-cartoon-ink'
         }`}
       >
         <Suspense
           fallback={
-            <div className="absolute inset-0 flex items-center justify-center font-sub font-bold text-sm text-cartoon-ink/60">
-              Cargando mapa…
+            <div className="absolute inset-0 flex items-center justify-center font-sub font-bold text-sm text-white/70">
+              Cargando mapa satelital…
             </div>
           }
         >
@@ -156,36 +156,30 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
         </Suspense>
 
         {!point && (
-          <div className="absolute left-1/2 bottom-3 -translate-x-1/2 pointer-events-none bg-cartoon-ink text-white font-sub font-bold text-xs px-3.5 py-2 rounded-full whitespace-nowrap shadow-cartoon-sm">
+          <div className="absolute left-1/2 bottom-3 -translate-x-1/2 pointer-events-none bg-cartoon-ink/90 text-white font-sub font-bold text-xs px-4 py-2 rounded-full whitespace-nowrap shadow-cartoon border border-white/20">
             Tocá el mapa donde está tu casa
           </div>
         )}
       </div>
 
-      {/* Resultado: distancia y costo */}
+      {/* Resultado: Dirección y Costo de Envío */}
       {point && (
         <div className="bg-white rounded-2xl border-3 border-cartoon-ink shadow-cartoon-sm p-3 flex items-center gap-3 animate-modalIn">
-          <div className="w-11 h-11 rounded-xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center flex-shrink-0">
-            <Icon name="two_wheeler" size={22} className="text-cartoon-ink" />
+          <div className="w-10 h-10 rounded-xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center flex-shrink-0">
+            <Icon name="two_wheeler" size={20} className="text-cartoon-ink" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-display text-sm text-cartoon-ink truncate">
-              {loading ? 'Calculando recorrido…' : value?.address || 'Ubicación marcada'}
+              {loading ? 'Calculando envío…' : value?.address || 'Ubicación seleccionada'}
             </p>
-            {!loading && value && (
-              <p className="font-sub font-bold text-xs text-cartoon-ink/60">
-                {value.approx ? '≈ ' : ''}
-                {value.km.toFixed(1).replace('.', ',')} km desde el local
-              </p>
-            )}
+            <p className="font-sub font-bold text-xs text-cartoon-ink/60">
+              {free ? '¡Tu envío no tiene costo!' : 'Costo de envío a domicilio'}
+            </p>
           </div>
           {!loading && value && (
             <div className="text-right flex-shrink-0">
               {free ? (
-                <>
-                  <span className="block font-sub text-xs text-cartoon-ink/40 line-through">{money(value.fee)}</span>
-                  <span className="block font-display text-lg text-cartoon-green-dark leading-none">GRATIS</span>
-                </>
+                <span className="block font-display text-lg text-cartoon-green-dark leading-none">GRATIS</span>
               ) : (
                 <span className="block font-display text-lg text-cartoon-ink">{money(value.fee)}</span>
               )}
@@ -200,7 +194,7 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
         </p>
       )}
 
-      {error && <p className="text-xs font-sub font-bold text-cartoon-red">{error}</p>}
+      {error && <p className="text-xs font-sub font-bold text-cartoon-red text-center">{error}</p>}
     </div>
   );
 };
