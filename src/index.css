@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@layer base {
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3, .font-cartoon {
+    font-family: 'Lilita One', cursive, sans-serif;
+    letter-spacing: 0.02em;
+  }
+
+  body {
+    background-color: #FFFDF6;
+    color: #1E1B18;
+    overflow-x: hidden;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+@media print {
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
+
+/* Custom Cartoon Tactile Buttons (Emil Kowalski & Taste Skill) */
+@layer components {
+  .btn-cartoon-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 
+           bg-cartoon-yellow hover:bg-cartoon-yellow-light text-cartoon-ink 
+           font-display text-lg tracking-wide rounded-2xl border-3 border-cartoon-ink 
+           shadow-cartoon hover:shadow-cartoon-lg 
+           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+           select-none cursor-pointer;
+    transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
+  }
+
+  .btn-cartoon-red {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 
+           bg-cartoon-red hover:bg-cartoon-red-dark text-white 
+           font-display text-lg tracking-wide rounded-2xl border-3 border-cartoon-ink 
+           shadow-cartoon hover:shadow-cartoon-lg 
+           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+           select-none cursor-pointer;
+    transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
+  }
+
+  .btn-cartoon-green {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 
+           bg-cartoon-green hover:bg-cartoon-green-dark text-cartoon-ink 
+           font-display text-lg tracking-wide rounded-2xl border-3 border-cartoon-ink 
+           shadow-cartoon hover:shadow-cartoon-lg 
+           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+           select-none cursor-pointer;
+    transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
+  }
+
+  .btn-cartoon-white {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
+           bg-white hover:bg-cartoon-cream-dark text-cartoon-ink 
+           font-sub font-bold rounded-2xl border-3 border-cartoon-ink 
+           shadow-cartoon hover:shadow-cartoon-lg 
+           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+           select-none cursor-pointer;
+    transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
+  }
+
+  .card-cartoon {
+    @apply bg-white rounded-2xl sm:rounded-3xl border-3 border-cartoon-ink shadow-cartoon 
+           hover:-translate-y-0.5 hover:shadow-cartoon-lg;
+    transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  }
+
+  .badge-cartoon {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 
+           rounded-full border-2 border-cartoon-ink shadow-cartoon-sm 
+           font-sub font-bold text-[10px] sm:text-xs uppercase tracking-wider;
+  }
+}
+
+/* Custom Cartoon Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #FFFDF6;
+  border-left: 2px solid #1E1B18;
+}
+::-webkit-scrollbar-thumb {
+  background: #FFC93C;
+  border: 2px solid #1E1B18;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF4757;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Halftone / Comic Dot pattern background */
+.bg-comic-dots {
+  background-image: radial-gradient(#1E1B18 12%, transparent 12%);
+  background-position: 0 0;
+  background-size: 18px 18px;
+  opacity: 0.05;
+}
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0%);
+  }
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes infinitePhotoMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-slideInRight {
+  animation: drawerSlideIn 280ms var(--ease-drawer) forwards;
+}
+
+.animate-modalIn {
+  animation: modalScaleIn 220ms var(--ease-out) forwards;
+}
+
+.animate-photo-marquee {
+  display: flex;
+  width: max-content;
+  animation: infinitePhotoMarquee 32s linear infinite;
+  will-change: transform;
+}
+
+/* Cinta de delivery gratis: 8 bloques iguales, se desplaza 50% para loop perfecto */
+.ribbon-marquee {
+  animation: infinitePhotoMarquee 28s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-marquee,
+  .animate-photo-marquee {
+    animation: none;
+  }
+}
+
+/* Marcadores del mapa de entrega */
+.map-store-marker img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(30, 27, 24, 0.35));
+  user-select: none;
+}
+.map-home-marker {
+  cursor: grab;
+  filter: drop-shadow(0 4px 4px rgba(30, 27, 24, 0.3));
+  transition: transform 160ms var(--ease-out);
+}
+.map-home-marker:active {
+  cursor: grabbing;
+  transform: scale(1.08);
+}
+.maplibregl-ctrl-group {
+  border: 2px solid #1E1B18 !important;
+  border-radius: 12px !important;
+  box-shadow: 2px 2px 0 #1E1B18 !important;
+  overflow: hidden;
+}
+
+/* Silueta blanca tipo sticker siguiendo los trazos del personaje sin marco */
+.mascot-sticker-glow {
+  filter:
+    drop-shadow(2px 0 0 #FFFDF6)
+    drop-shadow(-2px 0 0 #FFFDF6)
+    drop-shadow(0 2px 0 #FFFDF6)
+    drop-shadow(0 -2px 0 #FFFDF6)
+    drop-shadow(2px 2px 0 #FFFDF6)
+    drop-shadow(-2px -2px 0 #FFFDF6)
+    drop-shadow(2px -2px 0 #FFFDF6)
+    drop-shadow(-2px 2px 0 #FFFDF6)
+    drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+}
