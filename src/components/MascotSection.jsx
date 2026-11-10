@@ -29,7 +29,7 @@ export const MascotSection = ({
       {/* 1. Fondo: Carrusel Infinito (Infinite CSS Marquee) con las fotos de /assets */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-cartoon-ink">
         <div className="animate-photo-marquee h-full">
-          {[...MARQUEE_IMAGES, ...MARQUEE_IMAGES].map((src, index) => (
+          {[...MARQUEE_IMAGES, ...MARQUEE_IMAGES, ...MARQUEE_IMAGES, ...MARQUEE_IMAGES].map((src, index) => (
             <div
               key={index}
               className="h-full w-[260px] sm:w-[360px] md:w-[440px] flex-shrink-0 overflow-hidden border-r-2 border-cartoon-ink/40"
@@ -37,8 +37,9 @@ export const MascotSection = ({
               <img
                 src={src}
                 alt={`Galería Trico's ${(index % MARQUEE_IMAGES.length) + 1}`}
-                className="w-full h-full object-cover object-center"
-                loading="lazy"
+                className="w-full h-full object-cover object-center pointer-events-none select-none"
+                loading="eager"
+                decoding="async"
               />
             </div>
           ))}

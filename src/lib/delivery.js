@@ -1,11 +1,5 @@
 import { RESTAURANT_INFO } from '../data/products';
 
-// API Key oficial de Google Maps
-export const GOOGLE_MAPS_API_KEY = 'AIzaSyBrnc0DymMPO5Qbki2Ijqo6pXxOcmXT9AU';
-
-export const googleSatelliteUrl = (lat, lng) =>
-  `https://www.google.com/maps/@${lat},${lng},17z/data=!3m1!1e3`;
-
 // Tarifas de envío por kilómetro (recorrido real en calle desde el local)
 export const DELIVERY_RATES = [
   { upTo: 2.5, price: 2000 },

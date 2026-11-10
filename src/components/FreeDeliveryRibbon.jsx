@@ -24,8 +24,8 @@ export const FreeDeliveryRibbon = () => (
       aria-label={`Delivery gratis desde ${amount}`}
       className="relative -rotate-2 -mx-4 bg-cartoon-red border-y-3 border-cartoon-ink shadow-cartoon"
     >
-      <div className="ribbon-marquee flex w-max py-2.5 sm:py-3 font-display text-lg sm:text-2xl text-white tracking-wide">
-        {Array.from({ length: 8 }).map((_, i) => (
+      <div className="ribbon-marquee flex flex-nowrap w-max py-2.5 sm:py-3 font-display text-lg sm:text-2xl text-white tracking-wide pointer-events-none select-none">
+        {Array.from({ length: 12 }).map((_, i) => (
           <Chunk key={i} />
         ))}
       </div>

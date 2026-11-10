@@ -145,11 +145,24 @@
   }
 }
 
-@keyframes infinitePhotoMarquee {
+@-webkit-keyframes infiniteMarqueeScroll {
   0% {
+    -webkit-transform: translate3d(0, 0, 0);
     transform: translate3d(0, 0, 0);
   }
   100% {
+    -webkit-transform: translate3d(-50%, 0, 0);
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes infiniteMarqueeScroll {
+  0% {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    -webkit-transform: translate3d(-50%, 0, 0);
     transform: translate3d(-50%, 0, 0);
   }
 }
@@ -162,24 +175,36 @@
   animation: modalScaleIn 220ms var(--ease-out) forwards;
 }
 
+/* Carrusel de fotos continuo garantizado en móvil y escritorio */
 .animate-photo-marquee {
-  display: flex;
-  width: max-content;
-  animation: infinitePhotoMarquee 32s linear infinite;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  -webkit-animation: infiniteMarqueeScroll 28s linear infinite !important;
+  animation: infiniteMarqueeScroll 28s linear infinite !important;
   will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
 }
 
-/* Cinta de delivery gratis: 8 bloques iguales, se desplaza 50% para loop perfecto */
+/* Cinta de delivery gratis continua garantizada en móvil y escritorio */
 .ribbon-marquee {
-  animation: infinitePhotoMarquee 28s linear infinite;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  -webkit-animation: infiniteMarqueeScroll 20s linear infinite !important;
+  animation: infiniteMarqueeScroll 20s linear infinite !important;
   will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ribbon-marquee,
-  .animate-photo-marquee {
-    animation: none;
-  }
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
 }
 
 /* Marcadores del mapa de entrega */
