@@ -36,23 +36,23 @@ const makeStoreMarker = () => {
   const el = document.createElement('div');
   el.className = 'map-store-marker cursor-pointer flex flex-col items-center select-none pointer-events-auto';
   el.innerHTML = `
-    <div style="background:#FFC93C; border:2px solid #1E1B18; border-radius:10px; padding:2px 7px; font-family:'Lilita One',cursive; font-size:11px; box-shadow:2px 2px 0 #1E1B18; margin-bottom:2px; white-space:nowrap; color:#1E1B18; display:flex; align-items:center; gap:3px;">
+    <div style="background:#FFC93C; border:2.5px solid #1E1B18; border-radius:10px; padding:3px 9px; font-family:'Lilita One',cursive; font-size:12px; box-shadow:2px 2px 0 #1E1B18; margin-bottom:2px; white-space:nowrap; color:#1E1B18; display:flex; align-items:center; gap:4px;">
       🍗 <span>TRICO'S</span>
     </div>
-    <img src="/assets/sticker_bucket.png" alt="Trico's" style="width:40px; height:40px; object-fit:contain; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35));" draggable="false" />
+    <img src="/assets/sticker_bucket.png" alt="Trico's" style="width:44px; height:44px; object-fit:contain; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35));" draggable="false" />
   `;
   return el;
 };
 
-// Marcador del domicilio del cliente (arrastrable)
+// Marcador del domicilio del cliente (arrastrable y bien visible)
 const makeHomeMarker = () => {
   const el = document.createElement('div');
   el.className = 'map-home-marker cursor-grab flex flex-col items-center select-none pointer-events-auto';
   el.innerHTML = `
-    <div style="background:#FF4757; color:#fff; border:2px solid #1E1B18; border-radius:10px; padding:2px 7px; font-family:'Fredoka',sans-serif; font-weight:700; font-size:10px; box-shadow:2px 2px 0 #1E1B18; margin-bottom:2px; white-space:nowrap;">
-      🏠 Tu Casa
+    <div style="background:#FF4757; color:#fff; border:2.5px solid #1E1B18; border-radius:12px; padding:3px 10px; font-family:'Fredoka',sans-serif; font-weight:800; font-size:12px; box-shadow:2.5px 2.5px 0 #1E1B18; margin-bottom:3px; white-space:nowrap; display:flex; align-items:center; gap:3px;">
+      🏠 <span>Tu Casa</span>
     </div>
-    <svg viewBox="0 0 48 60" width="34" height="44" aria-hidden="true" style="filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35));">
+    <svg viewBox="0 0 48 60" width="42" height="52" aria-hidden="true" style="filter:drop-shadow(0 6px 8px rgba(0,0,0,0.4));">
       <path d="M24 57C24 57 44 36 44 22A20 20 0 1 0 4 22C4 36 24 57 24 57Z" fill="#FF4757" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>
       <path d="M15 24.5 24 16l9 8.5V33H15Z" fill="#fff" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
       <rect x="21" y="26" width="6" height="7" fill="${INK}"/>
@@ -103,7 +103,7 @@ export default function DeliveryMap({ value, route, onPick }) {
         type: 'line',
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': INK, 'line-width': 7 },
+        paint: { 'line-color': INK, 'line-width': 8 },
       });
 
       map.addLayer({
@@ -111,7 +111,7 @@ export default function DeliveryMap({ value, route, onPick }) {
         type: 'line',
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#FFC93C', 'line-width': 4 },
+        paint: { 'line-color': '#FFC93C', 'line-width': 5 },
       });
 
       map.resize();

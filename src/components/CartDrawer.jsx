@@ -365,10 +365,10 @@ export const CartDrawer = ({
         {/* ============================================================== */}
         {step === 'location' && (
           <div className="flex-1 flex flex-col min-h-0 animate-modalIn">
-            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3 min-h-0">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 min-h-0 flex flex-col">
               
               {/* Selector de Modalidad */}
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-white rounded-xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-sm">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-white rounded-xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-sm flex-shrink-0">
                 {[
                   { id: 'delivery', label: 'A Domicilio', icon: 'two_wheeler' },
                   { id: 'takeaway', label: 'Retiro en Local', icon: 'storefront' },

@@ -87,9 +87,9 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="flex-1 flex flex-col min-h-0 space-y-2.5">
       {/* Buscador + Mi ubicación */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-shrink-0">
         <div className="relative flex-1">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center pointer-events-none">
             <Icon name="search" size={17} />
@@ -136,11 +136,11 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
         </button>
       </div>
 
-      {geoError && <p className="text-[11px] font-sub font-bold text-cartoon-red">{geoError}</p>}
+      {geoError && <p className="text-[11px] font-sub font-bold text-cartoon-red flex-shrink-0">{geoError}</p>}
 
-      {/* Mapa estilo Uber con calles y nombres nítidos */}
+      {/* Mapa estilo Uber: ventana grande y cómoda para seleccionar tu casa */}
       <div
-        className={`relative h-[230px] sm:h-[280px] rounded-2xl border-2 sm:border-3 overflow-hidden shadow-cartoon-sm bg-cartoon-cream-dark ${
+        className={`relative flex-1 min-h-[380px] sm:min-h-[460px] rounded-2xl border-2 sm:border-3 overflow-hidden shadow-cartoon-sm bg-cartoon-cream-dark ${
           error ? 'border-cartoon-red' : 'border-cartoon-ink'
         }`}
       >
@@ -154,16 +154,28 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
           <DeliveryMap value={point} route={route} onPick={setPoint} />
         </Suspense>
 
+        {loading && (
+          <div className="absolute inset-x-0 top-3 flex justify-center pointer-events-none z-20">
+            <div className="bg-white/95 border-2 border-cartoon-ink text-cartoon-ink font-sub font-bold text-xs px-3.5 py-1.5 rounded-full shadow-cartoon-sm flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-cartoon-yellow animate-ping" />
+              <span>Calculando recorrido…</span>
+            </div>
+          </div>
+        )}
+
         {!point && (
-          <div className="absolute left-1/2 bottom-2.5 -translate-x-1/2 pointer-events-none bg-cartoon-ink text-white font-sub font-bold text-[11px] px-3.5 py-1.5 rounded-full whitespace-nowrap shadow-cartoon-sm">
-            Tocá el mapa donde está tu casa
+          <div className="absolute inset-x-0 bottom-3.5 flex justify-center pointer-events-none z-20">
+            <div className="bg-cartoon-ink text-white font-sub font-bold text-xs sm:text-sm px-4 py-2 rounded-full whitespace-nowrap shadow-cartoon border-2 border-white/20 flex items-center gap-1.5 animate-bounce">
+              <span>📍</span>
+              <span>Tocá el mapa donde está tu casa</span>
+            </div>
           </div>
         )}
       </div>
 
       {/* Tarjeta de Ubicación elegida: compacta y sin amontonar */}
       {point && (
-        <div className="bg-white rounded-xl border-2 border-cartoon-ink/40 p-2.5 flex items-center justify-between gap-2.5 animate-modalIn">
+        <div className="flex-shrink-0 bg-white rounded-xl border-2 border-cartoon-ink/40 p-2.5 flex items-center justify-between gap-2.5 animate-modalIn">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-7 h-7 rounded-lg bg-cartoon-yellow border border-cartoon-ink flex items-center justify-center flex-shrink-0">
               <Icon name="location_on" size={15} className="text-cartoon-ink" />
