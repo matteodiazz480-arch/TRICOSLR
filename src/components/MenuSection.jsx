@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { CATEGORIES, MENU_SECTIONS } from '../data/products';
 import { ProductCard } from './ProductCard';
-import { ProductDetailModal } from './ProductDetailModal';
 import { Icon } from './Icon';
 import { Reveal } from './Reveal';
 import { useProducts } from '../context/ProductsContext';
@@ -33,12 +32,11 @@ const SECTION_THEMES = {
   },
 };
 
-export const MenuSection = ({ onAddToCart }) => {
+export const MenuSection = ({ onAddToCart, onSelectProduct }) => {
   const { products } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFullMenu, setShowFullMenu] = useState(false);
-  const [selectedProductModal, setSelectedProductModal] = useState(null);
 
   // Secciones dinámicas con productos actualizados en tiempo real desde Firebase / Admin
   const dynamicSections = useMemo(() => {
@@ -163,7 +161,7 @@ export const MenuSection = ({ onAddToCart }) => {
                   <ProductCard
                     key={product.id}
                     product={product}
-                    onSelectProduct={setSelectedProductModal}
+                    onSelectProduct={onSelectProduct}
                     onAddToCart={onAddToCart}
                   />
                 ))}
@@ -206,7 +204,7 @@ export const MenuSection = ({ onAddToCart }) => {
                   <ProductCard
                     key={product.id}
                     product={product}
-                    onSelectProduct={setSelectedProductModal}
+                    onSelectProduct={onSelectProduct}
                     onAddToCart={onAddToCart}
                   />
                 ))}
@@ -261,7 +259,7 @@ export const MenuSection = ({ onAddToCart }) => {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        onSelectProduct={setSelectedProductModal}
+                        onSelectProduct={onSelectProduct}
                         onAddToCart={onAddToCart}
                         accentColor={theme.accentColor}
                       />
@@ -290,14 +288,6 @@ export const MenuSection = ({ onAddToCart }) => {
             )}
           </div>
         )}
-
-        {/* Modal / Apartado Detallado del Plato con foto grande y botón "Pedir" */}
-        <ProductDetailModal
-          isOpen={!!selectedProductModal}
-          product={selectedProductModal}
-          onClose={() => setSelectedProductModal(null)}
-          onAddToCart={onAddToCart}
-        />
 
       </div>
     </section>

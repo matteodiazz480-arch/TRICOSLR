@@ -9,6 +9,7 @@ import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { FreeDeliveryRibbon } from './components/FreeDeliveryRibbon';
 import { ScallopedMountainDivider } from './components/SectionDividers';
+import { ProductDetailSection } from './components/ProductDetailSection';
 import { Icon } from './components/Icon';
 import { ProductsProvider, useProducts } from './context/ProductsContext';
 import { getSession } from './lib/security';
@@ -44,18 +45,51 @@ function StoreApp() {
   const [view, setView] = useState(() => (window.location.hash === '#admin' ? 'admin' : 'store'));
   const [adminSession, setAdminSession] = useState(() => getSession());
 
+  // Producto seleccionado para el apartado individual
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
   useEffect(() => {
     const handleHash = () => {
-      if (window.location.hash === '#admin') {
+      const hash = window.location.hash;
+      if (hash === '#admin') {
         setView('admin');
+        setSelectedProduct(null);
         setAdminSession(getSession());
+      } else if (hash.startsWith('#producto-')) {
+        const prodId = hash.replace('#producto-', '');
+        const found = products.find((p) => p.id === prodId);
+        if (found) {
+          setSelectedProduct(found);
+          setView('store');
+        }
       } else {
         setView('store');
+        setSelectedProduct(null);
       }
     };
+    handleHash();
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
-  }, []);
+  }, [products]);
+
+  const handleSelectProduct = (product) => {
+    setSelectedProduct(product);
+    try {
+      window.location.hash = `producto-${product.id}`;
+    } catch {}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToMenu = () => {
+    setSelectedProduct(null);
+    try {
+      window.location.hash = 'menu';
+    } catch {}
+    setTimeout(() => {
+      const el = document.getElementById('menu');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 60);
+  };
 
   useEffect(() => {
     try {
@@ -205,38 +239,54 @@ function StoreApp() {
       />
 
       <main className="flex-1">
-        {/* 2. Hero Section (#FFC93C) con Título + Personaje al lado en Móvil y PC */}
-        <Hero onOpenCart={() => setIsCartOpen(true)} />
+        {selectedProduct ? (
+          /* Apartado individual del plato (lleva al usuario al apartado sin abrir ventanas emergentes) */
+          <ProductDetailSection
+            product={selectedProduct}
+            onBack={handleBackToMenu}
+            onAddToCart={handleAddToCart}
+            onOpenCart={() => setIsCartOpen(true)}
+          />
+        ) : (
+          /* Vista principal de la tienda */
+          <>
+            {/* 2. Hero Section (#FFC93C) con Título + Personaje al lado en Móvil y PC */}
+            <Hero onOpenCart={() => setIsCartOpen(true)} />
 
-        {/* Transición 1: Hero (#FFC93C) -> Carta (#FFFDF6) */}
-        <ScallopedMountainDivider
-          topColor="#FFC93C"
-          bottomColor="#FFFDF6"
-          strokeColor="#1E1B18"
-        />
+            {/* Transición 1: Hero (#FFC93C) -> Carta (#FFFDF6) */}
+            <ScallopedMountainDivider
+              topColor="#FFC93C"
+              bottomColor="#FFFDF6"
+              strokeColor="#1E1B18"
+            />
 
-        {/* Cinta: delivery gratis desde $55.000 */}
-        <FreeDeliveryRibbon />
+            {/* Cinta: delivery gratis desde $55.000 */}
+            <FreeDeliveryRibbon />
 
-        {/* 3. Carta de Comidas (#FFFDF6) con Stock en Tiempo Real */}
-        <MenuSection onAddToCart={handleAddToCart} />
+            {/* 3. Carta de Comidas (#FFFDF6) con Stock en Tiempo Real */}
+            <MenuSection
+              onAddToCart={handleAddToCart}
+              onSelectProduct={handleSelectProduct}
+            />
 
-        {/* Transición 2: Carta (#FFFDF6) -> Combos & Cupones (#FFF5D6) */}
-        <ScallopedMountainDivider
-          topColor="#FFFDF6"
-          bottomColor="#FFF5D6"
-          strokeColor="#1E1B18"
-        />
+            {/* Transición 2: Carta (#FFFDF6) -> Combos & Cupones (#FFF5D6) */}
+            <ScallopedMountainDivider
+              topColor="#FFFDF6"
+              bottomColor="#FFF5D6"
+              strokeColor="#1E1B18"
+            />
 
-        {/* 4. Combos y Cupones (#FFF5D6) */}
-        <PromosSection />
+            {/* 4. Combos y Cupones (#FFF5D6) */}
+            <PromosSection />
 
-        {/* 5. Sección "El Sello del Verdadero Crunch" con Carrusel Infinito recortado por las líneas negras onduladas */}
-        <MascotSection
-          topNeighborColor="#FFF5D6"
-          bottomNeighborColor="#1E1B18"
-          strokeColor="#1E1B18"
-        />
+            {/* 5. Sección "El Sello del Verdadero Crunch" con Carrusel Infinito recortado por las líneas negras onduladas */}
+            <MascotSection
+              topNeighborColor="#FFF5D6"
+              bottomNeighborColor="#1E1B18"
+              strokeColor="#1E1B18"
+            />
+          </>
+        )}
 
         {/* 6. Footer (#1E1B18) con transición fluida desde la ola inferior */}
         <Footer />
