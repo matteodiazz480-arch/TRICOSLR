@@ -96,17 +96,17 @@ export const AdminLogin = ({ onLoginSuccess, onBackToSite }) => {
         
         {/* Cabecera con Logo Oficial Circular Nítido */}
         <div className="text-center mb-6">
-          <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-sm p-1.5 flex items-center justify-center">
+          <div className="w-24 h-24 mx-auto mb-3 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-sm p-1.5 flex items-center justify-center">
             <img
-              src="/assets/logo.svg?v=3"
+              src="/assets/logo_crisp.png"
               alt="Logo TRICO'S"
               className="w-full h-full object-contain block"
             />
           </div>
-          <h1 className="font-display text-2xl text-cartoon-ink tracking-wide">
+          <h1 className="font-display text-3xl text-cartoon-ink tracking-wide">
             PANEL ADMIN
           </h1>
-          <p className="font-sub text-xs text-gray-500 mt-1 font-semibold">
+          <p className="font-sub text-xs sm:text-sm text-gray-500 mt-1 font-semibold">
             Gastos, ganancias y stock
           </p>
         </div>

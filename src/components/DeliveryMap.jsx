@@ -1,221 +1,222 @@
 import React, { useEffect, useRef } from 'react';
-import * as maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import { RESTAURANT_INFO } from '../data/products';
 
-const ESRI_TILES_URL =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+const GMAPS_KEY = 'AIzaSyBrnc0DymMPO5Qbki2Ijqo6pXxOcmXT9AU';
 
-// Marcador del local Trico's con auto de delivery Uber (como en la captura)
-const makeStoreMarker = () => {
-  const el = document.createElement('div');
-  el.className = 'map-store-marker cursor-pointer flex flex-col items-center select-none pointer-events-auto';
-  el.innerHTML = `
-    <div style="background:#FFC93C; border:2px solid #1E1B18; border-radius:10px; padding:2px 8px; font-family:'Lilita One',cursive; font-size:11px; box-shadow:0 3px 6px rgba(0,0,0,0.5); margin-bottom:2px; white-space:nowrap; color:#1E1B18; display:flex; align-items:center; gap:3px;">
-      🍗 <span>TRICO'S</span>
-    </div>
-    <!-- Auto de delivery estilo Uber como en la captura -->
-    <div style="filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6));">
-      <svg width="36" height="24" viewBox="0 0 60 38" fill="none">
-        <rect x="6" y="4" width="48" height="30" rx="10" fill="#FFFFFF" stroke="#1E1B18" stroke-width="3"/>
-        <path d="M18 9 H42 C45 9 47 11 46 14 L44 24 C43 27 41 29 38 29 H22 C19 29 17 27 16 24 L14 14 C13 11 15 9 18 9 Z" fill="#2C3437"/>
-        <rect x="22" y="11" width="16" height="16" rx="3" fill="#FFFFFF" opacity="0.9"/>
-        <rect x="52" y="7" width="3" height="5" rx="1" fill="#FFC93C"/>
-        <rect x="52" y="26" width="3" height="5" rx="1" fill="#FFC93C"/>
-        <rect x="12" y="1" width="10" height="3" rx="1.5" fill="#1E1B18"/>
-        <rect x="38" y="1" width="10" height="3" rx="1.5" fill="#1E1B18"/>
-        <rect x="12" y="34" width="10" height="3" rx="1.5" fill="#1E1B18"/>
-        <rect x="38" y="34" width="10" height="3" rx="1.5" fill="#1E1B18"/>
-      </svg>
-    </div>
-  `;
-  return el;
+// Cargador de script de Google Maps seguro y único
+let gmapsLoadingPromise = null;
+const loadGoogleMaps = () => {
+  if (window.google && window.google.maps) {
+    return Promise.resolve(window.google.maps);
+  }
+  if (!gmapsLoadingPromise) {
+    gmapsLoadingPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve(window.google.maps);
+      script.onerror = (e) => reject(new Error('Error cargando Google Maps API'));
+      document.head.appendChild(script);
+    });
+  }
+  return gmapsLoadingPromise;
 };
 
-// Marcador del domicilio del cliente (Cuadrado negro dropoff idéntico a la captura de Uber)
-const makeHomeMarker = () => {
-  const el = document.createElement('div');
-  el.className = 'map-home-marker cursor-grab flex flex-col items-center select-none pointer-events-auto';
-  el.innerHTML = `
-    <div style="background:#000000; color:#FFFFFF; border:2px solid #FFFFFF; border-radius:10px; padding:3px 9px; font-family:'Fredoka',sans-serif; font-weight:800; font-size:11px; box-shadow:0 4px 8px rgba(0,0,0,0.6); margin-bottom:3px; white-space:nowrap; display:flex; align-items:center; gap:4px;">
-      <span>■</span> <span>Tu Casa (Destino)</span>
-    </div>
-    <!-- Cuadrado negro de parada Uber idéntico a la captura -->
-    <div style="width:22px; height:22px; background:#000000; border:3.5px solid #FFFFFF; box-shadow:0 4px 8px rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center;">
-      <div style="width:6px; height:6px; background:#FFFFFF;"></div>
-    </div>
-  `;
-  return el;
-};
-
-export default function DeliveryMap({ value, route, onPick }) {
+export default function DeliveryMap({ value, onPick }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const homeRef = useRef(null);
+  const storeMarkerRef = useRef(null);
+  const homeMarkerRef = useRef(null);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    let isMounted = true;
     const store = RESTAURANT_INFO.location;
 
-    // Mapa permanentemente en Modo Oscuro estilo Uber
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          'streets-tiles': {
-            type: 'raster',
-            tiles: [ESRI_TILES_URL],
-            tileSize: 256,
-            maxzoom: 19,
-          },
-        },
-        layers: [
-          {
-            id: 'streets-layer',
-            type: 'raster',
-            source: 'streets-tiles',
-            minzoom: 0,
-            maxzoom: 19,
-            paint: {
-              'raster-saturation': -0.95,
-              'raster-contrast': 0.55,
-              'raster-brightness-max': 0.28,
-              'raster-brightness-min': 0.02,
+    loadGoogleMaps()
+      .then((maps) => {
+        if (!isMounted || !containerRef.current) return;
+
+        // Mapa Google Roadmap Cenital: muestra calles, casas, edificios y nombres de negocios
+        const map = new maps.Map(containerRef.current, {
+          center: { lat: store.lat, lng: store.lng },
+          zoom: 16.5,
+          mapTypeId: 'roadmap',
+          disableDefaultUI: true,
+          gestureHandling: 'greedy', // Scroll y arrastre fluido en celulares y PC
+          zoomControl: false,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          styles: [
+            // Estilo nítido y moderno con calles, casas y negocios destacados
+            {
+              featureType: 'poi.business',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#1E1B18' }],
             },
-          },
-        ],
-      },
-      center: [store.lng, store.lat],
-      zoom: 15.6,
-      pitch: 0,
-      bearing: 0,
-      maxPitch: 0,
-      dragRotate: false,
-      touchPitch: false,
-      attributionControl: false,
-    });
-    mapRef.current = map;
-
-    // Marcador fijo del local con auto de delivery Uber
-    new maplibregl.Marker({ element: makeStoreMarker(), anchor: 'center' })
-      .setLngLat([store.lng, store.lat])
-      .addTo(map);
-
-    const setupLayers = () => {
-      if (!map.getSource('route')) {
-        map.addSource('route', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
+            {
+              featureType: 'poi.business',
+              elementType: 'labels.icon',
+              stylers: [{ visibility: 'on' }],
+            },
+            {
+              featureType: 'road',
+              elementType: 'geometry',
+              stylers: [{ visibility: 'on' }],
+            },
+            {
+              featureType: 'road',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#1E1B18' }, { weight: 1.5 }],
+            },
+          ],
         });
+        mapRef.current = map;
 
-        // Reborde blanco de contraste alto
-        map.addLayer({
-          id: 'route-casing',
-          type: 'line',
-          source: 'route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': '#FFFFFF',
-            'line-width': 9,
-          },
+        // 1. Marcador del Local Trico's con EL PERSONAJE (no con un auto)
+        const storeOverlay = new maps.OverlayView();
+        storeOverlay.onAdd = function () {
+          const div = document.createElement('div');
+          div.style.position = 'absolute';
+          div.style.transform = 'translate(-50%, -100%)';
+          div.style.zIndex = '50';
+          div.style.pointerEvents = 'auto';
+          div.style.cursor = 'pointer';
+          div.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.4)); select:none;">
+              <div style="background:#FFC93C; color:#1E1B18; font-family:'Lilita One',cursive; font-size:12px; padding:3px 10px; border-radius:12px; border:2px solid #1E1B18; box-shadow:0 3px 6px rgba(0,0,0,0.3); white-space:nowrap; margin-bottom:2px;">
+                🍗 LOCAL TRICO'S
+              </div>
+              <div style="width:52px; height:58px;">
+                <img src="/assets/sticker_personaje.png" alt="Trico's" style="width:100%; height:100%; object-fit:contain; display:block;" />
+              </div>
+            </div>
+          `;
+          this.div = div;
+          const panes = this.getPanes();
+          panes.overlayMouseTarget.appendChild(div);
+        };
+        storeOverlay.draw = function () {
+          const overlayProjection = this.getProjection();
+          if (!overlayProjection || !this.div) return;
+          const pos = overlayProjection.fromLatLngToDivPixel(
+            new maps.LatLng(store.lat, store.lng)
+          );
+          this.div.style.left = pos.x + 'px';
+          this.div.style.top = pos.y + 'px';
+        };
+        storeOverlay.onRemove = function () {
+          if (this.div && this.div.parentNode) {
+            this.div.parentNode.removeChild(this.div);
+            this.div = null;
+          }
+        };
+        storeOverlay.setMap(map);
+        storeMarkerRef.current = storeOverlay;
+
+        // Clic en cualquier punto del mapa para seleccionar casa
+        map.addListener('click', (e) => {
+          if (!e.latLng) return;
+          onPickRef.current({
+            lat: e.latLng.lat(),
+            lng: e.latLng.lng(),
+          });
         });
-
-        // Línea principal NEGRA continua estilo Uber (idéntica a la captura)
-        map.addLayer({
-          id: 'route-line',
-          type: 'line',
-          source: 'route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': '#000000',
-            'line-width': 6,
-          },
-        });
-      }
-      map.resize();
-    };
-
-    map.on('load', setupLayers);
-
-    // Clic en el mapa para marcar domicilio
-    map.on('click', (e) => {
-      onPickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-    });
-
-    const resizeObserver = new ResizeObserver(() => {
-      map.resize();
-    });
-    resizeObserver.observe(containerRef.current);
+      })
+      .catch((err) => {
+        console.warn('Error iniciando mapa de Google:', err);
+      });
 
     return () => {
-      resizeObserver.disconnect();
-      map.remove();
+      isMounted = false;
+      if (storeMarkerRef.current) {
+        storeMarkerRef.current.setMap(null);
+        storeMarkerRef.current = null;
+      }
+      if (homeMarkerRef.current) {
+        homeMarkerRef.current.setMap(null);
+        homeMarkerRef.current = null;
+      }
       mapRef.current = null;
     };
   }, []);
 
-  // Marcador de la casa del cliente (Cuadrado negro dropoff Uber)
+  // Actualizar marcador de la casa del cliente (Sin marcar ningún recorrido/línea)
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !window.google || !window.google.maps) return;
+    const maps = window.google.maps;
+
     if (!value) {
-      homeRef.current?.remove();
-      homeRef.current = null;
+      if (homeMarkerRef.current) {
+        homeMarkerRef.current.setMap(null);
+        homeMarkerRef.current = null;
+      }
       return;
     }
-    if (!homeRef.current) {
-      const marker = new maplibregl.Marker({ element: makeHomeMarker(), anchor: 'center', draggable: true })
-        .setLngLat([value.lng, value.lat])
-        .addTo(map);
 
-      marker.on('dragend', () => {
-        const p = marker.getLngLat();
-        onPickRef.current({ lat: p.lat, lng: p.lng });
-      });
-      homeRef.current = marker;
+    if (!homeMarkerRef.current) {
+      // Crear overlay personalizado para el domicilio del cliente
+      const homeOverlay = new maps.OverlayView();
+      homeOverlay.latLng = new maps.LatLng(value.lat, value.lng);
+
+      homeOverlay.onAdd = function () {
+        const div = document.createElement('div');
+        div.style.position = 'absolute';
+        div.style.transform = 'translate(-50%, -100%)';
+        div.style.zIndex = '60';
+        div.style.cursor = 'grab';
+        div.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 6px 10px rgba(0,0,0,0.5));">
+            <div style="background:#FF4757; color:#FFFFFF; font-family:'Fredoka',sans-serif; font-weight:800; font-size:12px; padding:3px 10px; border-radius:12px; border:2.5px solid #1E1B18; white-space:nowrap; margin-bottom:2px; box-shadow:0 3px 6px rgba(0,0,0,0.3);">
+              📍 Tu Casa
+            </div>
+            <div style="width:34px; height:34px; background:#FF4757; border:3px solid #1E1B18; border-radius:50% 50% 50% 0; transform:rotate(-45deg); display:flex; align-items:center; justify-content:center;">
+              <div style="width:12px; height:12px; background:#FFFFFF; border-radius:50%;"></div>
+            </div>
+          </div>
+        `;
+        this.div = div;
+        const panes = this.getPanes();
+        panes.overlayMouseTarget.appendChild(div);
+      };
+
+      homeOverlay.draw = function () {
+        const overlayProjection = this.getProjection();
+        if (!overlayProjection || !this.div) return;
+        const pos = overlayProjection.fromLatLngToDivPixel(this.latLng);
+        this.div.style.left = pos.x + 'px';
+        this.div.style.top = pos.y + 'px';
+      };
+
+      homeOverlay.onRemove = function () {
+        if (this.div && this.div.parentNode) {
+          this.div.parentNode.removeChild(this.div);
+          this.div = null;
+        }
+      };
+
+      homeOverlay.setPosition = function (lat, lng) {
+        this.latLng = new maps.LatLng(lat, lng);
+        this.draw();
+      };
+
+      homeOverlay.setMap(map);
+      homeMarkerRef.current = homeOverlay;
+
+      // Centrar suavemente en la casa seleccionada
+      map.panTo(new maps.LatLng(value.lat, value.lng));
     } else {
-      homeRef.current.setLngLat([value.lng, value.lat]);
+      homeMarkerRef.current.setPosition(value.lat, value.lng);
+      map.panTo(new maps.LatLng(value.lat, value.lng));
     }
   }, [value]);
 
-  // Actualizar trazado de la ruta negra
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const apply = () => {
-      const src = map.getSource('route');
-      if (!src) return;
-      src.setData(
-        route
-          ? { type: 'Feature', geometry: route, properties: {} }
-          : { type: 'FeatureCollection', features: [] }
-      );
-
-      if (route?.coordinates?.length) {
-        const bounds = route.coordinates.reduce(
-          (b, c) => b.extend(c),
-          new maplibregl.LngLatBounds(route.coordinates[0], route.coordinates[0])
-        );
-        map.fitBounds(bounds, {
-          padding: { top: 60, bottom: 50, left: 45, right: 45 },
-          pitch: 0,
-          bearing: 0,
-          duration: 500,
-          maxZoom: 16.5,
-        });
-      }
-    };
-
-    if (map.isStyleLoaded() && map.getSource('route')) apply();
-    else map.once('idle', apply);
-  }, [route]);
-
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden select-none">
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
     </div>
   );
