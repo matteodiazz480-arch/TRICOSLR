@@ -96,9 +96,9 @@ export const AdminLogin = ({ onLoginSuccess, onBackToSite }) => {
         
         {/* Cabecera con Logo Oficial Circular Nítido */}
         <div className="text-center mb-6">
-          <div className="w-24 h-24 mx-auto mb-3 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-sm p-1.5 flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-sm p-1 flex items-center justify-center">
             <img
-              src="/assets/logo_crisp.png"
+              src="/assets/logo.svg?v=4"
               alt="Logo TRICO'S"
               className="w-full h-full object-contain block"
             />

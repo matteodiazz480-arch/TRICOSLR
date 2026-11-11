@@ -44,21 +44,29 @@ export const haversineKm = (a, b) => {
  */
 export const routeFromStore = async (to, signal) => {
   const from = RESTAURANT_INFO.location;
-  try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
-    const res = await fetch(url, { signal });
-    const data = await res.json();
-    const route = data.routes?.[0];
-    if (!route) throw new Error('sin ruta');
-    return { km: route.distance / 1000, geometry: route.geometry, approx: false };
-  } catch (err) {
-    if (err.name === 'AbortError') throw err;
-    return {
-      km: haversineKm(from, to) * 1.3,
-      geometry: { type: 'LineString', coordinates: [[from.lng, from.lat], [to.lng, to.lat]] },
-      approx: true,
-    };
+  const urls = [
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`,
+    `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`,
+  ];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { signal });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const route = data.routes?.[0];
+      if (route && route.distance > 0) {
+        return { km: route.distance / 1000, geometry: route.geometry, approx: false };
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+    }
   }
+  const directKm = haversineKm(from, to);
+  return {
+    km: directKm * 1.3,
+    geometry: { type: 'LineString', coordinates: [[from.lng, from.lat], [to.lng, to.lat]] },
+    approx: true,
+  };
 };
 
 // Límites de La Rioja Capital para el buscador de direcciones

@@ -1,33 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { RESTAURANT_INFO } from '../data/products';
+import { loadGoogleMaps } from '../lib/googleMaps';
 
-const GMAPS_KEY = 'AIzaSyBrnc0DymMPO5Qbki2Ijqo6pXxOcmXT9AU';
-
-// Cargador de script de Google Maps seguro y único
-let gmapsLoadingPromise = null;
-const loadGoogleMaps = () => {
-  if (window.google && window.google.maps) {
-    return Promise.resolve(window.google.maps);
-  }
-  if (!gmapsLoadingPromise) {
-    gmapsLoadingPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => resolve(window.google.maps);
-      script.onerror = (e) => reject(new Error('Error cargando Google Maps API'));
-      document.head.appendChild(script);
-    });
-  }
-  return gmapsLoadingPromise;
-};
-
-export default function DeliveryMap({ value, onPick }) {
+export default function DeliveryMap({ value, route, onPick }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const storeMarkerRef = useRef(null);
   const homeMarkerRef = useRef(null);
+  const routeLineRef = useRef(null);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
 
@@ -214,6 +194,30 @@ export default function DeliveryMap({ value, onPick }) {
       map.panTo(new maps.LatLng(value.lat, value.lng));
     }
   }, [value]);
+
+  // Recorrido desde el local hasta la casa del cliente
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !window.google || !window.google.maps) return;
+    const maps = window.google.maps;
+    if (routeLineRef.current) {
+      routeLineRef.current.setMap(null);
+      routeLineRef.current = null;
+    }
+    if (!value || !route || !route.coordinates || route.coordinates.length < 2) return;
+    const path = route.coordinates.map(([lng, lat]) => ({ lat, lng }));
+    routeLineRef.current = new maps.Polyline({
+      path,
+      strokeColor: '#111111',
+      strokeOpacity: 1,
+      strokeWeight: 5,
+      geodesic: false,
+      map,
+    });
+    const bounds = new maps.LatLngBounds();
+    path.forEach((pt) => bounds.extend(pt));
+    map.fitBounds(bounds, { top: 140, bottom: 70, left: 50, right: 50 });
+  }, [route, value]);
 
   return (
     <div className="relative w-full h-full overflow-hidden select-none">

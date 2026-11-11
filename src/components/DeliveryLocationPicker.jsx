@@ -182,10 +182,15 @@ export const DeliveryLocationPicker = ({ subtotal, value, onChange, error }) => 
             </div>
             <div className="min-w-0">
               <p className="font-display text-xs text-cartoon-ink truncate leading-tight">
-                {loading ? 'Calculando…' : value?.address || 'Ubicación seleccionada'}
+                {loading ? 'Calculando recorrido…' : value?.address || 'Ubicación seleccionada'}
               </p>
-              <p className="font-sub font-bold text-[10px] text-cartoon-ink/60">
-                {free ? 'Envío gratis bonificado' : 'Envío a domicilio'}
+              <p className="font-sub font-bold text-[10px] text-cartoon-ink/70 flex items-center gap-1.5 mt-0.5">
+                {value?.km != null && (
+                  <span className="bg-cartoon-yellow border border-cartoon-ink/40 text-cartoon-ink px-1.5 py-0.2 rounded-md font-black">
+                    {value.km.toFixed(1)} km
+                  </span>
+                )}
+                <span>{free ? 'Envío gratis bonificado' : 'Envío a domicilio'}</span>
               </p>
             </div>
           </div>

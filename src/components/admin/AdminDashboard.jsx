@@ -114,20 +114,20 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
       {/* ============================================================== */}
       {/* NAVEGACIÓN EN COMPUTADORA: BARRA LATERAL AL COSTADO (SIDEBAR AMPLIO) */}
       {/* ============================================================== */}
-      <aside className="hidden md:flex md:w-72 lg:w-80 md:fixed md:left-0 md:top-0 md:bottom-0 bg-white border-r-2 border-gray-200 flex-col justify-between p-6 lg:p-7 z-30 shadow-sm">
+      <aside className="hidden md:flex md:w-60 lg:w-64 md:fixed md:left-0 md:top-0 md:bottom-0 bg-white border-r-2 border-gray-200 flex-col justify-between p-5 z-30 shadow-sm">
         <div>
           {/* Logo Oficial Nítido y Nombre */}
-          <div className="flex items-center gap-3.5 mb-8 px-1">
-            <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-3 mb-6 px-1">
+            <div className="w-12 h-12 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
               <img
-                src="/assets/logo_crisp.png"
+                src="/assets/logo.svg?v=4"
                 alt="Logo TRICO'S"
                 className="w-full h-full object-contain block"
               />
             </div>
             <div>
-              <h2 className="font-display text-2xl lg:text-3xl text-cartoon-ink leading-tight">TRICO'S</h2>
-              <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-widest block mt-0.5">
+              <h2 className="font-display text-xl text-cartoon-ink leading-tight">TRICO'S</h2>
+              <span className="font-sub font-bold text-[11px] text-gray-500 uppercase tracking-wider block mt-0.5">
                 Panel de Control
               </span>
             </div>
@@ -141,14 +141,14 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-sub font-bold text-sm lg:text-base cursor-pointer transition-all border-2 ${
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl font-sub font-bold text-sm cursor-pointer transition-all border-2 ${
                     active
                       ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black'
                       : 'border-transparent text-gray-600 hover:text-cartoon-ink hover:bg-gray-100'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon name={item.icon} size={22} />
+                    <Icon name={item.icon} size={20} />
                     <span>{item.label}</span>
                   </div>
                 </button>
@@ -182,19 +182,19 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
       {/* ============================================================== */}
       {/* CONTENIDO PRINCIPAL (Espacioso y con gran presencia en PC) */}
       {/* ============================================================== */}
-      <main className="flex-1 md:ml-72 lg:ml-80 p-5 sm:p-7 lg:p-10 pb-28 md:pb-10 max-w-7xl w-full">
+      <main className="flex-1 md:ml-60 lg:ml-64 p-5 sm:p-6 lg:p-8 pb-28 md:pb-8 max-w-6xl w-full">
         
         {/* Cabecera Móvil */}
         <div className="md:hidden flex items-center justify-between pb-4 mb-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-0.5 flex items-center justify-center flex-shrink-0">
               <img
-                src="/assets/logo_crisp.png"
+                src="/assets/logo.svg?v=4"
                 alt="Logo TRICO'S"
                 className="w-full h-full object-contain block"
               />
             </div>
-            <h1 className="font-display text-lg text-cartoon-ink">TRICO'S ADMIN</h1>
+            <h1 className="font-display text-base text-cartoon-ink">TRICO'S ADMIN</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -222,31 +222,31 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {activeTab === 'balance' && (
           <div className="space-y-6 sm:space-y-8 animate-modalIn">
             
-            {/* Tarjetas de Totales Grandes y Claras */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-              <div className="bg-white p-5 sm:p-6 lg:p-8 rounded-3xl border-2 border-emerald-100 shadow-sm">
-                <span className="font-sub font-bold text-xs sm:text-sm lg:text-base text-emerald-700 uppercase tracking-wider block mb-1">
+            {/* Tarjetas de Totales Proporcionadas */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-emerald-200/70 shadow-xs">
+                <span className="font-sub font-bold text-xs text-emerald-700 uppercase tracking-wider block mb-0.5">
                   🟢 Total Ganancias
                 </span>
-                <span className="font-display text-3xl sm:text-4xl lg:text-5xl text-emerald-600 block leading-tight mt-1">
+                <span className="font-display text-2xl sm:text-3xl text-emerald-600 block leading-tight mt-0.5">
                   {money(financialTotals.totalEarnings)}
                 </span>
               </div>
 
-              <div className="bg-white p-5 sm:p-6 lg:p-8 rounded-3xl border-2 border-rose-100 shadow-sm">
-                <span className="font-sub font-bold text-xs sm:text-sm lg:text-base text-rose-700 uppercase tracking-wider block mb-1">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-200/70 shadow-xs">
+                <span className="font-sub font-bold text-xs text-rose-700 uppercase tracking-wider block mb-0.5">
                   🔴 Total Gastos
                 </span>
-                <span className="font-display text-3xl sm:text-4xl lg:text-5xl text-rose-600 block leading-tight mt-1">
+                <span className="font-display text-2xl sm:text-3xl text-rose-600 block leading-tight mt-0.5">
                   {money(financialTotals.totalExpenses)}
                 </span>
               </div>
 
-              <div className="bg-white p-5 sm:p-6 lg:p-8 rounded-3xl border-2 border-amber-100 shadow-sm">
-                <span className="font-sub font-bold text-xs sm:text-sm lg:text-base text-amber-800 uppercase tracking-wider block mb-1">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200/70 shadow-xs">
+                <span className="font-sub font-bold text-xs text-amber-800 uppercase tracking-wider block mb-0.5">
                   🟡 Balance Neto
                 </span>
-                <span className={`font-display text-3xl sm:text-4xl lg:text-5xl block leading-tight mt-1 ${
+                <span className={`font-display text-2xl sm:text-3xl block leading-tight mt-0.5 ${
                   financialTotals.netBalance >= 0 ? 'text-cartoon-ink' : 'text-cartoon-red'
                 }`}>
                   {money(financialTotals.netBalance)}
@@ -255,64 +255,64 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             </div>
 
             {/* Accesos rápidos a agregar */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3.5">
               <button
                 onClick={() => setActiveTab('ganancias')}
-                className="py-4 px-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300 text-emerald-800 font-display text-sm sm:text-base flex items-center justify-center gap-2.5 cursor-pointer transition-colors shadow-sm"
+                className="py-3 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-display text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs"
               >
-                <Icon name="add_circle" size={22} />
+                <Icon name="add_circle" size={18} />
                 <span>+ Cargar Ganancia</span>
               </button>
               <button
                 onClick={() => setActiveTab('gastos')}
-                className="py-4 px-5 rounded-2xl bg-rose-50 hover:bg-rose-100 border-2 border-rose-300 text-rose-800 font-display text-sm sm:text-base flex items-center justify-center gap-2.5 cursor-pointer transition-colors shadow-sm"
+                className="py-3 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-display text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs"
               >
-                <Icon name="remove_circle" size={22} />
+                <Icon name="remove_circle" size={18} />
                 <span>- Cargar Gasto</span>
               </button>
             </div>
 
             {/* Movimientos Recientes */}
-            <div className="bg-white rounded-3xl border-2 border-gray-200 shadow-sm overflow-hidden">
-              <div className="p-5 lg:p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                <h3 className="font-display text-base sm:text-lg lg:text-xl text-cartoon-ink">Historial de Movimientos</h3>
-                <span className="font-sub text-xs sm:text-sm text-gray-500 font-bold">{finances.length} registros</span>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                <h3 className="font-display text-base sm:text-lg text-cartoon-ink">Historial de Movimientos</h3>
+                <span className="font-sub text-xs text-gray-500 font-bold">{finances.length} registros</span>
               </div>
               <div className="divide-y divide-gray-100">
                 {finances.length === 0 ? (
-                  <div className="p-10 text-center text-gray-400 font-sub text-sm">
+                  <div className="p-8 text-center text-gray-400 font-sub text-sm">
                     No hay movimientos registrados.
                   </div>
                 ) : (
                   finances.map((item) => (
-                    <div key={item.id} className="p-4 sm:p-5 lg:p-6 flex items-center justify-between gap-4 hover:bg-gray-50/70 transition-colors">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    <div key={item.id} className="p-3.5 sm:p-4 flex items-center justify-between gap-3.5 hover:bg-gray-50/70 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                           item.type === 'earning' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                         }`}>
-                          <Icon name={item.type === 'earning' ? 'trending_up' : 'trending_down'} size={22} />
+                          <Icon name={item.type === 'earning' ? 'trending_up' : 'trending_down'} size={18} />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-sub font-bold text-sm sm:text-base lg:text-lg text-cartoon-ink truncate">
+                          <p className="font-sub font-bold text-sm text-cartoon-ink truncate">
                             {item.concept}
                           </p>
-                          <p className="font-sub text-xs sm:text-sm text-gray-500 mt-0.5">
+                          <p className="font-sub text-xs text-gray-500 mt-0.5">
                             {item.date} {item.category ? `• ${item.category}` : ''}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className={`font-display text-sm sm:text-base lg:text-lg ${
+                        <span className={`font-display text-sm sm:text-base ${
                           item.type === 'earning' ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                           {item.type === 'earning' ? `+${money(item.amount)}` : `-${money(item.amount)}`}
                         </span>
                         <button
                           onClick={() => deleteFinanceItem(item.id)}
-                          className="text-gray-400 hover:text-cartoon-red p-1.5 cursor-pointer transition-colors"
+                          className="text-gray-400 hover:text-cartoon-red p-1 cursor-pointer transition-colors"
                           title="Eliminar movimiento"
                         >
-                          <Icon name="delete" size={18} />
+                          <Icon name="delete" size={16} />
                         </button>
                       </div>
                     </div>
@@ -329,7 +329,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* ============================================================== */}
         {activeTab === 'ganancias' && (
           <div className="space-y-6 sm:space-y-8 animate-modalIn">
-            <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-3xl border-2 border-gray-200 shadow-sm">
+            <div className="bg-white p-5 sm:p-6 lg:p-7 rounded-3xl border-2 border-gray-200 shadow-sm">
               <h3 className="font-display text-lg sm:text-xl lg:text-2xl text-emerald-700 mb-1 flex items-center gap-2.5">
                 <Icon name="trending_up" size={24} />
                 <span>Agregar Nueva Ganancia</span>
@@ -426,7 +426,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* ============================================================== */}
         {activeTab === 'gastos' && (
           <div className="space-y-6 sm:space-y-8 animate-modalIn">
-            <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-3xl border-2 border-gray-200 shadow-sm">
+            <div className="bg-white p-5 sm:p-6 lg:p-7 rounded-3xl border-2 border-gray-200 shadow-sm">
               <h3 className="font-display text-lg sm:text-xl lg:text-2xl text-rose-700 mb-1 flex items-center gap-2.5">
                 <Icon name="trending_down" size={24} />
                 <span>Agregar Nuevo Gasto</span>
@@ -602,7 +602,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   >
                     {/* Info */}
                     <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-2xl bg-cartoon-cream border border-gray-200 flex items-center justify-center text-2xl sm:text-3xl flex-shrink-0 shadow-xs">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cartoon-cream border border-gray-200 flex items-center justify-center text-2xl sm:text-3xl flex-shrink-0 shadow-xs">
                         {prod.emoji || '🍔'}
                       </div>
                       <div className="min-w-0">
