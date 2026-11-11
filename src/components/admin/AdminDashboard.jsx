@@ -50,6 +50,20 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
+  // Estadísticas de Stock para vista completa en PC
+  const stockStats = useMemo(() => {
+    const total = products.length;
+    const activeCount = products.filter((p) => p.active !== false).length;
+    const totalUnits = products.reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
+    const lowStock = products.filter(
+      (p) => p.active !== false && Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 5
+    ).length;
+    const outOfStock = products.filter(
+      (p) => p.active === false || Number(p.stock || 0) === 0
+    ).length;
+    return { total, activeCount, totalUnits, lowStock, outOfStock };
+  }, [products]);
+
   // Cálculos Financieros
   const financialTotals = useMemo(() => {
     const totalEarnings = finances
@@ -182,7 +196,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
       {/* ============================================================== */}
       {/* CONTENIDO PRINCIPAL (Espacioso y con gran presencia en PC) */}
       {/* ============================================================== */}
-      <main className="flex-1 md:ml-60 lg:ml-64 p-5 sm:p-6 lg:p-8 pb-28 md:pb-8 max-w-6xl w-full">
+      <main className="flex-1 md:ml-60 lg:ml-64 p-5 sm:p-6 lg:p-8 pb-28 md:pb-8 w-full max-w-none">
         
         {/* Cabecera Móvil */}
         <div className="md:hidden flex items-center justify-between pb-4 mb-4 border-b border-gray-200">
@@ -536,11 +550,62 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         )}
 
         {/* ============================================================== */}
-        {/* SECCIÓN 4: STOCK Y PLATOS (Amplio, Espacioso y Claro) */}
+        {/* SECCIÓN 4: STOCK Y PLATOS (Amplio, Espacioso y Claro en PC) */}
         {/* ============================================================== */}
         {activeTab === 'stock' && (
-          <div className="space-y-6 sm:space-y-8 animate-modalIn">
+          <div className="space-y-6 animate-modalIn">
             
+            {/* Tarjetas Resumen de Stock (Llenan el espacio con datos útiles en PC) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs">
+                <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-wider block mb-0.5">
+                  🍔 Total Platos
+                </span>
+                <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block leading-tight mt-0.5">
+                  {stockStats.total}
+                </span>
+                <span className="font-sub text-xs text-emerald-600 font-bold block mt-1">
+                  {stockStats.activeCount} activos para venta
+                </span>
+              </div>
+
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs">
+                <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-wider block mb-0.5">
+                  📦 Stock Total Unidades
+                </span>
+                <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block leading-tight mt-0.5">
+                  {stockStats.totalUnits}
+                </span>
+                <span className="font-sub text-xs text-gray-400 block mt-1">
+                  Unidades totales disponibles
+                </span>
+              </div>
+
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200/80 shadow-xs">
+                <span className="font-sub font-bold text-xs text-amber-700 uppercase tracking-wider block mb-0.5">
+                  ⚠️ Stock Bajo (≤ 5)
+                </span>
+                <span className="font-display text-2xl sm:text-3xl text-amber-600 block leading-tight mt-0.5">
+                  {stockStats.lowStock}
+                </span>
+                <span className="font-sub text-xs text-amber-600 font-bold block mt-1">
+                  Requieren reposición
+                </span>
+              </div>
+
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-200/80 shadow-xs">
+                <span className="font-sub font-bold text-xs text-rose-700 uppercase tracking-wider block mb-0.5">
+                  🚫 Platos Agotados
+                </span>
+                <span className="font-display text-2xl sm:text-3xl text-rose-600 block leading-tight mt-0.5">
+                  {stockStats.outOfStock}
+                </span>
+                <span className="font-sub text-xs text-rose-600 font-bold block mt-1">
+                  Pausados en carta
+                </span>
+              </div>
+            </div>
+
             {/* Buscador + Botón Nuevo Plato */}
             <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
               <div className="relative flex-1">
@@ -588,26 +653,30 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               })}
             </div>
 
-            {/* Catálogo con control de stock grande y cómodo */}
-            <div className="bg-white rounded-3xl border-2 border-gray-200 divide-y divide-gray-100 shadow-sm overflow-hidden">
+            {/* Catálogo en Rejilla Responsiva de 2 Columnas en PC para aprovechar todo el ancho */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 sm:gap-4">
               {filteredProducts.map((prod) => {
                 const isOutOfStock = (prod.stock || 0) === 0;
 
                 return (
                   <div
                     key={prod.id}
-                    className={`p-4 sm:p-5 lg:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/70 transition-colors ${
-                      !prod.active ? 'opacity-40' : ''
+                    className={`p-4 sm:p-5 rounded-2xl bg-white border-2 border-gray-200 flex items-center justify-between gap-3 shadow-xs hover:border-cartoon-yellow/70 hover:shadow-sm transition-all ${
+                      !prod.active ? 'opacity-40 bg-gray-50' : ''
                     }`}
                   >
                     {/* Info */}
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cartoon-cream border border-gray-200 flex items-center justify-center text-2xl sm:text-3xl flex-shrink-0 shadow-xs">
-                        {prod.emoji || '🍔'}
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cartoon-cream border border-gray-200 flex items-center justify-center text-2xl flex-shrink-0 shadow-xs overflow-hidden">
+                        {prod.image ? (
+                          <img src={prod.image} alt={prod.name} className="w-full h-full object-cover block" />
+                        ) : (
+                          <span>{prod.emoji || '🍔'}</span>
+                        )}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2.5">
-                          <h4 className="font-display text-base sm:text-lg lg:text-xl text-cartoon-ink truncate">{prod.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-display text-base sm:text-lg text-cartoon-ink truncate">{prod.name}</h4>
                           {isOutOfStock && (
                             <span className="px-2 py-0.5 rounded-md bg-cartoon-red text-white font-sub font-bold text-[10px]">
                               AGOTADO
@@ -621,12 +690,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                     </div>
 
                     {/* Controles de Stock */}
-                    <div className="flex items-center gap-3 sm:gap-4 justify-between sm:justify-end">
-                      <div className="flex items-center gap-1.5 bg-gray-50 p-1.5 rounded-2xl border border-gray-200 shadow-inner">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                      <div className="flex items-center gap-1 bg-gray-50 p-1 sm:p-1.5 rounded-xl border border-gray-200 shadow-inner">
                         <button
                           type="button"
                           onClick={() => updateStock(prod.id, Math.max(0, (prod.stock || 0) - 1))}
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-200 hover:bg-cartoon-red hover:text-white font-display text-sm sm:text-base text-gray-800 flex items-center justify-center cursor-pointer transition-colors"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-200 hover:bg-cartoon-red hover:text-white font-display text-sm text-gray-800 flex items-center justify-center cursor-pointer transition-colors"
                         >
                           -
                         </button>
@@ -635,27 +704,27 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                           min="0"
                           value={prod.stock || 0}
                           onChange={(e) => updateStock(prod.id, e.target.value)}
-                          className="w-14 sm:w-16 text-center font-display text-sm sm:text-base bg-transparent text-gray-900 focus:outline-none"
+                          className="w-11 sm:w-14 text-center font-display text-sm sm:text-base bg-transparent text-gray-900 focus:outline-none"
                         />
                         <button
                           type="button"
                           onClick={() => updateStock(prod.id, (prod.stock || 0) + 1)}
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-200 hover:bg-emerald-500 hover:text-white font-display text-sm sm:text-base text-gray-800 flex items-center justify-center cursor-pointer transition-colors"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-200 hover:bg-emerald-500 hover:text-white font-display text-sm text-gray-800 flex items-center justify-center cursor-pointer transition-colors"
                         >
                           +
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 sm:gap-1.5">
                         <button
                           type="button"
                           onClick={() => toggleActive(prod.id, prod.active)}
                           title={prod.active ? 'Pausar' : 'Reactivar'}
-                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center cursor-pointer transition-colors ${
+                          className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center cursor-pointer transition-colors ${
                             prod.active ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-cartoon-red text-white'
                           }`}
                         >
-                          <Icon name={prod.active ? 'visibility' : 'visibility_off'} size={18} />
+                          <Icon name={prod.active ? 'visibility' : 'visibility_off'} size={16} />
                         </button>
                         <button
                           type="button"
@@ -663,16 +732,18 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                             setEditingProduct(prod);
                             setModalOpen(true);
                           }}
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-cartoon-ink flex items-center justify-center cursor-pointer transition-colors"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-cartoon-ink flex items-center justify-center cursor-pointer transition-colors"
+                          title="Editar plato"
                         >
-                          <Icon name="edit" size={18} />
+                          <Icon name="edit" size={16} />
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteCandidate(prod)}
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 text-gray-400 hover:text-cartoon-red hover:bg-rose-50 flex items-center justify-center cursor-pointer transition-colors"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-100 text-gray-400 hover:text-cartoon-red hover:bg-rose-50 flex items-center justify-center cursor-pointer transition-colors"
+                          title="Eliminar plato"
                         >
-                          <Icon name="delete" size={18} />
+                          <Icon name="delete" size={16} />
                         </button>
                       </div>
                     </div>

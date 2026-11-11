@@ -51,10 +51,21 @@ export const ProductCard = ({ product, onAddToCart, accentColor = '#FFC93C' }) =
       {/* 1. Header de Tarjeta: Emoji Flotante + Título + Badges de Stock */}
       <div>
         <div className="flex items-start gap-2.5 mb-1.5">
-          {/* Medallón de Emoji Estilizado */}
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-cartoon-xs group-hover:scale-105 group-hover:rotate-3 transition-transform">
-            <span>{product.emoji || '🍔'}</span>
-          </div>
+          {/* Medallón con Foto Real o Emoji Estilizado */}
+          {product.image ? (
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-2 border-cartoon-ink overflow-hidden flex-shrink-0 shadow-cartoon-xs group-hover:scale-105 group-hover:rotate-1 transition-transform">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover block"
+                loading="lazy"
+              />
+            </div>
+          ) : (
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-cartoon-xs group-hover:scale-105 group-hover:rotate-3 transition-transform">
+              <span>{product.emoji || '🍔'}</span>
+            </div>
+          )}
 
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-1 mb-0.5">

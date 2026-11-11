@@ -80,11 +80,27 @@ export const getDefaultProductsWithStock = () => {
 
 // Obtener productos desde cache local
 export const getLocalProducts = () => {
+  const defaults = getDefaultProductsWithStock();
   try {
     const raw = localStorage.getItem(LOCAL_PRODUCTS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const merged = defaults.map((def) => {
+          const found = parsed.find((p) => p.id === def.id);
+          if (!found) return def;
+          return {
+            ...def,
+            ...found,
+            image: def.image || found.image,
+          };
+        });
+        // Preservar productos personalizados agregados en el panel admin
+        const customItems = parsed.filter((p) => !defaults.some((d) => d.id === p.id));
+        return [...merged, ...customItems];
+      }
+    }
   } catch {}
-  const defaults = getDefaultProductsWithStock();
   saveLocalProducts(defaults);
   return defaults;
 };
