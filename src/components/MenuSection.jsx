@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { CATEGORIES, MENU_SECTIONS, PRODUCTS } from '../data/products';
+import { CATEGORIES, MENU_SECTIONS } from '../data/products';
 import { ProductCard } from './ProductCard';
 import { Icon } from './Icon';
 import { Reveal } from './Reveal';
+import { useProducts } from '../context/ProductsContext';
 
 const SECTION_THEMES = {
   burgers: {
@@ -32,36 +33,48 @@ const SECTION_THEMES = {
 };
 
 export const MenuSection = ({ onAddToCart }) => {
+  const { products } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFullMenu, setShowFullMenu] = useState(false);
 
+  // Secciones dinámicas con productos actualizados en tiempo real desde Firebase / Admin
+  const dynamicSections = useMemo(() => {
+    return MENU_SECTIONS.map((sec) => {
+      const items = products.filter((p) => p.category === sec.id && p.active !== false);
+      return {
+        ...sec,
+        items,
+      };
+    }).filter((sec) => sec.items.length > 0);
+  }, [products]);
+
   // Platos destacados para la vista inicial compacta (Primeros 6 platos más pedidos)
   const featuredPreviewProducts = useMemo(() => {
-    // Tomamos las primeras 4 burgers estrella + 2 combos
-    const burgers = MENU_SECTIONS.find((s) => s.id === 'burgers')?.items.slice(0, 4) || [];
-    const combos = MENU_SECTIONS.find((s) => s.id === 'combos')?.items.slice(0, 2) || [];
+    const burgers = products.filter((p) => p.category === 'burgers' && p.active !== false).slice(0, 4);
+    const combos = products.filter((p) => p.category === 'combos' && p.active !== false).slice(0, 2);
     return [...burgers, ...combos];
-  }, []);
+  }, [products]);
 
-  // Filtrado para el buscador
+  // Filtrado para el buscador en tiempo real
   const searchedProducts = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
-    return PRODUCTS.filter((item) => {
+    return products.filter((item) => {
+      if (item.active === false) return false;
       const matchName = item.name.toLowerCase().includes(query);
       const matchDesc = item.description?.toLowerCase().includes(query);
       return matchName || matchDesc;
     });
-  }, [searchQuery]);
+  }, [searchQuery, products]);
 
   // Secciones a renderizar cuando se elige una categoría específica
   const sectionsToDisplay = useMemo(() => {
     if (selectedCategory === 'todos') {
-      return MENU_SECTIONS;
+      return dynamicSections;
     }
-    return MENU_SECTIONS.filter((sec) => sec.id === selectedCategory);
-  }, [selectedCategory]);
+    return dynamicSections.filter((sec) => sec.id === selectedCategory);
+  }, [selectedCategory, dynamicSections]);
 
   return (
     <section

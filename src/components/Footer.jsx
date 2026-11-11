@@ -105,9 +105,11 @@ export const Footer = () => {
 
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sub text-gray-400">
-          <p>© {new Date().getFullYear()} TRICO'S. Todos los derechos reservados.</p>
+        {/* Bottom Bar: Hecho por Nexo Creative */}
+        <div className="pt-6 border-t border-white/10 flex items-center justify-center text-xs font-sub text-gray-400">
+          <p>
+            Hecho por <strong className="text-cartoon-yellow font-display text-sm tracking-wide">Nexo Creative</strong>
+          </p>
         </div>
 
       </div>

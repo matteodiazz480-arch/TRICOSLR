@@ -10,10 +10,14 @@
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
+    "firebase": "^13.2.0",
     "lucide-react": "^1.16.0",
-    "maplibre-gl": "^4.7.1",
+    "maplibre-gl": "^6.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",

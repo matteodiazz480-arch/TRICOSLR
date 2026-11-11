@@ -56,7 +56,7 @@ export const Navbar = ({ cartCount, cartTotal, onOpenCart }) => {
           </a>
         </nav>
 
-        {/* Botón Carrito Compacto y Proporcionado */}
+        {/* Botón Carrito */}
         <div className="flex items-center">
           <button
             onClick={onOpenCart}

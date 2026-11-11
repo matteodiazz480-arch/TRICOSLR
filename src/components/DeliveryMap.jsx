@@ -1,62 +1,50 @@
 import React, { useEffect, useRef } from 'react';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { RESTAURANT_INFO } from '../data/products';
 
-const INK = '#1E1B18';
+const ESRI_TILES_URL =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
 
-// Estilo de calles realista y de alta definición estilo Uber / Google Maps:
-// Calles y avenidas nítidas, fondos claros y nombres de calles grandes y legibles.
-const UBER_STREETS_STYLE = {
-  version: 8,
-  sources: {
-    'streets-tiles': {
-      type: 'raster',
-      tiles: [
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-      ],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution: '&copy; Esri &copy; OpenStreetMap',
-    },
-  },
-  layers: [
-    {
-      id: 'streets-layer',
-      type: 'raster',
-      source: 'streets-tiles',
-      minzoom: 0,
-      maxzoom: 19,
-    },
-  ],
-};
-
-// Marcador del local Trico's
+// Marcador del local Trico's con auto de delivery Uber (como en la captura)
 const makeStoreMarker = () => {
   const el = document.createElement('div');
   el.className = 'map-store-marker cursor-pointer flex flex-col items-center select-none pointer-events-auto';
   el.innerHTML = `
-    <div style="background:#FFC93C; border:2.5px solid #1E1B18; border-radius:10px; padding:3px 9px; font-family:'Lilita One',cursive; font-size:12px; box-shadow:2px 2px 0 #1E1B18; margin-bottom:2px; white-space:nowrap; color:#1E1B18; display:flex; align-items:center; gap:4px;">
+    <div style="background:#FFC93C; border:2px solid #1E1B18; border-radius:10px; padding:2px 8px; font-family:'Lilita One',cursive; font-size:11px; box-shadow:0 3px 6px rgba(0,0,0,0.5); margin-bottom:2px; white-space:nowrap; color:#1E1B18; display:flex; align-items:center; gap:3px;">
       🍗 <span>TRICO'S</span>
     </div>
-    <img src="/assets/sticker_bucket.png" alt="Trico's" style="width:44px; height:44px; object-fit:contain; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35));" draggable="false" />
+    <!-- Auto de delivery estilo Uber como en la captura -->
+    <div style="filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6));">
+      <svg width="36" height="24" viewBox="0 0 60 38" fill="none">
+        <rect x="6" y="4" width="48" height="30" rx="10" fill="#FFFFFF" stroke="#1E1B18" stroke-width="3"/>
+        <path d="M18 9 H42 C45 9 47 11 46 14 L44 24 C43 27 41 29 38 29 H22 C19 29 17 27 16 24 L14 14 C13 11 15 9 18 9 Z" fill="#2C3437"/>
+        <rect x="22" y="11" width="16" height="16" rx="3" fill="#FFFFFF" opacity="0.9"/>
+        <rect x="52" y="7" width="3" height="5" rx="1" fill="#FFC93C"/>
+        <rect x="52" y="26" width="3" height="5" rx="1" fill="#FFC93C"/>
+        <rect x="12" y="1" width="10" height="3" rx="1.5" fill="#1E1B18"/>
+        <rect x="38" y="1" width="10" height="3" rx="1.5" fill="#1E1B18"/>
+        <rect x="12" y="34" width="10" height="3" rx="1.5" fill="#1E1B18"/>
+        <rect x="38" y="34" width="10" height="3" rx="1.5" fill="#1E1B18"/>
+      </svg>
+    </div>
   `;
   return el;
 };
 
-// Marcador del domicilio del cliente (arrastrable y bien visible)
+// Marcador del domicilio del cliente (Cuadrado negro dropoff idéntico a la captura de Uber)
 const makeHomeMarker = () => {
   const el = document.createElement('div');
   el.className = 'map-home-marker cursor-grab flex flex-col items-center select-none pointer-events-auto';
   el.innerHTML = `
-    <div style="background:#FF4757; color:#fff; border:2.5px solid #1E1B18; border-radius:12px; padding:3px 10px; font-family:'Fredoka',sans-serif; font-weight:800; font-size:12px; box-shadow:2.5px 2.5px 0 #1E1B18; margin-bottom:3px; white-space:nowrap; display:flex; align-items:center; gap:3px;">
-      🏠 <span>Tu Casa</span>
+    <div style="background:#000000; color:#FFFFFF; border:2px solid #FFFFFF; border-radius:10px; padding:3px 9px; font-family:'Fredoka',sans-serif; font-weight:800; font-size:11px; box-shadow:0 4px 8px rgba(0,0,0,0.6); margin-bottom:3px; white-space:nowrap; display:flex; align-items:center; gap:4px;">
+      <span>■</span> <span>Tu Casa (Destino)</span>
     </div>
-    <svg viewBox="0 0 48 60" width="42" height="52" aria-hidden="true" style="filter:drop-shadow(0 6px 8px rgba(0,0,0,0.4));">
-      <path d="M24 57C24 57 44 36 44 22A20 20 0 1 0 4 22C4 36 24 57 24 57Z" fill="#FF4757" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>
-      <path d="M15 24.5 24 16l9 8.5V33H15Z" fill="#fff" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
-      <rect x="21" y="26" width="6" height="7" fill="${INK}"/>
-    </svg>`;
+    <!-- Cuadrado negro de parada Uber idéntico a la captura -->
+    <div style="width:22px; height:22px; background:#000000; border:3.5px solid #FFFFFF; box-shadow:0 4px 8px rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center;">
+      <div style="width:6px; height:6px; background:#FFFFFF;"></div>
+    </div>
+  `;
   return el;
 };
 
@@ -71,58 +59,92 @@ export default function DeliveryMap({ value, route, onPick }) {
     if (!containerRef.current) return;
     const store = RESTAURANT_INFO.location;
 
-    // Mapa visto desde arriba (pitch: 0, bearing: 0) idéntico a Uber / Google Maps navegación
+    // Mapa permanentemente en Modo Oscuro estilo Uber
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: UBER_STREETS_STYLE,
+      style: {
+        version: 8,
+        sources: {
+          'streets-tiles': {
+            type: 'raster',
+            tiles: [ESRI_TILES_URL],
+            tileSize: 256,
+            maxzoom: 19,
+          },
+        },
+        layers: [
+          {
+            id: 'streets-layer',
+            type: 'raster',
+            source: 'streets-tiles',
+            minzoom: 0,
+            maxzoom: 19,
+            paint: {
+              'raster-saturation': -0.95,
+              'raster-contrast': 0.55,
+              'raster-brightness-max': 0.28,
+              'raster-brightness-min': 0.02,
+            },
+          },
+        ],
+      },
       center: [store.lng, store.lat],
-      zoom: 15.6, // Nivel de zoom a nivel de calle para ver nombres de calles inmediatamente
-      pitch: 0, // Vista cenital plana 2D (máxima legibilidad)
-      bearing: 0, // Orientado al Norte
-      maxPitch: 0, // Bloqueado contra inclinaciones accidentales
-      dragRotate: false, // Sin rotación para mantener lectura horizontal siempre
+      zoom: 15.6,
+      pitch: 0,
+      bearing: 0,
+      maxPitch: 0,
+      dragRotate: false,
       touchPitch: false,
       attributionControl: false,
     });
     mapRef.current = map;
 
-    // Marcador fijo del local
-    new maplibregl.Marker({ element: makeStoreMarker(), anchor: 'bottom' })
+    // Marcador fijo del local con auto de delivery Uber
+    new maplibregl.Marker({ element: makeStoreMarker(), anchor: 'center' })
       .setLngLat([store.lng, store.lat])
       .addTo(map);
 
-    map.on('load', () => {
-      // Capa de ruta de delivery trazada en amarillo brillante con reborde oscuro
-      map.addSource('route', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      });
+    const setupLayers = () => {
+      if (!map.getSource('route')) {
+        map.addSource('route', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] },
+        });
 
-      map.addLayer({
-        id: 'route-casing',
-        type: 'line',
-        source: 'route',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': INK, 'line-width': 8 },
-      });
+        // Reborde blanco de contraste alto
+        map.addLayer({
+          id: 'route-casing',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#FFFFFF',
+            'line-width': 9,
+          },
+        });
 
-      map.addLayer({
-        id: 'route-line',
-        type: 'line',
-        source: 'route',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#FFC93C', 'line-width': 5 },
-      });
-
+        // Línea principal NEGRA continua estilo Uber (idéntica a la captura)
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#000000',
+            'line-width': 6,
+          },
+        });
+      }
       map.resize();
-    });
+    };
+
+    map.on('load', setupLayers);
 
     // Clic en el mapa para marcar domicilio
     map.on('click', (e) => {
       onPickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     });
 
-    // ResizeObserver para adaptación fluida
     const resizeObserver = new ResizeObserver(() => {
       map.resize();
     });
@@ -131,10 +153,11 @@ export default function DeliveryMap({ value, route, onPick }) {
     return () => {
       resizeObserver.disconnect();
       map.remove();
+      mapRef.current = null;
     };
   }, []);
 
-  // Marcador de la casa del cliente
+  // Marcador de la casa del cliente (Cuadrado negro dropoff Uber)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -144,7 +167,7 @@ export default function DeliveryMap({ value, route, onPick }) {
       return;
     }
     if (!homeRef.current) {
-      const marker = new maplibregl.Marker({ element: makeHomeMarker(), anchor: 'bottom', draggable: true })
+      const marker = new maplibregl.Marker({ element: makeHomeMarker(), anchor: 'center', draggable: true })
         .setLngLat([value.lng, value.lat])
         .addTo(map);
 
@@ -158,7 +181,7 @@ export default function DeliveryMap({ value, route, onPick }) {
     }
   }, [value]);
 
-  // Actualizar trazado de la ruta y encuadrar desde arriba
+  // Actualizar trazado de la ruta negra
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -178,7 +201,7 @@ export default function DeliveryMap({ value, route, onPick }) {
           new maplibregl.LngLatBounds(route.coordinates[0], route.coordinates[0])
         );
         map.fitBounds(bounds, {
-          padding: { top: 45, bottom: 35, left: 35, right: 35 },
+          padding: { top: 60, bottom: 50, left: 45, right: 45 },
           pitch: 0,
           bearing: 0,
           duration: 500,
@@ -191,7 +214,6 @@ export default function DeliveryMap({ value, route, onPick }) {
     else map.once('idle', apply);
   }, [route]);
 
-  // Contenedor 100% limpio sin botones superpuestos que estorben
   return (
     <div className="relative w-full h-full overflow-hidden">
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />

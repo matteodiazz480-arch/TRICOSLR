@@ -141,7 +141,17 @@ export const CartDrawer = ({
     L.push(`*TOTAL: ${money(total)}*`);
 
     window.open(`https://wa.me/${RESTAURANT_INFO.phone}?text=${encodeURIComponent(L.join('\n'))}`, '_blank');
-    onOrderSuccess({ customerName: formData.name, total, deliveryType });
+    onOrderSuccess({
+      customerName: formData.name,
+      total,
+      deliveryType,
+      items: items.map((item) => ({
+        productId: item.product.originalId || item.product.id,
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+      })),
+    });
     setDeliveryInfo(null);
     setStep('cart');
   };

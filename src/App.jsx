@@ -10,8 +10,20 @@ import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { FreeDeliveryRibbon } from './components/FreeDeliveryRibbon';
 import { ScallopedMountainDivider } from './components/SectionDividers';
 import { Icon } from './components/Icon';
+import { ProductsProvider, useProducts } from './context/ProductsContext';
+import { getSession } from './lib/security';
+import { addEarning } from './lib/financesStore';
 
-export function App() {
+// Carga perezosa (lazy-load) para máxima velocidad de la tienda pública
+const AdminLogin = React.lazy(() =>
+  import('./components/admin/AdminLogin').then((m) => ({ default: m.AdminLogin }))
+);
+const AdminDashboard = React.lazy(() =>
+  import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
+
+function StoreApp() {
+  const { products, updateStock } = useProducts();
   const [cartItems, setCartItems] = useState(() => {
     try {
       const saved = localStorage.getItem('tricos_cart');
@@ -28,6 +40,23 @@ export function App() {
   const [deliveryType, setDeliveryType] = useState('delivery');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
 
+  // Vista actual: 'store' o 'admin'
+  const [view, setView] = useState(() => (window.location.hash === '#admin' ? 'admin' : 'store'));
+  const [adminSession, setAdminSession] = useState(() => getSession());
+
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#admin') {
+        setView('admin');
+        setAdminSession(getSession());
+      } else {
+        setView('store');
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('tricos_cart', JSON.stringify(cartItems));
@@ -43,9 +72,16 @@ export function App() {
   );
 
   const handleAddToCart = (product) => {
+    // Protección de stock en tiempo real
+    if (product.stock !== undefined && product.stock <= 0) return;
+
     setCartItems((prev) => {
       const existingIndex = prev.findIndex((i) => i.product.id === product.id);
       if (existingIndex > -1) {
+        const currentQty = prev[existingIndex].quantity;
+        if (product.stock !== undefined && currentQty >= product.stock) {
+          return prev;
+        }
         const next = [...prev];
         next[existingIndex] = {
           ...next[existingIndex],
@@ -63,9 +99,13 @@ export function App() {
       return;
     }
     setCartItems((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity: newQuantity } : item
-      )
+      prev.map((item) => {
+        if (item.product.id !== productId) return item;
+        // Limitar a stock disponible si está definido
+        const maxStock = item.product.stock !== undefined ? item.product.stock : 999;
+        const capped = Math.min(newQuantity, maxStock);
+        return { ...item, quantity: capped };
+      })
     );
   };
 
@@ -78,12 +118,82 @@ export function App() {
   };
 
   const handleOrderSuccess = (orderDetails) => {
+    // 1. Descuento automático del stock de cada hamburguesa / producto pedido
+    try {
+      const orderItems = orderDetails?.items || cartItems.map((item) => ({
+        productId: item.product.originalId || item.product.id,
+        name: item.product.name,
+        quantity: item.quantity,
+      }));
+
+      orderItems.forEach((orderItem) => {
+        const prodId = orderItem.productId;
+        const currentProd = products.find((p) => p.id === prodId);
+        if (currentProd) {
+          const currentStock = currentProd.stock !== undefined ? currentProd.stock : 35;
+          const newStock = Math.max(0, currentStock - (orderItem.quantity || 1));
+          updateStock(prodId, newStock);
+        }
+      });
+    } catch (err) {
+      console.warn('Error descontando stock tras pedido:', err);
+    }
+
+    // 2. Registro automático de la venta en las ganancias del panel
+    try {
+      if (orderDetails?.total) {
+        addEarning({
+          amount: orderDetails.total,
+          concept: `Venta WhatsApp: ${orderDetails.customerName || 'Cliente'} (${
+            orderDetails.deliveryType === 'delivery' ? 'Delivery' : 'Retiro'
+          })`,
+          date: new Date().toISOString().split('T')[0],
+        });
+      }
+    } catch (err) {
+      console.warn('Error registrando ganancia automática:', err);
+    }
+
     setIsCartOpen(false);
     setCompletedOrder(orderDetails);
     setIsSuccessOpen(true);
     handleClearCart();
   };
 
+  // Si la vista es el Panel Administrador (cargado de forma asíncrona)
+  if (view === 'admin') {
+    return (
+      <React.Suspense
+        fallback={
+          <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center font-display text-cartoon-ink">
+            <div className="w-10 h-10 border-3 border-cartoon-yellow border-t-cartoon-red rounded-full animate-spin mb-3" />
+            <span className="text-sm">Cargando Panel...</span>
+          </div>
+        }
+      >
+        {adminSession ? (
+          <AdminDashboard
+            session={adminSession}
+            onLogout={() => setAdminSession(null)}
+            onGoToStore={() => {
+              window.location.hash = '';
+              setView('store');
+            }}
+          />
+        ) : (
+          <AdminLogin
+            onLoginSuccess={(sess) => setAdminSession(sess)}
+            onBackToSite={() => {
+              window.location.hash = '';
+              setView('store');
+            }}
+          />
+        )}
+      </React.Suspense>
+    );
+  }
+
+  // Vista de Tienda para Clientes
   return (
     <div className="min-h-screen flex flex-col bg-cartoon-cream selection:bg-cartoon-yellow selection:text-cartoon-ink">
       
@@ -108,7 +218,7 @@ export function App() {
         {/* Cinta: delivery gratis desde $55.000 */}
         <FreeDeliveryRibbon />
 
-        {/* 3. Carta de Comidas (#FFFDF6) */}
+        {/* 3. Carta de Comidas (#FFFDF6) con Stock en Tiempo Real */}
         <MenuSection onAddToCart={handleAddToCart} />
 
         {/* Transición 2: Carta (#FFFDF6) -> Combos & Cupones (#FFF5D6) */}
@@ -174,6 +284,14 @@ export function App() {
       />
 
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <ProductsProvider>
+      <StoreApp />
+    </ProductsProvider>
   );
 }
 

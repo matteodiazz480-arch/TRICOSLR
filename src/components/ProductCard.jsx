@@ -11,7 +11,12 @@ export const ProductCard = ({ product, onAddToCart, accentColor = '#FFC93C' }) =
 
   const currentPrice = selectedVariant ? selectedVariant.price : product.price;
 
+  const isOutOfStock = product.stock !== undefined && (product.stock === 0 || product.active === false);
+  const isLowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 4;
+
   const handleAdd = () => {
+    if (isOutOfStock) return;
+
     const variantSuffix = selectedVariant ? ` (${selectedVariant.label})` : '';
     const proteinSuffix = product.hasProteinChoice ? ` [${selectedProtein}]` : '';
 
@@ -28,6 +33,7 @@ export const ProductCard = ({ product, onAddToCart, accentColor = '#FFC93C' }) =
       description: product.description,
       variant: selectedVariant?.label,
       protein: product.hasProteinChoice ? selectedProtein : null,
+      stock: product.stock,
     };
 
     onAddToCart(configuredItem);
@@ -38,9 +44,11 @@ export const ProductCard = ({ product, onAddToCart, accentColor = '#FFC93C' }) =
   };
 
   return (
-    <div className="card-cartoon flex flex-col justify-between select-none relative bg-white p-3 sm:p-4 border-2 sm:border-3 border-cartoon-ink rounded-2xl sm:rounded-3xl shadow-cartoon-sm hover:shadow-cartoon hover:-translate-y-0.5 transition-all duration-200 group">
+    <div className={`card-cartoon flex flex-col justify-between select-none relative bg-white p-3 sm:p-4 border-2 sm:border-3 border-cartoon-ink rounded-2xl sm:rounded-3xl shadow-cartoon-sm hover:shadow-cartoon transition-all duration-200 group ${
+      isOutOfStock ? 'opacity-65 grayscale-[30%] hover:translate-y-0' : 'hover:-translate-y-0.5'
+    }`}>
       
-      {/* 1. Header de Tarjeta: Emoji Flotante + Título */}
+      {/* 1. Header de Tarjeta: Emoji Flotante + Título + Badges de Stock */}
       <div>
         <div className="flex items-start gap-2.5 mb-1.5">
           {/* Medallón de Emoji Estilizado */}
@@ -49,11 +57,23 @@ export const ProductCard = ({ product, onAddToCart, accentColor = '#FFC93C' }) =
           </div>
 
           <div className="flex-1 min-w-0">
-            {product.badge && (
-              <span className="inline-block bg-cartoon-yellow text-cartoon-ink font-sub font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md border border-cartoon-ink uppercase tracking-wider mb-0.5">
-                {product.badge}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-1 mb-0.5">
+              {product.badge && (
+                <span className="inline-block bg-cartoon-yellow text-cartoon-ink font-sub font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md border border-cartoon-ink uppercase tracking-wider">
+                  {product.badge}
+                </span>
+              )}
+              {isOutOfStock && (
+                <span className="inline-block bg-cartoon-red text-white font-sub font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md border border-cartoon-ink uppercase tracking-wider">
+                  AGOTADO
+                </span>
+              )}
+              {isLowStock && (
+                <span className="inline-block bg-cartoon-yellow-dark text-cartoon-ink font-sub font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md border border-cartoon-ink">
+                  ¡Últimas {product.stock}!
+                </span>
+              )}
+            </div>
             <h4 className="font-display text-sm sm:text-base text-cartoon-ink leading-tight line-clamp-1 group-hover:text-cartoon-red transition-colors">
               {product.name}
             </h4>
@@ -130,15 +150,20 @@ export const ProductCard = ({ product, onAddToCart, accentColor = '#FFC93C' }) =
 
         <button
           type="button"
+          disabled={isOutOfStock}
           onClick={handleAdd}
-          aria-label={`Agregar ${product.name}`}
-          className={`flex items-center justify-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border-2 border-cartoon-ink font-display text-xs sm:text-sm active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all flex-shrink-0 ${
-            isAdded
-              ? 'bg-cartoon-green text-cartoon-ink shadow-none scale-95'
-              : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink shadow-cartoon-xs sm:shadow-cartoon-sm'
+          aria-label={isOutOfStock ? `${product.name} agotado` : `Agregar ${product.name}`}
+          className={`flex items-center justify-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border-2 border-cartoon-ink font-display text-xs sm:text-sm active:translate-x-[1px] active:translate-y-[1px] transition-all flex-shrink-0 ${
+            isOutOfStock
+              ? 'bg-cartoon-cream-dark text-cartoon-ink/40 border-cartoon-ink/30 cursor-not-allowed shadow-none'
+              : isAdded
+              ? 'bg-cartoon-green text-cartoon-ink shadow-none scale-95 cursor-pointer'
+              : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink shadow-cartoon-xs sm:shadow-cartoon-sm cursor-pointer'
           }`}
         >
-          {isAdded ? (
+          {isOutOfStock ? (
+            <span>Agotado</span>
+          ) : isAdded ? (
             <>
               <Icon name="check" size={14} className="font-bold" />
               <span>Listo</span>
