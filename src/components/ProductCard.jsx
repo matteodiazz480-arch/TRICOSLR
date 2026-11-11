@@ -1,187 +1,136 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Icon } from './Icon';
 
-export const ProductCard = ({ product, onAddToCart, accentColor = '#FFC93C' }) => {
-  const [selectedVariant, setSelectedVariant] = useState(() => {
-    return product.variants && product.variants.length > 0 ? product.variants[0] : null;
-  });
-
-  const [selectedProtein, setSelectedProtein] = useState('Carne');
-  const [isAdded, setIsAdded] = useState(false);
-
-  const currentPrice = selectedVariant ? selectedVariant.price : product.price;
-
+export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
   const isOutOfStock = product.stock !== undefined && (product.stock === 0 || product.active === false);
   const isLowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 4;
 
-  const handleAdd = () => {
-    if (isOutOfStock) return;
+  const basePrice = product.variants && product.variants.length > 0
+    ? product.variants[0].price
+    : product.price;
 
-    const variantSuffix = selectedVariant ? ` (${selectedVariant.label})` : '';
-    const proteinSuffix = product.hasProteinChoice ? ` [${selectedProtein}]` : '';
+  const hasVariants = product.variants && product.variants.length > 1;
 
-    const configuredItem = {
-      id: `${product.id}${selectedVariant ? `-${selectedVariant.id}` : ''}${
-        product.hasProteinChoice ? `-${selectedProtein.toLowerCase().replace(/\s+/g, '')}` : ''
-      }`,
-      originalId: product.id,
-      name: `${product.name}${variantSuffix}${proteinSuffix}`,
-      baseName: product.name,
-      price: currentPrice,
-      emoji: product.emoji || '🍔',
-      badge: product.badge,
-      description: product.description,
-      variant: selectedVariant?.label,
-      protein: product.hasProteinChoice ? selectedProtein : null,
-      stock: product.stock,
-    };
-
-    onAddToCart(configuredItem);
-    setIsAdded(true);
-    setTimeout(() => {
-      setIsAdded(false);
-    }, 900);
+  const handleCardClick = () => {
+    if (onSelectProduct) {
+      onSelectProduct(product);
+    } else if (onAddToCart && !isOutOfStock) {
+      onAddToCart({
+        id: product.id,
+        originalId: product.id,
+        name: product.name,
+        baseName: product.name,
+        price: basePrice,
+        emoji: product.emoji || '🍔',
+        badge: product.badge,
+        description: product.description,
+        stock: product.stock,
+        image: product.image,
+      });
+    }
   };
 
   return (
-    <div className={`card-cartoon flex flex-col justify-between select-none relative bg-white p-3 sm:p-4 border-2 sm:border-3 border-cartoon-ink rounded-2xl sm:rounded-3xl shadow-cartoon-sm hover:shadow-cartoon transition-all duration-200 group ${
-      isOutOfStock ? 'opacity-65 grayscale-[30%] hover:translate-y-0' : 'hover:-translate-y-0.5'
-    }`}>
+    <div
+      onClick={handleCardClick}
+      className={`card-cartoon flex flex-col justify-between select-none relative bg-white p-2.5 sm:p-3.5 border-2 sm:border-3 border-cartoon-ink rounded-2xl sm:rounded-3xl shadow-cartoon-sm hover:shadow-cartoon transition-all duration-200 group cursor-pointer ${
+        isOutOfStock
+          ? 'opacity-65 grayscale-[30%] hover:translate-y-0'
+          : 'hover:-translate-y-1'
+      }`}
+    >
       
-      {/* 1. Header de Tarjeta: Emoji Flotante + Título + Badges de Stock */}
-      <div>
-        <div className="flex items-start gap-2.5 mb-1.5">
-          {/* Medallón con Foto Real o Emoji Estilizado */}
-          {product.image ? (
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-2 border-cartoon-ink overflow-hidden flex-shrink-0 shadow-cartoon-xs group-hover:scale-105 group-hover:rotate-1 transition-transform">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover block"
-                loading="lazy"
-              />
-            </div>
-          ) : (
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 shadow-cartoon-xs group-hover:scale-105 group-hover:rotate-3 transition-transform">
-              <span>{product.emoji || '🍔'}</span>
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-1 mb-0.5">
-              {product.badge && (
-                <span className="inline-block bg-cartoon-yellow text-cartoon-ink font-sub font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md border border-cartoon-ink uppercase tracking-wider">
-                  {product.badge}
-                </span>
-              )}
-              {isOutOfStock && (
-                <span className="inline-block bg-cartoon-red text-white font-sub font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md border border-cartoon-ink uppercase tracking-wider">
-                  AGOTADO
-                </span>
-              )}
-              {isLowStock && (
-                <span className="inline-block bg-cartoon-yellow-dark text-cartoon-ink font-sub font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md border border-cartoon-ink">
-                  ¡Últimas {product.stock}!
-                </span>
-              )}
-            </div>
-            <h4 className="font-display text-sm sm:text-base text-cartoon-ink leading-tight line-clamp-1 group-hover:text-cartoon-red transition-colors">
-              {product.name}
-            </h4>
-          </div>
-        </div>
-
-        {/* 2. Descripción de Ingredientes */}
-        <p className="font-sans text-[11px] sm:text-xs text-cartoon-ink/75 leading-snug line-clamp-2 mb-2 sm:mb-2.5">
-          {product.description}
-        </p>
-
-        {/* 3. Selector de Proteína (Carne vs Pollo) - Tactile Segmented Switch */}
-        {product.hasProteinChoice && (
-          <div className="bg-cartoon-cream/80 p-0.5 rounded-xl border border-cartoon-ink flex gap-1 mb-2">
-            <button
-              type="button"
-              onClick={() => setSelectedProtein('Carne')}
-              className={`flex-1 py-1 rounded-lg font-sub font-bold text-[10px] sm:text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                selectedProtein === 'Carne'
-                  ? 'bg-cartoon-ink text-white shadow-xs'
-                  : 'text-cartoon-ink/65 hover:text-cartoon-ink'
-              }`}
-            >
-              <span>🥩</span>
-              <span>Carne</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedProtein('Pollo Frito')}
-              className={`flex-1 py-1 rounded-lg font-sub font-bold text-[10px] sm:text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                selectedProtein === 'Pollo Frito'
-                  ? 'bg-cartoon-red text-white shadow-xs'
-                  : 'text-cartoon-ink/65 hover:text-cartoon-ink'
-              }`}
-            >
-              <span>🍗</span>
-              <span>Pollo</span>
-            </button>
+      {/* 1. Imagen Grande y Destacada de la Hamburguesa / Plato */}
+      <div className="w-full h-32 sm:h-44 md:h-48 rounded-xl sm:rounded-2xl bg-cartoon-cream border-2 sm:border-3 border-cartoon-ink overflow-hidden relative mb-2 sm:mb-2.5 shadow-cartoon-xs group-hover:scale-[1.02] transition-transform">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover object-center block"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-4xl sm:text-5xl bg-cartoon-cream">
+            <span>{product.emoji || '🍔'}</span>
           </div>
         )}
 
-        {/* 4. Selector de Variantes (Simple vs Doble / 50cc vs 125cc) */}
-        {product.variants && product.variants.length > 0 && (
-          <div className="grid grid-cols-2 gap-1 sm:gap-1.5 mb-2 sm:mb-2.5">
-            {product.variants.map((v) => {
-              const isSelected = selectedVariant?.id === v.id;
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setSelectedVariant(v)}
-                  className={`py-1 px-1.5 rounded-xl border-2 border-cartoon-ink text-[10px] sm:text-xs font-sub font-bold transition-all cursor-pointer flex items-center justify-between leading-tight ${
-                    isSelected
-                      ? 'bg-cartoon-yellow text-cartoon-ink shadow-cartoon-xs -translate-y-0.5'
-                      : 'bg-white text-cartoon-ink/70 hover:bg-cartoon-cream'
-                  }`}
-                >
-                  <span className="truncate">{v.label}</span>
-                  <span className="text-[9px] opacity-75 ml-1">${v.price.toLocaleString('es-AR')}</span>
-                </button>
-              );
-            })}
+        {/* Badges Flotantes sobre la Foto */}
+        {product.badge && (
+          <span className="absolute top-2 left-2 bg-cartoon-yellow text-cartoon-ink font-sub font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg border border-cartoon-ink shadow-xs uppercase tracking-wider">
+            {product.badge}
+          </span>
+        )}
+        {isOutOfStock && (
+          <span className="absolute top-2 right-2 bg-cartoon-red text-white font-sub font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg border border-cartoon-ink shadow-xs uppercase tracking-wider">
+            AGOTADO
+          </span>
+        )}
+        {isLowStock && (
+          <span className="absolute top-2 right-2 bg-cartoon-yellow-dark text-cartoon-ink font-sub font-bold text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg border border-cartoon-ink shadow-xs">
+            ¡Últimas {product.stock}!
+          </span>
+        )}
+      </div>
+
+      {/* 2. Información del Plato: Nombre y Descripción */}
+      <div className="flex-1 flex flex-col justify-between mb-2">
+        <div>
+          <h4 className="font-display text-sm sm:text-base md:text-lg text-cartoon-ink leading-tight line-clamp-1 group-hover:text-cartoon-red transition-colors mb-1">
+            {product.name}
+          </h4>
+          <p className="font-sans text-[11px] sm:text-xs text-cartoon-ink/75 leading-snug line-clamp-2 mb-1.5">
+            {product.description}
+          </p>
+        </div>
+
+        {/* Etiqueta de Opciones si tiene proteínas o variantes */}
+        {(product.hasProteinChoice || hasVariants) && (
+          <div className="flex items-center gap-1 text-[10px] font-sub font-bold text-cartoon-ink/60">
+            <span>⚙️</span>
+            <span>
+              {product.hasProteinChoice && hasVariants
+                ? 'Carne o Pollo • Simple/Doble'
+                : product.hasProteinChoice
+                ? 'Elegí Carne o Pollo'
+                : 'Simple o Doble'}
+            </span>
           </div>
         )}
       </div>
 
-      {/* 5. Pie de Tarjeta: Precio y Botón de Acción */}
+      {/* 3. Pie de Tarjeta: Precio y Botón "Pedir" */}
       <div className="pt-2 border-t-2 border-dashed border-cartoon-ink/15 flex items-center justify-between gap-1.5 mt-auto">
         <div className="flex flex-col min-w-0">
-          <span className="font-display text-sm sm:text-lg text-cartoon-ink tracking-tight truncate">
-            ${currentPrice.toLocaleString('es-AR')}
+          {hasVariants && (
+            <span className="font-sub text-[9px] sm:text-[10px] text-cartoon-ink/60 leading-none -mb-0.5">
+              Desde
+            </span>
+          )}
+          <span className="font-display text-sm sm:text-base md:text-lg text-cartoon-ink tracking-tight truncate">
+            ${basePrice.toLocaleString('es-AR')}
           </span>
         </div>
 
         <button
           type="button"
           disabled={isOutOfStock}
-          onClick={handleAdd}
-          aria-label={isOutOfStock ? `${product.name} agotado` : `Agregar ${product.name}`}
-          className={`flex items-center justify-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border-2 border-cartoon-ink font-display text-xs sm:text-sm active:translate-x-[1px] active:translate-y-[1px] transition-all flex-shrink-0 ${
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCardClick();
+          }}
+          aria-label={isOutOfStock ? `${product.name} agotado` : `Pedir ${product.name}`}
+          className={`flex items-center justify-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-cartoon-ink font-display text-xs sm:text-sm active:translate-x-[1px] active:translate-y-[1px] transition-all flex-shrink-0 cursor-pointer ${
             isOutOfStock
               ? 'bg-cartoon-cream-dark text-cartoon-ink/40 border-cartoon-ink/30 cursor-not-allowed shadow-none'
-              : isAdded
-              ? 'bg-cartoon-green text-cartoon-ink shadow-none scale-95 cursor-pointer'
-              : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink shadow-cartoon-xs sm:shadow-cartoon-sm cursor-pointer'
+              : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink shadow-cartoon-xs sm:shadow-cartoon-sm'
           }`}
         >
           {isOutOfStock ? (
             <span>Agotado</span>
-          ) : isAdded ? (
-            <>
-              <Icon name="check" size={14} className="font-bold" />
-              <span>Listo</span>
-            </>
           ) : (
             <>
-              <Icon name="add" size={14} className="font-bold" />
+              <Icon name="add" size={15} className="font-bold" />
               <span>Pedir</span>
             </>
           )}

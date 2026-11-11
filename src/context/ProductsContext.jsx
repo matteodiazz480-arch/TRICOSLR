@@ -6,13 +6,14 @@ import {
   saveProduct,
   deleteProduct,
   initFirebase,
+  getLocalProducts,
 } from '../lib/firebase';
 
 const ProductsContext = createContext(null);
 
 export const ProductsProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(() => getLocalProducts());
+  const [loading, setLoading] = useState(false);
   const [firebaseStatus, setFirebaseStatus] = useState({ isConfigured: false });
 
   useEffect(() => {
