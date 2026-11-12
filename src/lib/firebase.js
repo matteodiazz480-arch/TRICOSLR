@@ -117,46 +117,147 @@ export const saveLocalProducts = (products) => {
 
 // Subscripción en tiempo real a la colección de productos
 export const subscribeToProducts = (callback) => {
-  const { isConfigured, db } = initFirebase();
+  // Siempre entregar primero el catálogo actual de cache local para carga instantánea
+  callback(getLocalProducts());
 
-  // Si Firebase está conectado a Firestore
-  if (isConfigured && db) {
-    const productsCol = collection(db, 'products');
+  // Escuchar eventos en la misma ventana (custom event)
+  const localSyncHandler = (e) => {
+    if (e.detail && Array.isArray(e.detail)) {
+      callback(e.detail);
+    }
+  };
+  window.addEventListener('tricos_products_sync', localSyncHandler);
 
-    const unsubscribe = onSnapshot(
-      productsCol,
-      async (snapshot) => {
-        if (snapshot.empty) {
-          // Si la colección está vacía en Firestore, sembrar los productos iniciales
-          const defaults = getLocalProducts();
-          for (const item of defaults) {
-            await setDoc(doc(db, 'products', item.id), item);
-          }
-          callback(defaults);
-          saveLocalProducts(defaults);
-        } else {
-          const list = [];
-          snapshot.forEach((d) => list.push({ ...d.data(), id: d.id }));
-          callback(list);
-          saveLocalProducts(list);
+  // Escuchar evento 'storage' nativo del navegador para sincronizar entre pestañas abiertas
+  const storageHandler = (e) => {
+    if (e.key === LOCAL_PRODUCTS_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          callback(parsed);
         }
-      },
-      (err) => {
-        console.warn('Firestore snapshot error, cayendo a almacenamiento local:', err);
-        callback(getLocalProducts());
-      }
-    );
+      } catch {}
+    }
+  };
+  window.addEventListener('storage', storageHandler);
 
-    return unsubscribe;
+  const { isConfigured, db } = initFirebase();
+  let unsubscribeFirestore = null;
+
+  // Si Firebase Firestore está conectado, mantener sincronización en la nube
+  if (isConfigured && db) {
+    try {
+      const productsCol = collection(db, 'products');
+      unsubscribeFirestore = onSnapshot(
+        productsCol,
+        async (snapshot) => {
+          if (snapshot.empty) {
+            const defaults = getLocalProducts();
+            for (const item of defaults) {
+              await setDoc(doc(db, 'products', item.id), item, { merge: true });
+            }
+            callback(defaults);
+            saveLocalProducts(defaults);
+          } else {
+            const list = [];
+            snapshot.forEach((d) => list.push({ ...d.data(), id: d.id }));
+            callback(list);
+            saveLocalProducts(list);
+          }
+        },
+        (err) => {
+          console.warn('Firestore snapshot error, manteniendo catálogo local:', err);
+          callback(getLocalProducts());
+        }
+      );
+    } catch (err) {
+      console.warn('Error iniciando onSnapshot en Firestore:', err);
+    }
   }
 
-  // Fallback: modo local reactivo con eventos de ventana
-  callback(getLocalProducts());
-  const handler = (e) => {
-    if (e.detail) callback(e.detail);
+  return () => {
+    window.removeEventListener('tricos_products_sync', localSyncHandler);
+    window.removeEventListener('storage', storageHandler);
+    if (typeof unsubscribeFirestore === 'function') {
+      unsubscribeFirestore();
+    }
   };
-  window.addEventListener('tricos_products_sync', handler);
-  return () => window.removeEventListener('tricos_products_sync', handler);
+};
+
+// Descontar stock atómicamente para un pedido completo
+export const discountStockForOrder = async (orderItems) => {
+  if (!Array.isArray(orderItems) || orderItems.length === 0) return getLocalProducts();
+
+  const current = getLocalProducts();
+  const next = [...current];
+  const affectedUpdates = [];
+
+  // 1. Agrupar deducciones consolidadas por producto base
+  const deductionsByProdId = new Map();
+
+  for (const item of orderItems) {
+    if (!item) continue;
+    const qty = Math.max(1, Math.round(Number(item.quantity) || 1));
+    const targetId = item.productId || item.id || item.originalId;
+    const origId = item.originalId;
+    const rawName = (item.name || item.baseName || '').trim().toLowerCase();
+
+    // Búsqueda inteligente y tolerante en el catálogo de productos
+    const matched = next.find((p) => {
+      if (!p) return false;
+      if (targetId && p.id === targetId) return true;
+      if (origId && p.id === origId) return true;
+      if (targetId && typeof targetId === 'string' && targetId.startsWith(p.id)) return true;
+      if (origId && typeof origId === 'string' && origId.startsWith(p.id)) return true;
+      if (rawName && p.name) {
+        const pName = p.name.trim().toLowerCase();
+        if (rawName === pName || rawName.startsWith(pName) || pName.startsWith(rawName)) return true;
+      }
+      return false;
+    });
+
+    if (matched) {
+      const prev = deductionsByProdId.get(matched.id) || 0;
+      deductionsByProdId.set(matched.id, prev + qty);
+    }
+  }
+
+  // 2. Aplicar la resta a cada producto encontrado
+  deductionsByProdId.forEach((deductQty, prodId) => {
+    const idx = next.findIndex((p) => p.id === prodId);
+    if (idx !== -1) {
+      const currentStock = Number(next[idx].stock !== undefined ? next[idx].stock : 35);
+      const newStock = Math.max(0, currentStock - deductQty);
+      next[idx] = {
+        ...next[idx],
+        stock: newStock,
+        updatedAt: new Date().toISOString(),
+      };
+      affectedUpdates.push({ id: prodId, stock: newStock });
+    }
+  });
+
+  // 3. Persistir en localStorage y notificar a la aplicación de inmediato
+  saveLocalProducts(next);
+
+  // 4. Sincronizar en segundo plano con Firestore si está configurado
+  const { isConfigured, db } = initFirebase();
+  if (isConfigured && db && affectedUpdates.length > 0) {
+    Promise.allSettled(
+      affectedUpdates.map(({ id, stock }) =>
+        setDoc(doc(db, 'products', id), { stock, updatedAt: new Date().toISOString() }, { merge: true })
+      )
+    ).catch((err) => {
+      console.warn('Error sincronizando deducción de stock en Firestore:', err);
+    });
+  }
+
+  logSecurityEvent('ORDER_STOCK_DEDUCTED', {
+    itemsCount: orderItems.length,
+    affectedCount: affectedUpdates.length,
+  });
+
+  return next;
 };
 
 // Actualizar stock de un producto específico

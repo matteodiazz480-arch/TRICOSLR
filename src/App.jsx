@@ -24,7 +24,7 @@ const AdminDashboard = React.lazy(() =>
 );
 
 function StoreApp() {
-  const { products, updateStock } = useProducts();
+  const { products, updateStock, discountStock } = useProducts();
   const [cartItems, setCartItems] = useState(() => {
     try {
       const saved = localStorage.getItem('tricos_cart');
@@ -152,23 +152,19 @@ function StoreApp() {
   };
 
   const handleOrderSuccess = (orderDetails) => {
-    // 1. Descuento automático del stock de cada hamburguesa / producto pedido
+    // 1. Descuento automático e inmediato del stock en el panel
     try {
-      const orderItems = orderDetails?.items || cartItems.map((item) => ({
-        productId: item.product.originalId || item.product.id,
-        name: item.product.name,
-        quantity: item.quantity,
-      }));
+      const orderItems =
+        orderDetails?.items && orderDetails.items.length > 0
+          ? orderDetails.items
+          : cartItems.map((item) => ({
+              productId: item.product.originalId || item.product.id,
+              originalId: item.product.originalId || item.product.id,
+              name: item.product.name,
+              quantity: item.quantity,
+            }));
 
-      orderItems.forEach((orderItem) => {
-        const prodId = orderItem.productId;
-        const currentProd = products.find((p) => p.id === prodId);
-        if (currentProd) {
-          const currentStock = currentProd.stock !== undefined ? currentProd.stock : 35;
-          const newStock = Math.max(0, currentStock - (orderItem.quantity || 1));
-          updateStock(prodId, newStock);
-        }
-      });
+      discountStock(orderItems);
     } catch (err) {
       console.warn('Error descontando stock tras pedido:', err);
     }

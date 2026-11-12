@@ -147,6 +147,7 @@ export const CartDrawer = ({
       deliveryType,
       items: items.map((item) => ({
         productId: item.product.originalId || item.product.id,
+        originalId: item.product.originalId || item.product.id,
         name: item.product.name,
         quantity: item.quantity,
         price: item.product.price,

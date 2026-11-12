@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   subscribeToProducts,
   updateProductStock,
   toggleProductActive,
   saveProduct,
   deleteProduct,
+  discountStockForOrder,
   initFirebase,
   getLocalProducts,
 } from '../lib/firebase';
@@ -32,21 +33,35 @@ export const ProductsProvider = ({ children }) => {
     };
   }, []);
 
-  const handleUpdateStock = async (productId, newStock) => {
-    return await updateProductStock(productId, newStock);
-  };
+  const handleUpdateStock = useCallback(async (productId, newStock) => {
+    const next = await updateProductStock(productId, newStock);
+    if (next) setProducts(next);
+    return next;
+  }, []);
 
-  const handleToggleActive = async (productId, currentActive) => {
-    return await toggleProductActive(productId, currentActive);
-  };
+  const handleDiscountStock = useCallback(async (orderItems) => {
+    const next = await discountStockForOrder(orderItems);
+    if (next) setProducts(next);
+    return next;
+  }, []);
 
-  const handleSaveProduct = async (productData) => {
-    return await saveProduct(productData);
-  };
+  const handleToggleActive = useCallback(async (productId, currentActive) => {
+    const next = await toggleProductActive(productId, currentActive);
+    if (next) setProducts(next);
+    return next;
+  }, []);
 
-  const handleDeleteProduct = async (productId) => {
-    return await deleteProduct(productId);
-  };
+  const handleSaveProduct = useCallback(async (productData) => {
+    const next = await saveProduct(productData);
+    if (next) setProducts(next);
+    return next;
+  }, []);
+
+  const handleDeleteProduct = useCallback(async (productId) => {
+    const next = await deleteProduct(productId);
+    if (next) setProducts(next);
+    return next;
+  }, []);
 
   return (
     <ProductsContext.Provider
@@ -55,6 +70,7 @@ export const ProductsProvider = ({ children }) => {
         loading,
         firebaseStatus,
         updateStock: handleUpdateStock,
+        discountStock: handleDiscountStock,
         toggleActive: handleToggleActive,
         saveProduct: handleSaveProduct,
         deleteProduct: handleDeleteProduct,

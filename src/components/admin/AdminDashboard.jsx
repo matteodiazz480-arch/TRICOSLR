@@ -653,99 +653,143 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               })}
             </div>
 
-            {/* Catálogo en Rejilla Responsiva de 2 Columnas en PC para aprovechar todo el ancho */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 sm:gap-4">
+            {/* Catálogo en Rejilla de Tarjetas: 2 Columnas Lado a Lado en Celular y 3-4 en Escritorio */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
               {filteredProducts.map((prod) => {
-                const isOutOfStock = (prod.stock || 0) === 0;
+                const stock = Number(prod.stock !== undefined ? prod.stock : 35);
+                const isOutOfStock = stock <= 0 || prod.active === false;
+                const isLowStock = stock > 0 && stock <= 5;
+                const price = prod.price || prod.variants?.[0]?.price || 0;
 
                 return (
                   <div
                     key={prod.id}
-                    className={`p-4 sm:p-5 rounded-2xl bg-white border-2 border-gray-200 flex items-center justify-between gap-3 shadow-xs hover:border-cartoon-yellow/70 hover:shadow-sm transition-all ${
-                      !prod.active ? 'opacity-40 bg-gray-50' : ''
+                    className={`group bg-white rounded-2xl border-2 sm:border-3 border-gray-200 hover:border-cartoon-yellow/80 hover:shadow-cartoon-sm transition-all duration-200 flex flex-col justify-between overflow-hidden p-2.5 sm:p-3.5 relative ${
+                      !prod.active ? 'opacity-55 bg-gray-50' : ''
                     }`}
                   >
-                    {/* Info */}
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cartoon-cream border border-gray-200 flex items-center justify-center text-2xl flex-shrink-0 shadow-xs overflow-hidden">
-                        {prod.image ? (
-                          <img src={prod.image} alt={prod.name} className="w-full h-full object-cover block" />
-                        ) : (
-                          <span>{prod.emoji || '🍔'}</span>
+                    {/* 1. Imagen Grande y Destacada de la Hamburguesa / Plato */}
+                    <div className="relative w-full h-24 sm:h-32 md:h-36 rounded-xl bg-cartoon-cream border border-gray-200 overflow-hidden flex items-center justify-center mb-2 flex-shrink-0">
+                      {prod.image ? (
+                        <img
+                          src={prod.image}
+                          alt={prod.name}
+                          className="w-full h-full object-cover object-center block group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="text-3xl sm:text-4xl">{prod.emoji || '🍔'}</span>
+                      )}
+
+                      {/* Badges de Estado sobre la Foto */}
+                      <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end pointer-events-none">
+                        {!prod.active && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-gray-900/90 text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
+                            PAUSADO
+                          </span>
+                        )}
+                        {prod.active && isOutOfStock && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-cartoon-red text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
+                            AGOTADO
+                          </span>
+                        )}
+                        {prod.active && !isOutOfStock && isLowStock && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-amber-500 text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
+                            ÚLTIMAS {stock}
+                          </span>
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-display text-base sm:text-lg text-cartoon-ink truncate">{prod.name}</h4>
-                          {isOutOfStock && (
-                            <span className="px-2 py-0.5 rounded-md bg-cartoon-red text-white font-sub font-bold text-[10px]">
-                              AGOTADO
-                            </span>
-                          )}
-                        </div>
-                        <span className="font-sub font-bold text-sm sm:text-base text-amber-600">
-                          {money(prod.price || prod.variants?.[0]?.price)}
+
+                      {prod.badge && (
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-cartoon-yellow text-cartoon-ink font-sub font-black text-[9px] uppercase tracking-wider border border-cartoon-ink/30 shadow-xs pointer-events-none">
+                          {prod.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 2. Información del Plato: Nombre Completo y Precio */}
+                    <div className="mb-2 flex-1 min-w-0">
+                      <h4
+                        className="font-display text-xs sm:text-sm text-cartoon-ink font-bold line-clamp-2 leading-snug min-h-[2rem] sm:min-h-[2.4rem] flex items-center"
+                        title={prod.name}
+                      >
+                        {prod.name}
+                      </h4>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="font-sub font-black text-xs sm:text-sm text-amber-600">
+                          {money(price)}
+                        </span>
+                        <span className="font-sub text-[10px] sm:text-xs text-gray-500 font-bold">
+                          {stock} u.
                         </span>
                       </div>
                     </div>
 
-                    {/* Controles de Stock */}
-                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                      <div className="flex items-center gap-1 bg-gray-50 p-1 sm:p-1.5 rounded-xl border border-gray-200 shadow-inner">
-                        <button
-                          type="button"
-                          onClick={() => updateStock(prod.id, Math.max(0, (prod.stock || 0) - 1))}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-200 hover:bg-cartoon-red hover:text-white font-display text-sm text-gray-800 flex items-center justify-center cursor-pointer transition-colors"
-                        >
-                          -
-                        </button>
+                    {/* 3. Control Táctil de Stock a Ancho Completo */}
+                    <div className="flex items-center justify-between bg-gray-50 rounded-xl border border-gray-200 p-1 mb-2 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => updateStock(prod.id, Math.max(0, stock - 1))}
+                        aria-label="Restar 1 unidad"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-cartoon-red hover:text-white border border-gray-200 font-display text-sm font-bold text-gray-800 flex items-center justify-center cursor-pointer transition-colors active:scale-90 shadow-2xs"
+                      >
+                        -
+                      </button>
+                      <div className="flex items-center justify-center flex-1 px-1">
                         <input
                           type="number"
                           min="0"
-                          value={prod.stock || 0}
+                          value={stock}
                           onChange={(e) => updateStock(prod.id, e.target.value)}
-                          className="w-11 sm:w-14 text-center font-display text-sm sm:text-base bg-transparent text-gray-900 focus:outline-none"
+                          className="w-full text-center font-display text-xs sm:text-sm font-bold bg-transparent text-gray-900 focus:outline-none"
                         />
-                        <button
-                          type="button"
-                          onClick={() => updateStock(prod.id, (prod.stock || 0) + 1)}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-200 hover:bg-emerald-500 hover:text-white font-display text-sm text-gray-800 flex items-center justify-center cursor-pointer transition-colors"
-                        >
-                          +
-                        </button>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => updateStock(prod.id, stock + 1)}
+                        aria-label="Sumar 1 unidad"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-emerald-500 hover:text-white border border-gray-200 font-display text-sm font-bold text-gray-800 flex items-center justify-center cursor-pointer transition-colors active:scale-90 shadow-2xs"
+                      >
+                        +
+                      </button>
+                    </div>
 
-                      <div className="flex items-center gap-1 sm:gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => toggleActive(prod.id, prod.active)}
-                          title={prod.active ? 'Pausar' : 'Reactivar'}
-                          className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center cursor-pointer transition-colors ${
-                            prod.active ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-cartoon-red text-white'
-                          }`}
-                        >
-                          <Icon name={prod.active ? 'visibility' : 'visibility_off'} size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingProduct(prod);
-                            setModalOpen(true);
-                          }}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-cartoon-ink flex items-center justify-center cursor-pointer transition-colors"
-                          title="Editar plato"
-                        >
-                          <Icon name="edit" size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteCandidate(prod)}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-100 text-gray-400 hover:text-cartoon-red hover:bg-rose-50 flex items-center justify-center cursor-pointer transition-colors"
-                          title="Eliminar plato"
-                        >
-                          <Icon name="delete" size={16} />
-                        </button>
-                      </div>
+                    {/* 4. Barra de Acciones Limpia y Espaciosa */}
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingProduct(prod);
+                          setModalOpen(true);
+                        }}
+                        className="flex-1 py-1.5 px-2 rounded-lg bg-gray-100 hover:bg-cartoon-yellow hover:text-cartoon-ink font-sub font-bold text-[11px] sm:text-xs text-gray-700 flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95 border border-gray-200/60"
+                        title="Editar información del plato"
+                      >
+                        <Icon name="edit" size={13} />
+                        <span>Editar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(prod.id, prod.active)}
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors active:scale-95 border ${
+                          prod.active
+                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200'
+                            : 'bg-cartoon-red text-white border-cartoon-red'
+                        }`}
+                        title={prod.active ? 'Pausar plato (ocultar de la carta)' : 'Reactivar plato'}
+                      >
+                        <Icon name={prod.active ? 'visibility' : 'visibility_off'} size={14} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteCandidate(prod)}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 text-gray-400 hover:text-cartoon-red hover:bg-rose-50 border border-gray-200 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                        title="Eliminar plato"
+                      >
+                        <Icon name="delete" size={14} />
+                      </button>
                     </div>
                   </div>
                 );
