@@ -105,11 +105,24 @@ export const getLocalProducts = () => {
   return defaults;
 };
 
+// Helper global y estricto para verificar si un producto está agotado
+export const isProductOutOfStock = (product) => {
+  if (!product) return true;
+  if (product.active === false) return true;
+  const n = Number(product.stock);
+  return isNaN(n) || n <= 0;
+};
+
 // Guardar productos en cache local y emitir evento en tiempo real
 export const saveLocalProducts = (products) => {
   try {
     localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(products));
     window.dispatchEvent(new CustomEvent('tricos_products_sync', { detail: products }));
+    try {
+      const ch = new BroadcastChannel('tricos_products_channel');
+      ch.postMessage(products);
+      ch.close();
+    } catch {}
   } catch (e) {
     console.error('Error guardando productos locales:', e);
   }
@@ -140,6 +153,17 @@ export const subscribeToProducts = (callback) => {
     }
   };
   window.addEventListener('storage', storageHandler);
+
+  // BroadcastChannel para sincronización instantánea entre pestañas
+  let channel = null;
+  try {
+    channel = new BroadcastChannel('tricos_products_channel');
+    channel.onmessage = (msg) => {
+      if (msg.data && Array.isArray(msg.data)) {
+        callback(msg.data);
+      }
+    };
+  } catch {}
 
   const { isConfigured, db } = initFirebase();
   let unsubscribeFirestore = null;
@@ -178,6 +202,7 @@ export const subscribeToProducts = (callback) => {
   return () => {
     window.removeEventListener('tricos_products_sync', localSyncHandler);
     window.removeEventListener('storage', storageHandler);
+    if (channel) channel.close();
     if (typeof unsubscribeFirestore === 'function') {
       unsubscribeFirestore();
     }

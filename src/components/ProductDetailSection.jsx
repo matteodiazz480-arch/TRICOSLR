@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
+import { isProductOutOfStock } from '../lib/firebase';
 
 export const ProductDetailSection = ({
   product,
@@ -17,20 +18,21 @@ export const ProductDetailSection = ({
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
 
+  const isOutOfStock = isProductOutOfStock(product);
+  const availableStock = Math.max(0, Number(product?.stock) || 0);
+  const isLowStock = !isOutOfStock && availableStock > 0 && availableStock <= 4;
+
   // Reiniciar estado cuando cambia el producto
   useEffect(() => {
     setSelectedVariant(product.variants && product.variants.length > 0 ? product.variants[0] : null);
     setSelectedProtein('Carne');
-    setQuantity(1);
+    setQuantity(isOutOfStock ? 0 : 1);
     setIsAdded(false);
     window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [product]);
+  }, [product, isOutOfStock]);
 
   const currentUnitPrice = selectedVariant ? selectedVariant.price : product.price;
   const totalPrice = currentUnitPrice * quantity;
-
-  const isOutOfStock = product.stock !== undefined && (product.stock === 0 || product.active === false);
-  const isLowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 4;
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
@@ -239,55 +241,66 @@ export const ProductDetailSection = ({
               )}
 
               {/* Selector de Cantidad */}
-              <div className="flex items-center justify-between bg-cartoon-cream/50 p-3 sm:p-3.5 rounded-2xl border-2 border-cartoon-ink/20">
+              <div className={`flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border-2 transition-all ${
+                isOutOfStock ? 'bg-gray-100 border-gray-200 opacity-60' : 'bg-cartoon-cream/50 border-cartoon-ink/20'
+              }`}>
                 <span className="font-display text-xs sm:text-sm text-cartoon-ink">
-                  Cantidad a pedir:
+                  {isOutOfStock ? 'Disponibilidad:' : 'Cantidad a pedir:'}
                 </span>
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1}
-                    className="w-10 h-10 rounded-xl bg-white border-2 border-cartoon-ink font-display text-base text-cartoon-ink flex items-center justify-center cursor-pointer hover:bg-cartoon-yellow transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                    disabled={isOutOfStock || quantity <= 1}
+                    className="w-10 h-10 rounded-xl bg-white border-2 border-cartoon-ink font-display text-base text-cartoon-ink flex items-center justify-center cursor-pointer hover:bg-cartoon-yellow transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
                   >
                     -
                   </button>
                   <span className="w-8 text-center font-display text-lg text-cartoon-ink">
-                    {quantity}
+                    {isOutOfStock ? 0 : quantity}
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => q + 1)}
-                    className="w-10 h-10 rounded-xl bg-white border-2 border-cartoon-ink font-display text-base text-cartoon-ink flex items-center justify-center cursor-pointer hover:bg-cartoon-yellow transition-colors shadow-xs"
+                    onClick={() => setQuantity((q) => Math.min(availableStock || 1, q + 1))}
+                    disabled={isOutOfStock || quantity >= availableStock}
+                    className="w-10 h-10 rounded-xl bg-white border-2 border-cartoon-ink font-display text-base text-cartoon-ink flex items-center justify-center cursor-pointer hover:bg-cartoon-yellow transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
                   >
                     +
                   </button>
                 </div>
               </div>
 
-              {/* Botón Principal Solicitado: "Pedir" */}
+              {/* Botón Principal: "Pedir" o "Plato Agotado" */}
               <div className="pt-2">
                 <button
                   type="button"
                   disabled={isOutOfStock}
                   onClick={handleAddToCart}
-                  className={`w-full py-4 sm:py-4.5 px-6 rounded-2xl border-3 sm:border-4 border-cartoon-ink font-display text-lg sm:text-xl transition-all flex items-center justify-between shadow-cartoon hover:shadow-cartoon-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer ${
+                  className={`w-full py-4 sm:py-4.5 px-6 rounded-2xl border-3 sm:border-4 font-display text-lg sm:text-xl transition-all flex items-center justify-between shadow-cartoon ${
                     isOutOfStock
-                      ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed shadow-none'
+                      ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed shadow-none opacity-80'
                       : isAdded
-                      ? 'bg-cartoon-green text-cartoon-ink'
-                      : 'btn-cartoon-primary hover:bg-cartoon-yellow-dark text-cartoon-ink'
+                      ? 'bg-cartoon-green text-cartoon-ink border-cartoon-ink'
+                      : 'btn-cartoon-primary hover:bg-cartoon-yellow-dark text-cartoon-ink border-cartoon-ink hover:shadow-cartoon-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon name={isAdded ? 'check' : 'add_shopping_cart'} size={24} />
-                    <span>{isAdded ? '¡Agregado al Pedido!' : 'Pedir'}</span>
+                    <Icon name={isOutOfStock ? 'block' : isAdded ? 'check' : 'add_shopping_cart'} size={24} />
+                    <span>{isOutOfStock ? 'Plato Agotado' : isAdded ? '¡Agregado al Pedido!' : 'Pedir'}</span>
                   </div>
                   <span className="font-display text-xl sm:text-2xl">
-                    ${totalPrice.toLocaleString('es-AR')}
+                    {isOutOfStock ? 'Sin Stock' : `$${totalPrice.toLocaleString('es-AR')}`}
                   </span>
                 </button>
               </div>
+
+              {/* Alerta Destacada cuando el plato está Agotado */}
+              {isOutOfStock && (
+                <div className="p-3 bg-rose-50 border-2 border-rose-300 rounded-2xl flex items-center gap-2.5 text-rose-800 text-xs font-sub font-bold animate-fadeIn">
+                  <Icon name="error_outline" size={20} className="text-rose-600 flex-shrink-0" />
+                  <span>Este plato se encuentra momentáneamente sin stock. Podés elegir cualquier otra de nuestras opciones disponibles en la carta.</span>
+                </div>
+              )}
 
               {/* Notificación y Accesos Rápidos tras Agregar */}
               {isAdded && (

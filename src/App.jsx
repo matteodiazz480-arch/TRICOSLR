@@ -106,16 +106,30 @@ function StoreApp() {
   );
 
   const handleAddToCart = (product) => {
-    // Protección de stock en tiempo real
-    if (product.stock !== undefined && product.stock <= 0) return;
+    const baseId = product.originalId || product.id;
+    const live = products.find((p) => p.id === baseId || (p.id && baseId.startsWith(p.id)));
+    const liveStock = live ? Number(live.stock ?? 35) : Number(product.stock ?? 35);
+    const liveActive = live ? live.active !== false : product.active !== false;
+
+    // Protección estricta: si está sin stock o inactivo, bloquear completamente
+    if (!liveActive || liveStock <= 0) {
+      return;
+    }
 
     setCartItems((prev) => {
+      const currentInCartForBase = prev
+        .filter((i) => {
+          const itemBaseId = i.product.originalId || i.product.id;
+          return itemBaseId === baseId || (itemBaseId && itemBaseId.startsWith(baseId));
+        })
+        .reduce((sum, i) => sum + i.quantity, 0);
+
+      if (currentInCartForBase >= liveStock) {
+        return prev;
+      }
+
       const existingIndex = prev.findIndex((i) => i.product.id === product.id);
       if (existingIndex > -1) {
-        const currentQty = prev[existingIndex].quantity;
-        if (product.stock !== undefined && currentQty >= product.stock) {
-          return prev;
-        }
         const next = [...prev];
         next[existingIndex] = {
           ...next[existingIndex],
@@ -123,7 +137,7 @@ function StoreApp() {
         };
         return next;
       }
-      return [...prev, { product, quantity: 1, note: '' }];
+      return [...prev, { product: { ...product, stock: liveStock }, quantity: 1, note: '' }];
     });
   };
 
@@ -133,13 +147,17 @@ function StoreApp() {
       return;
     }
     setCartItems((prev) =>
-      prev.map((item) => {
-        if (item.product.id !== productId) return item;
-        // Limitar a stock disponible si está definido
-        const maxStock = item.product.stock !== undefined ? item.product.stock : 999;
-        const capped = Math.min(newQuantity, maxStock);
-        return { ...item, quantity: capped };
-      })
+      prev
+        .map((item) => {
+          if (item.product.id !== productId) return item;
+          const baseId = item.product.originalId || item.product.id;
+          const live = products.find((p) => p.id === baseId || (p.id && baseId.startsWith(p.id)));
+          const maxStock = live ? Number(live.stock ?? 35) : Number(item.product.stock ?? 35);
+          if (maxStock <= 0) return { ...item, quantity: 0 };
+          const capped = Math.min(newQuantity, maxStock);
+          return { ...item, quantity: capped };
+        })
+        .filter((item) => item.quantity > 0)
     );
   };
 
@@ -236,9 +254,11 @@ function StoreApp() {
 
       <main className="flex-1">
         {selectedProduct ? (
-          /* Apartado individual del plato (lleva al usuario al apartado sin abrir ventanas emergentes) */
+          /* Apartado individual del plato con stock reactivo en tiempo real */
           <ProductDetailSection
-            product={selectedProduct}
+            product={
+              products.find((p) => p.id === selectedProduct.id) || selectedProduct
+            }
             onBack={handleBackToMenu}
             onAddToCart={handleAddToCart}
             onOpenCart={() => setIsCartOpen(true)}
@@ -314,6 +334,7 @@ function StoreApp() {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         items={cartItems}
+        products={products}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         deliveryType={deliveryType}

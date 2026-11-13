@@ -1,9 +1,10 @@
 import React from 'react';
 import { Icon } from './Icon';
+import { isProductOutOfStock } from '../lib/firebase';
 
 export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
-  const isOutOfStock = product.stock !== undefined && (product.stock === 0 || product.active === false);
-  const isLowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 4;
+  const isOutOfStock = isProductOutOfStock(product);
+  const isLowStock = !isOutOfStock && Number(product.stock) > 0 && Number(product.stock) <= 4;
 
   const basePrice = product.variants && product.variants.length > 0
     ? product.variants[0].price
@@ -117,13 +118,13 @@ export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
           disabled={isOutOfStock}
           onClick={(e) => {
             e.stopPropagation();
-            handleCardClick();
+            if (!isOutOfStock) handleCardClick();
           }}
           aria-label={isOutOfStock ? `${product.name} agotado` : `Pedir ${product.name}`}
-          className={`flex items-center justify-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-cartoon-ink font-display text-xs sm:text-sm active:translate-x-[1px] active:translate-y-[1px] transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center justify-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 font-display text-xs sm:text-sm transition-all flex-shrink-0 ${
             isOutOfStock
-              ? 'bg-cartoon-cream-dark text-cartoon-ink/40 border-cartoon-ink/30 cursor-not-allowed shadow-none'
-              : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink shadow-cartoon-xs sm:shadow-cartoon-sm'
+              ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed shadow-none opacity-80'
+              : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink border-cartoon-ink shadow-cartoon-xs sm:shadow-cartoon-sm cursor-pointer active:translate-x-[1px] active:translate-y-[1px]'
           }`}
         >
           {isOutOfStock ? (

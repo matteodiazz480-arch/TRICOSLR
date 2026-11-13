@@ -1,16 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { Icon } from './Icon';
 import { DeliveryLocationPicker } from './DeliveryLocationPicker';
 import { RESTAURANT_INFO } from '../data/products';
 import { isFreeDelivery, shippingFor } from '../lib/delivery';
+import { isProductOutOfStock } from '../lib/firebase';
 
-const money = (n) => `$${n.toLocaleString('es-AR')}`;
+const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
 export const CartDrawer = ({
   isOpen,
   onClose,
   items,
+  products = [],
   onUpdateQuantity,
   onRemoveItem,
   deliveryType,
@@ -33,6 +35,18 @@ export const CartDrawer = ({
     changeAmount: '',
   });
   const [errors, setErrors] = useState({});
+
+  // Detección en tiempo real de platos sin stock en el carrito
+  const outOfStockItems = useMemo(() => {
+    return items.filter((item) => {
+      const baseId = item.product.originalId || item.product.id;
+      const live = products.find((p) => p.id === baseId || (p.id && baseId.startsWith(p.id)));
+      if (!live) return false;
+      return isProductOutOfStock(live);
+    });
+  }, [items, products]);
+
+  const hasOutOfStockItems = outOfStockItems.length > 0;
 
   // Bloquear el scroll del fondo mientras la tienda esté abierta para que nunca se asome la página principal
   useEffect(() => {
@@ -82,6 +96,10 @@ export const CartDrawer = ({
 
   // Validar etapa de entrega antes de pasar a datos
   const handleProceedToCheckout = () => {
+    if (hasOutOfStockItems) {
+      setStep('cart');
+      return;
+    }
     if (deliveryType === 'delivery' && !deliveryInfo) {
       setLocationError('Marcá tu casa en el mapa para continuar');
       return;
@@ -140,7 +158,13 @@ export const CartDrawer = ({
     L.push('');
     L.push(`*TOTAL: ${money(total)}*`);
 
-    window.open(`https://wa.me/${RESTAURANT_INFO.phone}?text=${encodeURIComponent(L.join('\n'))}`, '_blank');
+    if (hasOutOfStockItems) {
+      alert('Uno o más platos en tu carrito se han quedado sin stock. Por favor quitalos para continuar.');
+      setStep('cart');
+      return;
+    }
+
+    // 1. Descontar stock y registrar ganancias de inmediato antes de salir de la pestaña
     onOrderSuccess({
       customerName: formData.name,
       total,
@@ -153,6 +177,14 @@ export const CartDrawer = ({
         price: item.product.price,
       })),
     });
+
+    // 2. Abrir WhatsApp para enviar el pedido al local
+    try {
+      window.open(`https://wa.me/${RESTAURANT_INFO.phone}?text=${encodeURIComponent(L.join('\n'))}`, '_blank');
+    } catch (e) {
+      console.warn('Error abriendo WhatsApp:', e);
+    }
+
     setDeliveryInfo(null);
     setStep('cart');
   };
@@ -260,49 +292,71 @@ export const CartDrawer = ({
 
                   {/* Lista de productos agregados */}
                   <div className="space-y-2">
-                    {items.map(({ product, quantity }) => (
-                      <div
-                        key={product.id}
-                        className="bg-white p-2.5 sm:p-3 rounded-xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-sm flex items-center gap-2.5"
-                      >
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-cartoon-cream-dark border-2 border-cartoon-ink flex-shrink-0 flex items-center justify-center">
-                          <span className="text-xl sm:text-2xl select-none">{product.emoji || '🍔'}</span>
-                        </div>
-                        <div className="flex-1 min-w-0 pr-1">
-                          <h4 className="font-display text-xs sm:text-sm text-cartoon-ink truncate leading-tight">{product.name}</h4>
-                          <div className="font-sub font-bold text-[10px] sm:text-xs text-cartoon-ink/60 mb-1">
-                            {money(product.price)} c/u
+                    {items.map(({ product, quantity }) => {
+                      const isItemOutOfStock = outOfStockItems.some((it) => it.product.id === product.id);
+
+                      return (
+                        <div
+                          key={product.id}
+                          className={`p-2.5 sm:p-3 rounded-xl border-2 sm:border-3 shadow-cartoon-sm flex items-center gap-2.5 transition-all ${
+                            isItemOutOfStock
+                              ? 'bg-rose-50/80 border-cartoon-red'
+                              : 'bg-white border-cartoon-ink'
+                          }`}
+                        >
+                          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-cartoon-cream-dark border-2 border-cartoon-ink flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+                            {product.image ? (
+                              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xl sm:text-2xl select-none">{product.emoji || '🍔'}</span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="font-display text-xs sm:text-sm text-cartoon-ink truncate leading-tight">
+                                {product.name}
+                              </h4>
+                              {isItemOutOfStock && (
+                                <span className="px-1.5 py-0.5 rounded bg-cartoon-red text-white text-[9px] font-black uppercase tracking-wider">
+                                  AGOTADO
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-sub font-bold text-[10px] sm:text-xs text-cartoon-ink/60 mb-1">
+                              {money(product.price)} c/u
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => onUpdateQuantity(product.id, quantity - 1)}
+                                aria-label="Restar"
+                                className="w-6 h-6 rounded-md bg-cartoon-cream hover:bg-cartoon-cream-dark border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer"
+                              >
+                                <Icon name="remove" size={12} />
+                              </button>
+                              <span className="font-display text-xs sm:text-sm text-cartoon-ink w-4 text-center">{quantity}</span>
+                              <button
+                                disabled={isItemOutOfStock}
+                                onClick={() => onUpdateQuantity(product.id, quantity + 1)}
+                                aria-label="Sumar"
+                                className="w-6 h-6 rounded-md bg-cartoon-cream hover:bg-cartoon-cream-dark border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                <Icon name="add" size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end justify-between self-stretch flex-shrink-0">
                             <button
-                              onClick={() => onUpdateQuantity(product.id, quantity - 1)}
-                              aria-label="Restar"
-                              className="w-6 h-6 rounded-md bg-cartoon-cream hover:bg-cartoon-cream-dark border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer"
+                              onClick={() => onRemoveItem(product.id)}
+                              className="text-cartoon-ink/40 hover:text-cartoon-red transition-colors p-1 cursor-pointer"
+                              title="Eliminar producto"
                             >
-                              <Icon name="remove" size={12} />
+                              <Icon name="delete" size={15} />
                             </button>
-                            <span className="font-display text-xs sm:text-sm text-cartoon-ink w-4 text-center">{quantity}</span>
-                            <button
-                              onClick={() => onUpdateQuantity(product.id, quantity + 1)}
-                              aria-label="Sumar"
-                              className="w-6 h-6 rounded-md bg-cartoon-cream hover:bg-cartoon-cream-dark border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer"
-                            >
-                              <Icon name="add" size={12} />
-                            </button>
+                            <span className="font-display text-xs sm:text-sm text-cartoon-ink">{money(product.price * quantity)}</span>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end justify-between self-stretch flex-shrink-0">
-                          <button
-                            onClick={() => onRemoveItem(product.id)}
-                            className="text-cartoon-ink/40 hover:text-cartoon-red transition-colors p-1 cursor-pointer"
-                            title="Eliminar producto"
-                          >
-                            <Icon name="delete" size={15} />
-                          </button>
-                          <span className="font-display text-xs sm:text-sm text-cartoon-ink">{money(product.price * quantity)}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Cupón */}
@@ -359,9 +413,22 @@ export const CartDrawer = ({
                     <span className="text-cartoon-red">{money(subtotal - discountAmount)}</span>
                   </div>
                 </div>
+                {hasOutOfStockItems && (
+                  <div className="p-2.5 bg-rose-50 border-2 border-rose-400 rounded-xl flex items-center gap-2 text-rose-800 text-xs font-sub font-bold animate-fadeIn">
+                    <Icon name="error_outline" size={18} className="text-rose-600 flex-shrink-0" />
+                    <span>Tenés platos agotados en tu pedido. Por favor eliminalos para continuar.</span>
+                  </div>
+                )}
                 <button
-                  onClick={() => setStep('location')}
-                  className="w-full btn-cartoon-red text-xs sm:text-sm py-2.5 sm:py-3 flex items-center justify-center gap-1.5 group cursor-pointer"
+                  disabled={hasOutOfStockItems}
+                  onClick={() => {
+                    if (!hasOutOfStockItems) setStep('location');
+                  }}
+                  className={`w-full text-xs sm:text-sm py-2.5 sm:py-3 flex items-center justify-center gap-1.5 group transition-all ${
+                    hasOutOfStockItems
+                      ? 'bg-gray-200 text-gray-400 border-2 border-gray-300 cursor-not-allowed rounded-xl font-display'
+                      : 'btn-cartoon-red cursor-pointer'
+                  }`}
                 >
                   <span>CONTINUAR</span>
                   <Icon name="arrow_forward" size={16} className="transition-transform group-hover:translate-x-1" />

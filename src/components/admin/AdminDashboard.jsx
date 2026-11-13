@@ -6,6 +6,7 @@ import { useProducts } from '../../context/ProductsContext';
 import { clearSession } from '../../lib/security';
 import {
   getFinances,
+  subscribeToFinances,
   addEarning,
   addExpense,
   deleteFinanceItem,
@@ -19,14 +20,15 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   // Pestañas principales: 'ganancias' | 'gastos' | 'balance' | 'stock'
   const [activeTab, setActiveTab] = useState('balance');
 
-  // Finanzas: Ganancias y Gastos
+  // Finanzas: Ganancias y Gastos en tiempo real
   const [finances, setFinances] = useState(() => getFinances());
   useEffect(() => {
-    const handler = (e) => {
-      if (e.detail) setFinances(e.detail);
+    const unsubscribe = subscribeToFinances((items) => {
+      setFinances(items);
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
-    window.addEventListener('tricos_finances_sync', handler);
-    return () => window.removeEventListener('tricos_finances_sync', handler);
   }, []);
 
   // Formularios de Ganancias y Gastos
