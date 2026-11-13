@@ -91,10 +91,11 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   }, [finances]);
 
   // Manejo de agregar Ganancia
-  const handleAddEarningSubmit = (e) => {
+  const handleAddEarningSubmit = async (e) => {
     e.preventDefault();
     if (!earningForm.amount || Number(earningForm.amount) <= 0) return;
-    addEarning(earningForm);
+    const next = await addEarning(earningForm);
+    if (next) setFinances(next);
     setEarningForm({
       amount: '',
       concept: '',
@@ -103,16 +104,23 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   };
 
   // Manejo de agregar Gasto
-  const handleAddExpenseSubmit = (e) => {
+  const handleAddExpenseSubmit = async (e) => {
     e.preventDefault();
     if (!expenseForm.amount || Number(expenseForm.amount) <= 0) return;
-    addExpense(expenseForm);
+    const next = await addExpense(expenseForm);
+    if (next) setFinances(next);
     setExpenseForm({
       amount: '',
       concept: '',
       category: 'Insumos',
       date: new Date().toISOString().split('T')[0],
     });
+  };
+
+  // Eliminar movimiento financiero con sincronización inmediata
+  const handleDeleteFinance = async (id) => {
+    setFinances((prev) => prev.filter((item) => item.id !== id));
+    await deleteFinanceItem(id);
   };
 
   // Filtrado de stock
@@ -448,7 +456,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                           {item.type === 'earning' ? `+${money(item.amount)}` : `-${money(item.amount)}`}
                         </span>
                         <button
-                          onClick={() => deleteFinanceItem(item.id)}
+                          onClick={() => handleDeleteFinance(item.id)}
                           className="text-gray-400 hover:text-cartoon-red p-1 cursor-pointer transition-colors"
                           title="Eliminar movimiento"
                         >
@@ -546,7 +554,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       <div className="flex items-center gap-3">
                         <span className="font-display text-base sm:text-lg text-emerald-600">+{money(item.amount)}</span>
                         <button
-                          onClick={() => deleteFinanceItem(item.id)}
+                          onClick={() => handleDeleteFinance(item.id)}
                           className="text-gray-400 hover:text-cartoon-red p-1.5 cursor-pointer transition-colors"
                           title="Eliminar ganancia"
                         >
@@ -660,7 +668,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       <div className="flex items-center gap-3">
                         <span className="font-display text-base sm:text-lg text-rose-600">-{money(item.amount)}</span>
                         <button
-                          onClick={() => deleteFinanceItem(item.id)}
+                          onClick={() => handleDeleteFinance(item.id)}
                           className="text-gray-400 hover:text-cartoon-red p-1.5 cursor-pointer transition-colors"
                           title="Eliminar gasto"
                         >
@@ -1040,87 +1048,64 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 </button>
               </div>
 
-              {/* Formulario para editar textos y fecha del sorteo */}
-              <form onSubmit={handleSaveGiveawaySubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  <div className="sm:col-span-2">
-                    <label className="font-sub font-bold text-xs text-gray-700 block mb-1">
-                      Título del Sorteo
-                    </label>
-                    <input
-                      type="text"
-                      value={giveawayForm.title}
-                      onChange={(e) => setGiveawayForm({ ...giveawayForm, title: e.target.value })}
-                      placeholder="GRAN SORTEO TRICO'S"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-sub font-bold text-xs text-gray-700 block mb-1">
-                      Fecha del Sorteo
-                    </label>
-                    <input
-                      type="text"
-                      value={giveawayForm.drawDate}
-                      onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
-                      placeholder="Ej. Fin de mes / 30 de Nov"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
-                    />
-                  </div>
-                </div>
-
-                <div>
+              {/* Formulario simple para activar/pausar y cambiar fecha */}
+              <form onSubmit={handleSaveGiveawaySubmit} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 pt-2">
+                <div className="flex-1">
                   <label className="font-sub font-bold text-xs text-gray-700 block mb-1">
-                    Subtítulo / Instrucción corta
+                    Fecha del Sorteo
                   </label>
                   <input
                     type="text"
-                    value={giveawayForm.subtitle}
-                    onChange={(e) => setGiveawayForm({ ...giveawayForm, subtitle: e.target.value })}
-                    placeholder="¡Participá gratis con tu pedido o etiquetándonos en Instagram!"
+                    value={giveawayForm.drawDate}
+                    onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
+                    placeholder="Ej. Fin de mes"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
                   />
                 </div>
 
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    className="btn-cartoon-primary text-xs sm:text-sm py-2 px-5 cursor-pointer shadow-cartoon-xs flex items-center gap-1.5"
-                  >
-                    <Icon name="save" size={16} />
-                    <span>Guardar Cambios del Sorteo</span>
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  className="btn-cartoon-primary text-xs sm:text-sm py-2.5 px-5 cursor-pointer shadow-cartoon-xs flex items-center justify-center gap-1.5 flex-shrink-0"
+                >
+                  <Icon name="save" size={16} />
+                  <span>Guardar Fecha</span>
+                </button>
               </form>
 
-              {/* Lista Visual de los 4 Premios Oficiales Configurados */}
-              <div>
-                <h5 className="font-sub font-black text-xs text-gray-700 uppercase tracking-wider mb-3">
-                  Premios Oficiales Configurados (4 Premios)
-                </h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {(promoData?.giveaway?.prizes || DEFAULT_PROMOTIONS_DATA.giveaway.prizes).map((prize, idx) => (
-                    <div
-                      key={prize.id || idx}
-                      className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-2xl">{prize.emoji || '🎁'}</span>
-                          <span className="px-2 py-0.5 rounded-md bg-cartoon-yellow text-cartoon-ink font-display text-[10px] font-bold">
-                            {prize.badge || `${idx + 1}° PREMIO`}
-                          </span>
-                        </div>
-                        <h6 className="font-display text-xs sm:text-sm text-cartoon-ink font-bold leading-tight mb-1">
-                          {prize.title}
-                        </h6>
-                        <p className="font-sub text-[11px] text-gray-600 leading-snug">
-                          {prize.detail}
-                        </p>
-                      </div>
+              {/* Los 4 Premios Oficiales en tarjetas compactas */}
+              <div className="pt-2 border-t border-gray-100">
+                <span className="font-sub font-black text-xs text-gray-600 uppercase tracking-wider block mb-2.5">
+                  Los 4 Premios del Sorteo
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
+                    <span className="text-xl">💻</span>
+                    <div className="min-w-0">
+                      <span className="font-display text-[9px] text-cartoon-red font-bold block">1° PREMIO</span>
+                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Diseño Web Profesional</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
+                    <span className="text-xl">🍔</span>
+                    <div className="min-w-0">
+                      <span className="font-display text-[9px] text-cartoon-red font-bold block">2° PREMIO</span>
+                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Combo Carioca + Delivery</p>
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
+                    <span className="text-xl">📱</span>
+                    <div className="min-w-0">
+                      <span className="font-display text-[9px] text-cartoon-red font-bold block">3° PREMIO</span>
+                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Mes Redes Sociales</p>
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
+                    <span className="text-xl">🍗</span>
+                    <div className="min-w-0">
+                      <span className="font-display text-[9px] text-cartoon-red font-bold block">4° PREMIO</span>
+                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Combo Pollo para Compartir</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

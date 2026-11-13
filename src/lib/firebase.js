@@ -185,23 +185,8 @@ export const subscribeToProducts = (callback) => {
           } else {
             const remoteList = [];
             snapshot.forEach((d) => remoteList.push({ ...d.data(), id: d.id }));
-            
-            // Combinar con los valores por defecto asegurando que los cambios de Firestore (como fotos o stock) manden siempre
-            const defaults = getDefaultProductsWithStock();
-            const merged = defaults.map((def) => {
-              const remote = remoteList.find((p) => p.id === def.id);
-              if (!remote) return def;
-              return {
-                ...def,
-                ...remote,
-                image: remote.image || def.image,
-              };
-            });
-            const customItems = remoteList.filter((p) => !defaults.some((d) => d.id === p.id));
-            const finalList = [...merged, ...customItems];
-
-            callback(finalList);
-            saveLocalProducts(finalList);
+            callback(remoteList);
+            saveLocalProducts(remoteList);
           }
         },
         (err) => {
