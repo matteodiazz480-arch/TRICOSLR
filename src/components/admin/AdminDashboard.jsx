@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Icon } from '../Icon';
 import { CATEGORIES } from '../../data/products';
 import { ProductModal } from './ProductModal';
@@ -11,13 +11,23 @@ import {
   addExpense,
   deleteFinanceItem,
 } from '../../lib/financesStore';
+import {
+  getPromotions,
+  subscribeToPromotions,
+  updateGiveaway,
+  addCoupon,
+  deleteCoupon,
+  toggleCouponActive,
+  DEFAULT_PROMOTIONS_DATA,
+} from '../../lib/promotionsStore';
+import { compressImageFile } from '../../lib/imageCompressor';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
 export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   const { products, updateStock, toggleActive, saveProduct, deleteProduct } = useProducts();
   
-  // Pestañas principales: 'ganancias' | 'gastos' | 'balance' | 'stock'
+  // Pestañas principales: 'ganancias' | 'gastos' | 'balance' | 'stock' | 'promociones'
   const [activeTab, setActiveTab] = useState('balance');
 
   // Finanzas: Ganancias y Gastos en tiempo real
@@ -117,11 +127,125 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     });
   }, [products, selectedCategory, searchQuery]);
 
+  // Gestión de Promociones, Sorteo y Cupones
+  const [promoData, setPromoData] = useState(() => getPromotions());
+  const [giveawayForm, setGiveawayForm] = useState(() => ({
+    title: promoData?.giveaway?.title || 'GRAN SORTEO TRICO\'S',
+    subtitle: promoData?.giveaway?.subtitle || '¡Participá gratis con tu pedido o etiquetándonos en Instagram!',
+    drawDate: promoData?.giveaway?.drawDate || 'Fin de mes',
+    active: promoData?.giveaway?.active !== false,
+  }));
+
+  const [couponForm, setCouponForm] = useState({
+    code: '',
+    discount: 10,
+    type: 'percentage', // 'percentage' | 'fixed'
+    label: '',
+    minPurchase: '',
+  });
+
+  const [promoMessage, setPromoMessage] = useState('');
+
+  useEffect(() => {
+    const unsub = subscribeToPromotions((data) => {
+      if (data) {
+        setPromoData(data);
+        if (data.giveaway) {
+          setGiveawayForm((prev) => ({
+            ...prev,
+            title: data.giveaway.title || prev.title,
+            subtitle: data.giveaway.subtitle || prev.subtitle,
+            drawDate: data.giveaway.drawDate || prev.drawDate,
+            active: data.giveaway.active !== false,
+          }));
+        }
+      }
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
+
+  // Subida de imagen directa en cada tarjeta de producto (drag & drop o clic)
+  const cardFileInputRefs = useRef({});
+  const [draggingCardId, setDraggingCardId] = useState(null);
+  const [uploadingCardId, setUploadingCardId] = useState(null);
+
+  const handleCardImageUpload = async (product, file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      alert('Por favor seleccioná un archivo de imagen válido (JPG, PNG, WebP).');
+      return;
+    }
+    setUploadingCardId(product.id);
+    try {
+      const compressed = await compressImageFile(file, 800, 800, 0.82);
+      saveProduct({
+        ...product,
+        image: compressed,
+      });
+    } catch (err) {
+      console.error('Error al comprimir imagen de plato:', err);
+      alert('Hubo un problema al procesar la imagen.');
+    } finally {
+      setUploadingCardId(null);
+    }
+  };
+
+  const handleSaveGiveawaySubmit = (e) => {
+    e.preventDefault();
+    updateGiveaway({
+      title: giveawayForm.title.trim(),
+      subtitle: giveawayForm.subtitle.trim(),
+      drawDate: giveawayForm.drawDate.trim(),
+      active: giveawayForm.active,
+    });
+    setPromoMessage('¡Información del sorteo guardada con éxito!');
+    setTimeout(() => setPromoMessage(''), 3000);
+  };
+
+  const handleToggleGiveawayActive = () => {
+    const nextActive = !giveawayForm.active;
+    setGiveawayForm((prev) => ({ ...prev, active: nextActive }));
+    updateGiveaway({ active: nextActive });
+  };
+
+  const handleAddCouponSubmit = (e) => {
+    e.preventDefault();
+    const cleanCode = couponForm.code.trim().toUpperCase();
+    if (!cleanCode) return;
+
+    const discountVal =
+      couponForm.type === 'percentage'
+        ? Number(couponForm.discount) / 100
+        : Number(couponForm.discount);
+
+    addCoupon({
+      code: cleanCode,
+      discount: discountVal,
+      type: couponForm.type,
+      label: couponForm.label.trim() || `${cleanCode} Descuento`,
+      minPurchase: Number(couponForm.minPurchase) || 0,
+      active: true,
+    });
+
+    setCouponForm({
+      code: '',
+      discount: 10,
+      type: 'percentage',
+      label: '',
+      minPurchase: '',
+    });
+
+    setPromoMessage(`¡Cupón "${cleanCode}" creado correctamente!`);
+    setTimeout(() => setPromoMessage(''), 3000);
+  };
+
   const navItems = [
     { id: 'balance', label: 'Balance', icon: 'account_balance_wallet', badge: money(financialTotals.netBalance) },
     { id: 'ganancias', label: 'Ganancias', icon: 'trending_up', badge: `+${money(financialTotals.totalEarnings)}` },
     { id: 'gastos', label: 'Gastos', icon: 'trending_down', badge: `-${money(financialTotals.totalExpenses)}` },
     { id: 'stock', label: 'Stock', icon: 'inventory_2', badge: `${products.length} platos` },
+    { id: 'promociones', label: 'Promos', icon: 'campaign', badge: 'Sorteo & Cupones' },
   ];
 
   return (
@@ -670,8 +794,40 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       !prod.active ? 'opacity-55 bg-gray-50' : ''
                     }`}
                   >
-                    {/* 1. Imagen Grande y Destacada de la Hamburguesa / Plato */}
-                    <div className="relative w-full h-24 sm:h-32 md:h-36 rounded-xl bg-cartoon-cream border border-gray-200 overflow-hidden flex items-center justify-center mb-2 flex-shrink-0">
+                    {/* 1. Imagen Grande y Destacada: Arrastrar o Clic para Subir Foto */}
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDraggingCardId(prod.id);
+                      }}
+                      onDragLeave={() => setDraggingCardId(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDraggingCardId(null);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleCardImageUpload(prod, file);
+                      }}
+                      onClick={() => cardFileInputRefs.current[prod.id]?.click()}
+                      className={`relative w-full h-24 sm:h-32 md:h-36 rounded-xl bg-cartoon-cream border-2 overflow-hidden flex items-center justify-center mb-2 flex-shrink-0 cursor-pointer transition-all ${
+                        draggingCardId === prod.id
+                          ? 'border-cartoon-yellow bg-yellow-100 ring-4 ring-cartoon-yellow/40 scale-102'
+                          : 'border-gray-200 hover:border-cartoon-yellow'
+                      }`}
+                      title="Hacé clic o arrastrá una imagen para este plato"
+                    >
+                      {/* Input oculto para selección por clic */}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={(el) => (cardFileInputRefs.current[prod.id] = el)}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleCardImageUpload(prod, file);
+                          e.target.value = '';
+                        }}
+                      />
+
                       {prod.image ? (
                         <img
                           src={prod.image}
@@ -680,11 +836,35 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                           loading="lazy"
                         />
                       ) : (
-                        <span className="text-3xl sm:text-4xl">{prod.emoji || '🍔'}</span>
+                        <div className="flex flex-col items-center justify-center text-gray-400 p-2 text-center">
+                          <span className="text-3xl sm:text-4xl mb-1">{prod.emoji || '🍔'}</span>
+                          <span className="font-sub font-bold text-[9px] text-gray-500 uppercase tracking-wider">
+                            + Subir Foto
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Overlay informativo al pasar el cursor o en celular */}
+                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-1 text-center">
+                        <Icon name="photo_camera" size={20} />
+                        <span className="font-sub font-black text-[10px] uppercase mt-0.5 tracking-wider drop-shadow-xs">
+                          {prod.image ? 'Cambiar Foto' : 'Subir Foto'}
+                        </span>
+                        <span className="font-sub text-[8px] opacity-90">
+                          Arrastrá o Clic
+                        </span>
+                      </div>
+
+                      {/* Spinner de carga mientras comprime y sube */}
+                      {uploadingCardId === prod.id && (
+                        <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white z-20">
+                          <div className="w-5 h-5 border-2 border-cartoon-yellow border-t-transparent rounded-full animate-spin mb-1" />
+                          <span className="font-sub text-[9px] font-bold">Guardando...</span>
+                        </div>
                       )}
 
                       {/* Badges de Estado sobre la Foto */}
-                      <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end pointer-events-none">
+                      <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end pointer-events-none z-10">
                         {!prod.active && (
                           <span className="px-1.5 py-0.5 rounded-md bg-gray-900/90 text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
                             PAUSADO
@@ -703,7 +883,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       </div>
 
                       {prod.badge && (
-                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-cartoon-yellow text-cartoon-ink font-sub font-black text-[9px] uppercase tracking-wider border border-cartoon-ink/30 shadow-xs pointer-events-none">
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-cartoon-yellow text-cartoon-ink font-sub font-black text-[9px] uppercase tracking-wider border border-cartoon-ink/30 shadow-xs pointer-events-none z-10">
                           {prod.badge}
                         </span>
                       )}
@@ -797,6 +977,348 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* SECCIÓN 5: PROMOCIONES, SORTEO Y CUPONES */}
+        {/* ============================================================== */}
+        {activeTab === 'promociones' && (
+          <div className="space-y-6 sm:space-y-8 animate-modalIn">
+            
+            {/* Mensaje de notificación temporal si existe */}
+            {promoMessage && (
+              <div className="p-4 rounded-2xl bg-emerald-500 text-white font-sub font-bold text-sm shadow-cartoon-xs flex items-center gap-2 animate-bounce">
+                <Icon name="check_circle" size={20} />
+                <span>{promoMessage}</span>
+              </div>
+            )}
+
+            {/* Cabecera de la Sección */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink flex items-center gap-2">
+                  <span>🎁</span>
+                  <span>Gestión de Promociones y Sorteo</span>
+                </h3>
+                <p className="font-sub text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Activá o pausá el sorteo oficial y administrá los cupones de descuento para tus clientes.
+                </p>
+              </div>
+            </div>
+
+            {/* TARJETA 1: GESTIÓN DEL GRAN SORTEO TRICO'S */}
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-gray-200 p-4 sm:p-7 shadow-sm space-y-6">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-2xl flex-shrink-0">
+                    🏆
+                  </div>
+                  <div>
+                    <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
+                      Gran Sorteo Oficial de Trico's
+                    </h4>
+                    <span className="font-sub text-xs text-gray-500">
+                      Visible en la sección de Promociones de la web
+                    </span>
+                  </div>
+                </div>
+
+                {/* Switch Activar / Pausar Sorteo */}
+                <button
+                  type="button"
+                  onClick={handleToggleGiveawayActive}
+                  className={`px-4 py-2 rounded-xl font-sub font-bold text-xs sm:text-sm flex items-center gap-2 cursor-pointer transition-all border-2 ${
+                    giveawayForm.active
+                      ? 'bg-emerald-500 text-white border-emerald-600 shadow-cartoon-xs'
+                      : 'bg-gray-100 text-gray-500 border-gray-300'
+                  }`}
+                >
+                  <Icon name={giveawayForm.active ? 'check_circle' : 'pause_circle'} size={18} />
+                  <span>{giveawayForm.active ? 'Sorteo Activo en la Web' : 'Sorteo Pausado'}</span>
+                </button>
+              </div>
+
+              {/* Formulario para editar textos y fecha del sorteo */}
+              <form onSubmit={handleSaveGiveawaySubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div className="sm:col-span-2">
+                    <label className="font-sub font-bold text-xs text-gray-700 block mb-1">
+                      Título del Sorteo
+                    </label>
+                    <input
+                      type="text"
+                      value={giveawayForm.title}
+                      onChange={(e) => setGiveawayForm({ ...giveawayForm, title: e.target.value })}
+                      placeholder="GRAN SORTEO TRICO'S"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-sub font-bold text-xs text-gray-700 block mb-1">
+                      Fecha del Sorteo
+                    </label>
+                    <input
+                      type="text"
+                      value={giveawayForm.drawDate}
+                      onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
+                      placeholder="Ej. Fin de mes / 30 de Nov"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-sub font-bold text-xs text-gray-700 block mb-1">
+                    Subtítulo / Instrucción corta
+                  </label>
+                  <input
+                    type="text"
+                    value={giveawayForm.subtitle}
+                    onChange={(e) => setGiveawayForm({ ...giveawayForm, subtitle: e.target.value })}
+                    placeholder="¡Participá gratis con tu pedido o etiquetándonos en Instagram!"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    className="btn-cartoon-primary text-xs sm:text-sm py-2 px-5 cursor-pointer shadow-cartoon-xs flex items-center gap-1.5"
+                  >
+                    <Icon name="save" size={16} />
+                    <span>Guardar Cambios del Sorteo</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Lista Visual de los 4 Premios Oficiales Configurados */}
+              <div>
+                <h5 className="font-sub font-black text-xs text-gray-700 uppercase tracking-wider mb-3">
+                  Premios Oficiales Configurados (4 Premios)
+                </h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {(promoData?.giveaway?.prizes || DEFAULT_PROMOTIONS_DATA.giveaway.prizes).map((prize, idx) => (
+                    <div
+                      key={prize.id || idx}
+                      className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-2xl">{prize.emoji || '🎁'}</span>
+                          <span className="px-2 py-0.5 rounded-md bg-cartoon-yellow text-cartoon-ink font-display text-[10px] font-bold">
+                            {prize.badge || `${idx + 1}° PREMIO`}
+                          </span>
+                        </div>
+                        <h6 className="font-display text-xs sm:text-sm text-cartoon-ink font-bold leading-tight mb-1">
+                          {prize.title}
+                        </h6>
+                        <p className="font-sub text-[11px] text-gray-600 leading-snug">
+                          {prize.detail}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            {/* TARJETA 2: GESTIÓN DE CUPONES DE DESCUENTO */}
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-gray-200 p-4 sm:p-7 shadow-sm space-y-6">
+              
+              <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 border-2 border-rose-300 flex items-center justify-center text-2xl flex-shrink-0">
+                  🏷️
+                </div>
+                <div>
+                  <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
+                    Cupones de Descuento
+                  </h4>
+                  <span className="font-sub text-xs text-gray-500">
+                    Creá códigos para que tus clientes apliquen rebajas en el carrito
+                  </span>
+                </div>
+              </div>
+
+              {/* Formulario Crear Nuevo Cupón */}
+              <form
+                onSubmit={handleAddCouponSubmit}
+                className="bg-cartoon-cream/50 p-4 sm:p-5 rounded-2xl border-2 border-dashed border-gray-300 space-y-3.5"
+              >
+                <span className="font-sub font-black text-xs text-cartoon-ink uppercase tracking-wider block">
+                  + Crear Nuevo Cupón
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div>
+                    <label className="font-sub font-bold text-[11px] text-gray-600 block mb-1">
+                      Código del Cupón *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={couponForm.code}
+                      onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                      placeholder="Ej. BURGER15"
+                      className="w-full px-3 py-2 rounded-xl bg-white border-2 border-gray-200 font-display text-xs text-cartoon-ink uppercase focus:outline-none focus:border-cartoon-yellow"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-sub font-bold text-[11px] text-gray-600 block mb-1">
+                      Tipo Descuento
+                    </label>
+                    <select
+                      value={couponForm.type}
+                      onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white border-2 border-gray-200 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    >
+                      <option value="percentage">Porcentaje (%)</option>
+                      <option value="fixed">Monto Fijo ($)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-sub font-bold text-[11px] text-gray-600 block mb-1">
+                      {couponForm.type === 'percentage' ? 'Porcentaje (%) *' : 'Monto ($) *'}
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={couponForm.discount}
+                      onChange={(e) => setCouponForm({ ...couponForm, discount: e.target.value })}
+                      placeholder={couponForm.type === 'percentage' ? '15' : '2000'}
+                      className="w-full px-3 py-2 rounded-xl bg-white border-2 border-gray-200 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-sub font-bold text-[11px] text-gray-600 block mb-1">
+                      Compra Mínima ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={couponForm.minPurchase}
+                      onChange={(e) => setCouponForm({ ...couponForm, minPurchase: e.target.value })}
+                      placeholder="0 = Sin mínimo"
+                      className="w-full px-3 py-2 rounded-xl bg-white border-2 border-gray-200 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 lg:col-span-1 flex items-end">
+                    <button
+                      type="submit"
+                      className="btn-cartoon-primary w-full py-2 text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-cartoon-xs"
+                    >
+                      <Icon name="add" size={16} />
+                      <span>Crear Cupón</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-sub font-bold text-[11px] text-gray-600 block mb-1">
+                    Descripción / Mensaje para el cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={couponForm.label}
+                    onChange={(e) => setCouponForm({ ...couponForm, label: e.target.value })}
+                    placeholder="Ej. 15% OFF en toda la carta por esta semana"
+                    className="w-full px-3 py-2 rounded-xl bg-white border-2 border-gray-200 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                  />
+                </div>
+              </form>
+
+              {/* Lista de Cupones Existentes */}
+              <div className="space-y-3">
+                <span className="font-sub font-black text-xs text-gray-700 uppercase tracking-wider block">
+                  Cupones Creados ({(promoData?.coupons || []).length})
+                </span>
+
+                {(promoData?.coupons || []).length === 0 ? (
+                  <div className="p-6 text-center text-gray-400 font-sub text-xs border border-dashed rounded-2xl">
+                    No hay cupones creados aún. Creá el primero arriba.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {(promoData?.coupons || []).map((cp) => {
+                      const discountStr =
+                        cp.type === 'fixed'
+                          ? `$${Number(cp.discount).toLocaleString('es-AR')}`
+                          : `${Math.round(Number(cp.discount) * 100)}%`;
+
+                      return (
+                        <div
+                          key={cp.code}
+                          className={`p-3.5 rounded-2xl border-2 flex flex-col justify-between transition-all ${
+                            cp.active !== false
+                              ? 'bg-white border-gray-200 hover:border-cartoon-yellow/80 shadow-xs'
+                              : 'bg-gray-50 border-gray-200 opacity-60'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className="font-display text-base text-cartoon-red tracking-wider font-bold">
+                                {cp.code}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-display text-[11px] font-bold">
+                                {discountStr} OFF
+                              </span>
+                            </div>
+
+                            <p className="font-sub font-bold text-xs text-cartoon-ink line-clamp-1 mb-1">
+                              {cp.label || 'Cupón de Descuento'}
+                            </p>
+
+                            <span className="font-sub text-[11px] text-gray-500 block">
+                              {cp.minPurchase > 0
+                                ? `Compra mínima: $${Number(cp.minPurchase).toLocaleString('es-AR')}`
+                                : 'Sin monto mínimo'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-gray-100">
+                            <button
+                              type="button"
+                              onClick={() => toggleCouponActive(cp.code, cp.active !== false)}
+                              className={`px-2.5 py-1 rounded-lg font-sub font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors ${
+                                cp.active !== false
+                                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                              }`}
+                            >
+                              <Icon name={cp.active !== false ? 'check' : 'pause'} size={13} />
+                              <span>{cp.active !== false ? 'Activo' : 'Pausado'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`¿Seguro que querés eliminar el cupón "${cp.code}"?`)) {
+                                  deleteCoupon(cp.code);
+                                }
+                              }}
+                              className="p-1 rounded-lg text-gray-400 hover:text-cartoon-red hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Eliminar cupón"
+                            >
+                              <Icon name="delete" size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
           </div>
         )}
 

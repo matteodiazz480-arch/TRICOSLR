@@ -5,6 +5,7 @@ import { DeliveryLocationPicker } from './DeliveryLocationPicker';
 import { RESTAURANT_INFO } from '../data/products';
 import { isFreeDelivery, shippingFor } from '../lib/delivery';
 import { isProductOutOfStock } from '../lib/firebase';
+import { getPromotions } from '../lib/promotionsStore';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
@@ -76,7 +77,13 @@ export const CartDrawer = ({
 
   // Cálculos de totales
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const discountAmount = appliedCoupon ? Math.round(subtotal * appliedCoupon.discount) : 0;
+  const discountAmount = appliedCoupon
+    ? Math.round(
+        appliedCoupon.type === 'fixed'
+          ? Math.min(subtotal, Number(appliedCoupon.discount) || 0)
+          : subtotal * (Number(appliedCoupon.discount) || 0)
+      )
+    : 0;
   const free = isFreeDelivery(subtotal);
   const shippingFee = shippingFor({ deliveryType, subtotal, deliveryInfo });
   const total = Math.max(0, subtotal - discountAmount + (shippingFee || 0));
@@ -86,6 +93,31 @@ export const CartDrawer = ({
   const handleApplyCoupon = (e) => {
     e.preventDefault();
     const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+
+    // 1. Buscar en cupones dinámicos de promociones
+    try {
+      const promoData = getPromotions();
+      const dynamicCoupon = promoData?.coupons?.find(
+        (c) => c.code?.toUpperCase() === code && c.active !== false
+      );
+      if (dynamicCoupon) {
+        if (dynamicCoupon.minPurchase && subtotal < dynamicCoupon.minPurchase) {
+          setCouponError(`Compra mínima requerida: ${money(dynamicCoupon.minPurchase)}`);
+          return;
+        }
+        setAppliedCoupon({
+          code: dynamicCoupon.code,
+          discount: dynamicCoupon.discount,
+          type: dynamicCoupon.type || 'percentage',
+          label: dynamicCoupon.label,
+        });
+        setCouponError('');
+        return;
+      }
+    } catch {}
+
+    // 2. Buscar en cupones base estáticos
     if (RESTAURANT_INFO.coupons[code]) {
       setAppliedCoupon({ code, ...RESTAURANT_INFO.coupons[code] });
       setCouponError('');

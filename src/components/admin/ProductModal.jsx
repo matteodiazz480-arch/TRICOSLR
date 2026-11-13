@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../Icon';
 import { CATEGORIES } from '../../data/products';
 import { sanitizeText, sanitizeNumber } from '../../lib/security';
+import { compressImageFile } from '../../lib/imageCompressor';
 
 const EMOJI_OPTIONS = ['🍔', '🍗', '🍟', '🧀', '🥓', '🥤', '🥩', '🌶️', '🥪', '🍱', '🌭', '🥗'];
 
@@ -12,12 +13,16 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
     price: 12000,
     stock: 35,
     emoji: '🍔',
+    image: '',
     description: '',
     badge: '',
     hasProteinChoice: false,
     active: true,
   });
   const [error, setError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (product) {
@@ -27,6 +32,7 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
         price: product.price || (product.variants ? product.variants[0]?.price : 12000),
         stock: product.stock !== undefined ? product.stock : 35,
         emoji: product.emoji || '🍔',
+        image: product.image || '',
         description: product.description || '',
         badge: product.badge || '',
         hasProteinChoice: !!product.hasProteinChoice,
@@ -39,6 +45,7 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
         price: 12000,
         stock: 35,
         emoji: '🍔',
+        image: '',
         description: '',
         badge: '',
         hasProteinChoice: false,
@@ -49,6 +56,27 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
   }, [product, isOpen]);
 
   if (!isOpen) return null;
+
+  const handleImageFile = async (file) => {
+    if (!file) return;
+    try {
+      setIsProcessingImage(true);
+      setError('');
+      const compressedUrl = await compressImageFile(file, 800, 800, 0.82);
+      setFormData((prev) => ({ ...prev, image: compressedUrl }));
+    } catch (err) {
+      setError(err.message || 'Error al procesar la imagen');
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleImageFile(file);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -69,6 +97,7 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
       badge: sanitizeText(formData.badge),
       price: cleanPrice,
       stock: cleanStock,
+      image: formData.image || '',
     };
 
     onSave(payload);
@@ -110,6 +139,79 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Subir / Cambiar Imagen del Producto (Arrastrar o Clic) */}
+          <div>
+            <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1.5">
+              Foto del Plato:
+            </label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageFile(file);
+              }}
+              className="hidden"
+            />
+
+            {formData.image ? (
+              <div className="relative w-full h-40 sm:h-48 rounded-2xl border-3 border-cartoon-ink overflow-hidden bg-cartoon-cream shadow-cartoon-sm group">
+                <img
+                  src={formData.image}
+                  alt={formData.name || 'Vista previa'}
+                  className="w-full h-full object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-cartoon-primary py-2 px-3.5 text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Icon name="photo_camera" size={16} />
+                    <span>Cambiar Foto</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, image: '' }))}
+                    className="px-3.5 py-2 rounded-xl bg-cartoon-red text-white font-display text-xs border-2 border-cartoon-ink shadow-cartoon-xs flex items-center gap-1.5 cursor-pointer hover:bg-cartoon-red-dark transition-colors"
+                  >
+                    <Icon name="delete" size={16} />
+                    <span>Quitar</span>
+                  </button>
+                </div>
+                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg bg-emerald-500 text-white font-sub font-bold text-[10px] shadow-xs pointer-events-none">
+                  ✓ Foto Activa
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full py-6 px-4 rounded-2xl border-3 border-dashed flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 ${
+                  isDragging
+                    ? 'border-cartoon-red bg-cartoon-yellow/20 scale-[1.01]'
+                    : 'border-cartoon-ink/30 bg-cartoon-cream/40 hover:bg-cartoon-cream/80 hover:border-cartoon-ink'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white border-2 border-cartoon-ink flex items-center justify-center text-cartoon-ink mb-2 shadow-cartoon-xs">
+                  <Icon name={isProcessingImage ? 'sync' : 'add_photo_alternate'} size={24} className={isProcessingImage ? 'animate-spin' : ''} />
+                </div>
+                <p className="font-display text-xs sm:text-sm text-cartoon-ink mb-0.5">
+                  {isProcessingImage ? 'Optimizando foto...' : 'Arrastrá una imagen o hacé clic para subirla'}
+                </p>
+                <span className="font-sub text-[11px] text-cartoon-ink/60">
+                  PNG, JPG o WEBP (se ajusta y optimiza automáticamente)
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Nombre */}
           <div>
