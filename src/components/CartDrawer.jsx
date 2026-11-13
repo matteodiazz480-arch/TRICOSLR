@@ -141,7 +141,7 @@ export const CartDrawer = ({
   };
 
   // Validar y enviar pedido final a WhatsApp (Mensaje limpio, preciso y sin relleno)
-  const handleFinalSubmit = (ev) => {
+  const handleFinalSubmit = async (ev) => {
     ev.preventDefault();
     const e = {};
     if (!formData.name.trim()) e.name = 'Ingresá tu nombre';
@@ -196,19 +196,28 @@ export const CartDrawer = ({
       return;
     }
 
-    // 1. Descontar stock y registrar ganancias de inmediato antes de salir de la pestaña
-    onOrderSuccess({
-      customerName: formData.name,
-      total,
-      deliveryType,
-      items: items.map((item) => ({
-        productId: item.product.originalId || item.product.id,
-        originalId: item.product.originalId || item.product.id,
-        name: item.product.name,
-        quantity: item.quantity,
-        price: item.product.price,
-      })),
-    });
+    // 1. Descontar stock y registrar ganancias en Firestore de forma confiable antes de saltar a WhatsApp
+    try {
+      if (typeof onOrderSuccess === 'function') {
+        await Promise.race([
+          onOrderSuccess({
+            customerName: formData.name,
+            total,
+            deliveryType,
+            items: items.map((item) => ({
+              productId: item.product.originalId || item.product.id,
+              originalId: item.product.originalId || item.product.id,
+              name: item.product.name,
+              quantity: item.quantity,
+              price: item.product.price,
+            })),
+          }),
+          new Promise((resolve) => setTimeout(resolve, 1500)), // Salvaguarda para no demorar la apertura de WhatsApp
+        ]);
+      }
+    } catch (err) {
+      console.warn('Error en onOrderSuccess:', err);
+    }
 
     // 2. Abrir WhatsApp para enviar el pedido al local
     try {

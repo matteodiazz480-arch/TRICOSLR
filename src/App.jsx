@@ -14,6 +14,7 @@ import { Icon } from './components/Icon';
 import { ProductsProvider, useProducts } from './context/ProductsContext';
 import { getSession } from './lib/security';
 import { addEarning } from './lib/financesStore';
+import { recordOrderInFirestore } from './lib/firebase';
 
 // Carga perezosa (lazy-load) para máxima velocidad de la tienda pública
 const AdminLogin = React.lazy(() =>
@@ -169,8 +170,8 @@ function StoreApp() {
     setCartItems([]);
   };
 
-  const handleOrderSuccess = (orderDetails) => {
-    // 1. Descuento automático e inmediato del stock en el panel
+  const handleOrderSuccess = async (orderDetails) => {
+    // 1. Descuento automático e inmediato del stock en el panel y Firestore
     try {
       const orderItems =
         orderDetails?.items && orderDetails.items.length > 0
@@ -182,12 +183,12 @@ function StoreApp() {
               quantity: item.quantity,
             }));
 
-      discountStock(orderItems);
+      await discountStock(orderItems);
     } catch (err) {
       console.warn('Error descontando stock tras pedido:', err);
     }
 
-    // 2. Registro automático de la venta en las ganancias del panel
+    // 2. Registro automático de la venta en las ganancias del panel y Firestore
     try {
       if (orderDetails?.total) {
         addEarning({
@@ -200,6 +201,13 @@ function StoreApp() {
       }
     } catch (err) {
       console.warn('Error registrando ganancia automática:', err);
+    }
+
+    // 3. Registro formal en la colección 'orders' de Firestore
+    try {
+      await recordOrderInFirestore(orderDetails);
+    } catch (err) {
+      console.warn('Error guardando pedido en Firestore:', err);
     }
 
     setIsCartOpen(false);

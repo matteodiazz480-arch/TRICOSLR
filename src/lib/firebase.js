@@ -20,12 +20,12 @@ export const getFirebaseConfig = () => {
   } catch {}
 
   return {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAC1rEWztNCcLO7Tu3wzXShdJh5C3t65FE',
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'tricos-burguers.firebaseapp.com',
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tricos-burguers',
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'tricos-burguers.firebasestorage.app',
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '267701557169',
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:267701557169:web:01db58322eb98f971ecf90',
   };
 };
 
@@ -92,7 +92,7 @@ export const getLocalProducts = () => {
           return {
             ...def,
             ...found,
-            image: def.image || found.image,
+            image: found.image || def.image,
           };
         });
         // Preservar productos personalizados agregados en el panel admin
@@ -183,10 +183,25 @@ export const subscribeToProducts = (callback) => {
             callback(defaults);
             saveLocalProducts(defaults);
           } else {
-            const list = [];
-            snapshot.forEach((d) => list.push({ ...d.data(), id: d.id }));
-            callback(list);
-            saveLocalProducts(list);
+            const remoteList = [];
+            snapshot.forEach((d) => remoteList.push({ ...d.data(), id: d.id }));
+            
+            // Combinar con los valores por defecto asegurando que los cambios de Firestore (como fotos o stock) manden siempre
+            const defaults = getDefaultProductsWithStock();
+            const merged = defaults.map((def) => {
+              const remote = remoteList.find((p) => p.id === def.id);
+              if (!remote) return def;
+              return {
+                ...def,
+                ...remote,
+                image: remote.image || def.image,
+              };
+            });
+            const customItems = remoteList.filter((p) => !defaults.some((d) => d.id === p.id));
+            const finalList = [...merged, ...customItems];
+
+            callback(finalList);
+            saveLocalProducts(finalList);
           }
         },
         (err) => {
@@ -265,16 +280,18 @@ export const discountStockForOrder = async (orderItems) => {
   // 3. Persistir en localStorage y notificar a la aplicación de inmediato
   saveLocalProducts(next);
 
-  // 4. Sincronizar en segundo plano con Firestore si está configurado
+  // 4. Sincronizar en Firestore esperándolo para que persista antes de cambiar de app
   const { isConfigured, db } = initFirebase();
   if (isConfigured && db && affectedUpdates.length > 0) {
-    Promise.allSettled(
-      affectedUpdates.map(({ id, stock }) =>
-        setDoc(doc(db, 'products', id), { stock, updatedAt: new Date().toISOString() }, { merge: true })
-      )
-    ).catch((err) => {
+    try {
+      await Promise.all(
+        affectedUpdates.map(({ id, stock }) =>
+          setDoc(doc(db, 'products', id), { stock, updatedAt: new Date().toISOString() }, { merge: true })
+        )
+      );
+    } catch (err) {
       console.warn('Error sincronizando deducción de stock en Firestore:', err);
-    });
+    }
   }
 
   logSecurityEvent('ORDER_STOCK_DEDUCTED', {
@@ -283,6 +300,35 @@ export const discountStockForOrder = async (orderItems) => {
   });
 
   return next;
+};
+
+// Registrar pedido formalmente en la colección 'orders' de Firestore
+export const recordOrderInFirestore = async (orderData) => {
+  const { isConfigured, db } = initFirebase();
+  if (!isConfigured || !db || !orderData) return null;
+
+  try {
+    const orderId = `order-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const docData = {
+      id: orderId,
+      customerName: (orderData.customerName || 'Cliente').trim(),
+      total: Number(orderData.total || 0),
+      deliveryType: orderData.deliveryType || 'delivery',
+      items: (orderData.items || []).map((it) => ({
+        productId: it.productId || it.id || '',
+        name: it.name || '',
+        quantity: Number(it.quantity || 1),
+        price: Number(it.price || 0),
+      })),
+      createdAt: new Date().toISOString(),
+      status: 'confirmado',
+    };
+    await setDoc(doc(db, 'orders', orderId), docData);
+    return orderId;
+  } catch (err) {
+    console.warn('Error guardando pedido en Firestore:', err);
+    return null;
+  }
 };
 
 // Actualizar stock de un producto específico
