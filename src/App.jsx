@@ -16,6 +16,7 @@ import { getSession } from './lib/security';
 import { addEarning } from './lib/financesStore';
 import { recordOrderInFirestore } from './lib/firebase';
 import { addOrder } from './lib/ordersStore';
+import { deductIngredientsForOrder } from './lib/ingredientsStore';
 
 // Carga perezosa (lazy-load) para máxima velocidad de la tienda pública
 const AdminLogin = React.lazy(() =>
@@ -108,26 +109,14 @@ function StoreApp() {
   const handleAddToCart = (product) => {
     const baseId = product.originalId || product.id;
     const live = products.find((p) => p.id === baseId || (p.id && baseId.startsWith(p.id)));
-    const liveStock = live ? Number(live.stock ?? 35) : Number(product.stock ?? 35);
     const liveActive = live ? live.active !== false : product.active !== false;
 
-    // Protección estricta: si está sin stock o inactivo, bloquear completamente
-    if (!liveActive || liveStock <= 0) {
+    // Si está pausado en la carta, bloquear
+    if (!liveActive) {
       return;
     }
 
     setCartItems((prev) => {
-      const currentInCartForBase = prev
-        .filter((i) => {
-          const itemBaseId = i.product.originalId || i.product.id;
-          return itemBaseId === baseId || (itemBaseId && itemBaseId.startsWith(baseId));
-        })
-        .reduce((sum, i) => sum + i.quantity, 0);
-
-      if (currentInCartForBase >= liveStock) {
-        return prev;
-      }
-
       const existingIndex = prev.findIndex((i) => i.product.id === product.id);
       if (existingIndex > -1) {
         const next = [...prev];
@@ -137,7 +126,7 @@ function StoreApp() {
         };
         return next;
       }
-      return [...prev, { product: { ...product, stock: liveStock }, quantity: 1, note: '' }];
+      return [...prev, { product, quantity: 1, note: '' }];
     });
   };
 
@@ -150,11 +139,7 @@ function StoreApp() {
       prev
         .map((item) => {
           if (item.product.id !== productId) return item;
-          const baseId = item.product.originalId || item.product.id;
-          const live = products.find((p) => p.id === baseId || (p.id && baseId.startsWith(p.id)));
-          const maxStock = live ? Number(live.stock ?? 35) : Number(item.product.stock ?? 35);
-          if (maxStock <= 0) return { ...item, quantity: 0 };
-          const capped = Math.min(newQuantity, maxStock);
+          const capped = Math.min(newQuantity, 30);
           return { ...item, quantity: capped };
         })
         .filter((item) => item.quantity > 0)
@@ -182,9 +167,10 @@ function StoreApp() {
               quantity: item.quantity,
             }));
 
-      await discountStock(orderItems);
+      // Descuento automático del stock de INGREDIENTES que componen los platos pedidos
+      deductIngredientsForOrder(orderItems, products);
     } catch (err) {
-      console.warn('Error descontando stock tras pedido:', err);
+      console.warn('Error descontando stock de ingredientes tras pedido:', err);
     }
 
     // 2. Registro automático de la venta en las ganancias del panel y Firestore

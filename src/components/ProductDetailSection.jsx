@@ -19,8 +19,6 @@ export const ProductDetailSection = ({
   const [isAdded, setIsAdded] = useState(false);
 
   const isOutOfStock = isProductOutOfStock(product);
-  const availableStock = Math.max(0, Number(product?.stock) || 0);
-  const isLowStock = !isOutOfStock && availableStock > 0 && availableStock <= 4;
 
   // Reiniciar estado cuando cambia el producto
   useEffect(() => {
@@ -119,12 +117,7 @@ export const ProductDetailSection = ({
                 )}
                 {isOutOfStock && (
                   <span className="bg-cartoon-red text-white font-sub font-black text-xs sm:text-sm px-3 py-1 rounded-xl border-2 border-cartoon-ink shadow-cartoon-xs uppercase tracking-wider">
-                    AGOTADO
-                  </span>
-                )}
-                {isLowStock && (
-                  <span className="bg-cartoon-yellow-dark text-cartoon-ink font-sub font-bold text-xs sm:text-sm px-3 py-1 rounded-xl border-2 border-cartoon-ink shadow-cartoon-xs">
-                    ¡Últimas {product.stock} unidades!
+                    PAUSADO
                   </span>
                 )}
               </div>
@@ -261,8 +254,8 @@ export const ProductDetailSection = ({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.min(availableStock || 1, q + 1))}
-                    disabled={isOutOfStock || quantity >= availableStock}
+                    onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                    disabled={isOutOfStock || quantity >= 20}
                     className="w-10 h-10 rounded-xl bg-white border-2 border-cartoon-ink font-display text-base text-cartoon-ink flex items-center justify-center cursor-pointer hover:bg-cartoon-yellow transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
                   >
                     +

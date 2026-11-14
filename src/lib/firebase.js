@@ -105,12 +105,10 @@ export const getLocalProducts = () => {
   return defaults;
 };
 
-// Helper global y estricto para verificar si un producto está agotado
+// Helper global para verificar si un plato está pausado en la carta
 export const isProductOutOfStock = (product) => {
   if (!product) return true;
-  if (product.active === false) return true;
-  const n = Number(product.stock);
-  return isNaN(n) || n <= 0;
+  return product.active === false;
 };
 
 // Guardar productos en cache local y emitir evento en tiempo real

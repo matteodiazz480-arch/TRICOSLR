@@ -12,6 +12,8 @@ export const DEFAULT_PROMOTIONS_DATA = {
     active: true,
     title: 'GRAN SORTEO TRICO\'S',
     subtitle: '¡Participá gratis con tu pedido o etiquetándonos en Instagram!',
+    prizeName: 'Combo Carioca + Delivery Gratis',
+    winnersCount: 1,
     drawDate: 'Fin de mes',
     prizes: [
       {

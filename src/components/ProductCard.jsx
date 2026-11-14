@@ -4,7 +4,6 @@ import { isProductOutOfStock } from '../lib/firebase';
 
 export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
   const isOutOfStock = isProductOutOfStock(product);
-  const isLowStock = !isOutOfStock && Number(product.stock) > 0 && Number(product.stock) <= 4;
 
   const basePrice = product.variants && product.variants.length > 0
     ? product.variants[0].price
@@ -64,12 +63,7 @@ export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
         )}
         {isOutOfStock && (
           <span className="absolute top-2 right-2 bg-cartoon-red text-white font-sub font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg border border-cartoon-ink shadow-xs uppercase tracking-wider">
-            AGOTADO
-          </span>
-        )}
-        {isLowStock && (
-          <span className="absolute top-2 right-2 bg-cartoon-yellow-dark text-cartoon-ink font-sub font-bold text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg border border-cartoon-ink shadow-xs">
-            ¡Últimas {product.stock}!
+            PAUSADO
           </span>
         )}
       </div>

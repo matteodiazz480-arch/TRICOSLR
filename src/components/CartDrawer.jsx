@@ -284,6 +284,12 @@ export const CartDrawer = ({
 
     const e = {};
     if (!formData.name.trim()) e.name = 'Ingresá tu nombre para el pedido';
+    const cleanPhone = (formData.phone || '').trim();
+    if (!cleanPhone) {
+      e.phone = 'Ingresá tu número de celular (obligatorio)';
+    } else if (cleanPhone.replace(/\D/g, '').length < 6) {
+      e.phone = 'Ingresá un número de celular válido';
+    }
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
@@ -325,6 +331,7 @@ export const CartDrawer = ({
     L.push(`🍔 *PEDIDO TRICO'S*`);
     L.push(`────────────────────────`);
     L.push(`👤 *Cliente:* ${formData.name.trim()}`);
+    L.push(`📱 *Celular:* ${cleanPhone}`);
     L.push(`🛵 *Entrega:* ${formData.deliveryType === 'delivery' ? 'A Domicilio' : 'Retiro en Local'}`);
 
     if (formData.deliveryType === 'delivery') {
@@ -973,10 +980,10 @@ export const CartDrawer = ({
                 {errors.name && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.name}</p>}
               </div>
 
-              {/* Teléfono / WhatsApp para el sorteo */}
+              {/* Teléfono / Celular (Obligatorio) */}
               <div>
                 <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
-                  Teléfono / WhatsApp (para avisarte si ganás el sorteo):
+                  Número de Celular / WhatsApp <span className="text-cartoon-red">*</span>:
                 </label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
@@ -984,12 +991,20 @@ export const CartDrawer = ({
                   </div>
                   <input
                     type="tel"
+                    required
                     placeholder="Ej: 3804-123456"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                    onChange={(e) => {
+                      setFormData({ ...formData, phone: e.target.value });
+                      if (errors.phone) setErrors({ ...errors, phone: '' });
+                    }}
+                    className={inputClass(errors.phone)}
                   />
                 </div>
+                {errors.phone && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.phone}</p>}
+                <span className="text-[10px] font-sub text-gray-500 mt-0.5 block">
+                  Obligatorio para coordinar la entrega y avisarte si ganás el sorteo.
+                </span>
               </div>
 
               {/* Piso, Depto o Referencia visual (Solo si es Delivery) */}

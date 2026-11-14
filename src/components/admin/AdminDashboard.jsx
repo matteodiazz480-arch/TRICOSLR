@@ -22,6 +22,7 @@ import {
 } from '../../lib/promotionsStore';
 import { compressImageFile } from '../../lib/imageCompressor';
 import { LotteryOrdersSection } from './LotteryOrdersSection';
+import { IngredientsSection } from './IngredientsSection';
 import {
   getOrders,
   subscribeToOrders,
@@ -29,6 +30,10 @@ import {
   toggleOrderWinner,
   addOrder,
 } from '../../lib/ordersStore';
+import {
+  getIngredients,
+  subscribeToIngredients,
+} from '../../lib/ingredientsStore';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
@@ -60,6 +65,17 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     };
   }, []);
 
+  // Inventario de Ingredientes en tiempo real
+  const [ingredients, setIngredients] = useState(() => getIngredients());
+  useEffect(() => {
+    const unsubscribe = subscribeToIngredients((items) => {
+      setIngredients(items);
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
   // Formularios de Ganancias y Gastos
   const [earningForm, setEarningForm] = useState({
     amount: '',
@@ -74,25 +90,20 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     date: new Date().toISOString().split('T')[0],
   });
 
-  // Stock
+  // Carta / Menú
   const [selectedCategory, setSelectedCategory] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
-  // Estadísticas de Stock para vista completa en PC
-  const stockStats = useMemo(() => {
+  // Estadísticas de Carta y Menú
+  const menuStats = useMemo(() => {
     const total = products.length;
     const activeCount = products.filter((p) => p.active !== false).length;
-    const totalUnits = products.reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
-    const lowStock = products.filter(
-      (p) => p.active !== false && Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 5
-    ).length;
-    const outOfStock = products.filter(
-      (p) => p.active === false || Number(p.stock || 0) === 0
-    ).length;
-    return { total, activeCount, totalUnits, lowStock, outOfStock };
+    const pausedCount = products.filter((p) => p.active === false).length;
+    const featuredCount = products.filter((p) => p.badge && p.badge.trim()).length;
+    return { total, activeCount, pausedCount, featuredCount };
   }, [products]);
 
   // Cálculos Financieros
@@ -159,6 +170,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   const [giveawayForm, setGiveawayForm] = useState(() => ({
     title: promoData?.giveaway?.title || 'GRAN SORTEO TRICO\'S',
     subtitle: promoData?.giveaway?.subtitle || '¡Participá gratis con tu pedido o etiquetándonos en Instagram!',
+    prizeName: promoData?.giveaway?.prizeName || 'Combo Carioca + Delivery Gratis',
+    winnersCount: promoData?.giveaway?.winnersCount || 1,
     drawDate: promoData?.giveaway?.drawDate || 'Fin de mes',
     active: promoData?.giveaway?.active !== false,
   }));
@@ -182,6 +195,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             ...prev,
             title: data.giveaway.title || prev.title,
             subtitle: data.giveaway.subtitle || prev.subtitle,
+            prizeName: data.giveaway.prizeName || prev.prizeName,
+            winnersCount: data.giveaway.winnersCount || prev.winnersCount,
             drawDate: data.giveaway.drawDate || prev.drawDate,
             active: data.giveaway.active !== false,
           }));
@@ -223,10 +238,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     updateGiveaway({
       title: giveawayForm.title.trim(),
       subtitle: giveawayForm.subtitle.trim(),
+      prizeName: giveawayForm.prizeName.trim(),
+      winnersCount: Math.max(1, Number(giveawayForm.winnersCount) || 1),
       drawDate: giveawayForm.drawDate.trim(),
       active: giveawayForm.active,
     });
-    setPromoMessage('¡Información del sorteo guardada con éxito!');
+    setPromoMessage('¡Configuración del sorteo guardada con éxito!');
     setTimeout(() => setPromoMessage(''), 3000);
   };
 
@@ -271,7 +288,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     { id: 'balance', label: 'Balance', icon: 'account_balance_wallet', badge: money(financialTotals.netBalance) },
     { id: 'ganancias', label: 'Ganancias', icon: 'trending_up', badge: `+${money(financialTotals.totalEarnings)}` },
     { id: 'gastos', label: 'Gastos', icon: 'trending_down', badge: `-${money(financialTotals.totalExpenses)}` },
-    { id: 'stock', label: 'Stock', icon: 'inventory_2', badge: `${products.length} platos` },
+    { id: 'carta', label: 'Carta', icon: 'restaurant_menu', badge: `${products.length} platos` },
+    { id: 'ingredientes', label: 'Ingredientes', icon: 'egg_alt', badge: `${ingredients.length} items` },
     { id: 'sorteo', label: 'Sorteo & Clientes', icon: 'emoji_events', badge: `${orders.length} pedidos` },
     { id: 'promociones', label: 'Promos', icon: 'campaign', badge: 'Premios & Cupones' },
   ];
@@ -704,58 +722,58 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         )}
 
         {/* ============================================================== */}
-        {/* SECCIÓN 4: STOCK Y PLATOS (Amplio, Espacioso y Claro en PC) */}
+        {/* SECCIÓN 4: CARTA Y MENÚ DIGITAL (Sin conteo de hamburguesas) */}
         {/* ============================================================== */}
-        {activeTab === 'stock' && (
+        {(activeTab === 'carta' || activeTab === 'stock') && (
           <div className="space-y-6 animate-modalIn">
             
-            {/* Tarjetas Resumen de Stock (Llenan el espacio con datos útiles en PC) */}
+            {/* Tarjetas Resumen de la Carta Digital */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
               <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs">
                 <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-wider block mb-0.5">
                   🍔 Total Platos
                 </span>
                 <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block leading-tight mt-0.5">
-                  {stockStats.total}
+                  {menuStats.total}
                 </span>
-                <span className="font-sub text-xs text-emerald-600 font-bold block mt-1">
-                  {stockStats.activeCount} activos para venta
+                <span className="font-sub text-xs text-gray-400 block mt-1">
+                  En la carta digital
                 </span>
               </div>
 
               <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs">
                 <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-wider block mb-0.5">
-                  📦 Stock Total Unidades
+                  ✨ Platos Activos
                 </span>
-                <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block leading-tight mt-0.5">
-                  {stockStats.totalUnits}
+                <span className="font-display text-2xl sm:text-3xl text-emerald-600 block leading-tight mt-0.5">
+                  {menuStats.activeCount}
+                </span>
+                <span className="font-sub text-xs text-emerald-600 font-bold block mt-1">
+                  Visibles para venta
+                </span>
+              </div>
+
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs">
+                <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-wider block mb-0.5">
+                  ⏸️ Platos Pausados
+                </span>
+                <span className="font-display text-2xl sm:text-3xl text-gray-600 block leading-tight mt-0.5">
+                  {menuStats.pausedCount}
                 </span>
                 <span className="font-sub text-xs text-gray-400 block mt-1">
-                  Unidades totales disponibles
+                  Ocultos temporalmente
                 </span>
               </div>
 
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200/80 shadow-xs">
-                <span className="font-sub font-bold text-xs text-amber-700 uppercase tracking-wider block mb-0.5">
-                  ⚠️ Stock Bajo (≤ 5)
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs">
+                <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-wider block mb-0.5">
+                  ⭐ Con Etiqueta
                 </span>
-                <span className="font-display text-2xl sm:text-3xl text-amber-600 block leading-tight mt-0.5">
-                  {stockStats.lowStock}
+                <span className="font-display text-2xl sm:text-3xl text-amber-500 block leading-tight mt-0.5">
+                  {menuStats.featuredCount}
                 </span>
-                <span className="font-sub text-xs text-amber-600 font-bold block mt-1">
-                  Requieren reposición
-                </span>
-              </div>
-
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-200/80 shadow-xs">
-                <span className="font-sub font-bold text-xs text-rose-700 uppercase tracking-wider block mb-0.5">
-                  🚫 Platos Agotados
-                </span>
-                <span className="font-display text-2xl sm:text-3xl text-rose-600 block leading-tight mt-0.5">
-                  {stockStats.outOfStock}
-                </span>
-                <span className="font-sub text-xs text-rose-600 font-bold block mt-1">
-                  Pausados en carta
+                <span className="font-sub text-xs text-amber-700 font-bold block mt-1">
+                  Platos destacados
                 </span>
               </div>
             </div>
@@ -770,8 +788,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar hamburguesa o plato..."
-                  className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white border-2 border-gray-200 text-gray-900 font-sub text-sm sm:text-base focus:outline-none focus:border-cartoon-yellow transition-colors shadow-sm"
+                  placeholder="Buscar hamburguesa o plato en la carta..."
+                  className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white border-2 border-gray-200 text-gray-900 font-sub text-sm sm:text-base focus:outline-none focus:border-cartoon-yellow transition-colors shadow-sm"
                 />
               </div>
 
@@ -780,10 +798,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   setEditingProduct(null);
                   setModalOpen(true);
                 }}
-                className="btn-cartoon-primary text-sm sm:text-base py-3.5 px-6 flex items-center justify-center gap-2 cursor-pointer flex-shrink-0 rounded-2xl"
+                className="btn-cartoon-primary text-sm sm:text-base py-3 px-6 flex items-center justify-center gap-2 cursor-pointer flex-shrink-0 rounded-2xl"
               >
                 <Icon name="add" size={20} />
-                <span>Agregar Plato</span>
+                <span>Nuevo Plato</span>
               </button>
             </div>
 
@@ -807,22 +825,19 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               })}
             </div>
 
-            {/* Catálogo en Rejilla de Tarjetas: 2 Columnas Lado a Lado en Celular y 3-4 en Escritorio */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            {/* Catálogo en Rejilla de Tarjetas Limpio, Elegante y Espacioso */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4.5">
               {filteredProducts.map((prod) => {
-                const stock = Number(prod.stock !== undefined ? prod.stock : 35);
-                const isOutOfStock = stock <= 0 || prod.active === false;
-                const isLowStock = stock > 0 && stock <= 5;
                 const price = prod.price || prod.variants?.[0]?.price || 0;
 
                 return (
                   <div
                     key={prod.id}
-                    className={`group bg-white rounded-2xl border-2 sm:border-3 border-gray-200 hover:border-cartoon-yellow/80 hover:shadow-cartoon-sm transition-all duration-200 flex flex-col justify-between overflow-hidden p-2.5 sm:p-3.5 relative ${
-                      !prod.active ? 'opacity-55 bg-gray-50' : ''
+                    className={`group bg-white rounded-2xl border-2 sm:border-3 border-gray-200 hover:border-cartoon-yellow hover:shadow-cartoon-sm transition-all duration-200 flex flex-col justify-between overflow-hidden p-3 sm:p-4 relative ${
+                      !prod.active ? 'opacity-60 bg-gray-50' : ''
                     }`}
                   >
-                    {/* 1. Imagen Grande y Destacada: Arrastrar o Clic para Subir Foto */}
+                    {/* 1. Imagen del Plato con botón de cambio */}
                     <div
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -836,14 +851,13 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                         if (file) handleCardImageUpload(prod, file);
                       }}
                       onClick={() => cardFileInputRefs.current[prod.id]?.click()}
-                      className={`relative w-full h-24 sm:h-32 md:h-36 rounded-xl bg-cartoon-cream border-2 overflow-hidden flex items-center justify-center mb-2 flex-shrink-0 cursor-pointer transition-all ${
+                      className={`relative w-full h-28 sm:h-36 md:h-40 rounded-xl bg-cartoon-cream border-2 overflow-hidden flex items-center justify-center mb-2.5 flex-shrink-0 cursor-pointer transition-all ${
                         draggingCardId === prod.id
                           ? 'border-cartoon-yellow bg-yellow-100 ring-4 ring-cartoon-yellow/40 scale-102'
                           : 'border-gray-200 hover:border-cartoon-yellow'
                       }`}
                       title="Hacé clic o arrastrá una imagen para este plato"
                     >
-                      {/* Input oculto para selección por clic */}
                       <input
                         type="file"
                         accept="image/*"
@@ -872,18 +886,15 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                         </div>
                       )}
 
-                      {/* Overlay informativo al pasar el cursor o en celular */}
+                      {/* Overlay informativo al pasar el cursor */}
                       <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-1 text-center">
                         <Icon name="photo_camera" size={20} />
                         <span className="font-sub font-black text-[10px] uppercase mt-0.5 tracking-wider drop-shadow-xs">
                           {prod.image ? 'Cambiar Foto' : 'Subir Foto'}
                         </span>
-                        <span className="font-sub text-[8px] opacity-90">
-                          Arrastrá o Clic
-                        </span>
                       </div>
 
-                      {/* Spinner de carga mientras comprime y sube */}
+                      {/* Spinner de carga mientras comprime */}
                       {uploadingCardId === prod.id && (
                         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white z-20">
                           <div className="w-5 h-5 border-2 border-cartoon-yellow border-t-transparent rounded-full animate-spin mb-1" />
@@ -891,120 +902,82 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                         </div>
                       )}
 
-                      {/* Badges de Estado sobre la Foto */}
+                      {/* Badges de Estado */}
                       <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end pointer-events-none z-10">
                         {!prod.active && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-gray-900/90 text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
+                          <span className="px-2 py-0.5 rounded-md bg-gray-900/90 text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
                             PAUSADO
-                          </span>
-                        )}
-                        {prod.active && isOutOfStock && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-cartoon-red text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
-                            AGOTADO
-                          </span>
-                        )}
-                        {prod.active && !isOutOfStock && isLowStock && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-amber-500 text-white font-sub font-black text-[9px] uppercase tracking-wider shadow-xs">
-                            ÚLTIMAS {stock}
                           </span>
                         )}
                       </div>
 
                       {prod.badge && (
-                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-cartoon-yellow text-cartoon-ink font-sub font-black text-[9px] uppercase tracking-wider border border-cartoon-ink/30 shadow-xs pointer-events-none z-10">
+                        <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-cartoon-yellow text-cartoon-ink font-sub font-black text-[9px] uppercase tracking-wider border border-cartoon-ink/30 shadow-xs pointer-events-none z-10">
                           {prod.badge}
                         </span>
                       )}
                     </div>
 
-                    {/* 2. Información del Plato: Nombre Completo y Precio */}
-                    <div className="mb-2 flex-1 min-w-0">
+                    {/* 2. Información del Plato: Nombre y Precio */}
+                    <div className="mb-3 flex-1 min-w-0">
                       <h4
                         className="font-display text-xs sm:text-sm text-cartoon-ink font-bold line-clamp-2 leading-snug min-h-[2rem] sm:min-h-[2.4rem] flex items-center"
                         title={prod.name}
                       >
                         {prod.name}
                       </h4>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="font-sub font-black text-xs sm:text-sm text-amber-600">
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="font-sub font-black text-sm sm:text-base text-amber-600">
                           {money(price)}
                         </span>
-                        <span className="font-sub text-[10px] sm:text-xs text-gray-500 font-bold">
-                          {stock} u.
+                        <span className="font-sub text-[10px] sm:text-xs text-gray-400 capitalize">
+                          {prod.category}
                         </span>
                       </div>
                     </div>
 
-                    {/* 3. Control Táctil de Stock a Ancho Completo */}
-                    <div className="flex items-center justify-between bg-gray-50 rounded-xl border border-gray-200 p-1 mb-2 shadow-inner">
-                      <button
-                        type="button"
-                        onClick={() => updateStock(prod.id, Math.max(0, stock - 1))}
-                        aria-label="Restar 1 unidad"
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-cartoon-red hover:text-white border border-gray-200 font-display text-sm font-bold text-gray-800 flex items-center justify-center cursor-pointer transition-colors active:scale-90 shadow-2xs"
-                      >
-                        -
-                      </button>
-                      <div className="flex items-center justify-center flex-1 px-1">
-                        <input
-                          type="number"
-                          min="0"
-                          value={stock}
-                          onChange={(e) => updateStock(prod.id, e.target.value)}
-                          className="w-full text-center font-display text-xs sm:text-sm font-bold bg-transparent text-gray-900 focus:outline-none"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => updateStock(prod.id, stock + 1)}
-                        aria-label="Sumar 1 unidad"
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-emerald-500 hover:text-white border border-gray-200 font-display text-sm font-bold text-gray-800 flex items-center justify-center cursor-pointer transition-colors active:scale-90 shadow-2xs"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* 4. Barra de Acciones Limpia y Espaciosa */}
-                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-gray-100">
+                    {/* 3. Barra de Acciones Limpia, Espaciosa y sin controles de stock */}
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100">
                       <button
                         type="button"
                         onClick={() => {
                           setEditingProduct(prod);
                           setModalOpen(true);
                         }}
-                        className="flex-1 py-1.5 px-2 rounded-lg bg-gray-100 hover:bg-cartoon-yellow hover:text-cartoon-ink font-sub font-bold text-[11px] sm:text-xs text-gray-700 flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95 border border-gray-200/60"
-                        title="Editar información del plato"
+                        className="flex-1 py-1.5 px-2.5 rounded-xl bg-gray-100 hover:bg-cartoon-yellow hover:text-cartoon-ink font-sub font-bold text-xs text-gray-700 flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95 border border-gray-200"
+                        title="Editar plato"
                       >
-                        <Icon name="edit" size={13} />
+                        <Icon name="edit" size={14} />
                         <span>Editar</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => toggleActive(prod.id, prod.active)}
-                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors active:scale-95 border ${
+                        className={`p-1.5 rounded-xl flex items-center justify-center cursor-pointer transition-colors active:scale-95 border ${
                           prod.active
                             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200'
                             : 'bg-cartoon-red text-white border-cartoon-red'
                         }`}
                         title={prod.active ? 'Pausar plato (ocultar de la carta)' : 'Reactivar plato'}
                       >
-                        <Icon name={prod.active ? 'visibility' : 'visibility_off'} size={14} />
+                        <Icon name={prod.active ? 'visibility' : 'visibility_off'} size={16} />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setDeleteCandidate(prod)}
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 text-gray-400 hover:text-cartoon-red hover:bg-rose-50 border border-gray-200 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                        className="p-1.5 rounded-xl bg-gray-100 text-gray-400 hover:text-cartoon-red hover:bg-rose-50 border border-gray-200 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
                         title="Eliminar plato"
                       >
-                        <Icon name="delete" size={14} />
+                        <Icon name="delete" size={16} />
                       </button>
                     </div>
                   </div>
                 );
               })}
             </div>
+
           </div>
         )}
 
@@ -1041,14 +1014,14 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-2xl flex-shrink-0">
-                    🏆
+                    🎁
                   </div>
                   <div>
                     <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
-                      Gran Sorteo Oficial de Trico's
+                      Configuración del Sorteo Oficial
                     </h4>
                     <span className="font-sub text-xs text-gray-500">
-                      Visible en la sección de Promociones de la web
+                      Definí el premio y los ganadores que se utilizarán automáticamente en la ruleta
                     </span>
                   </div>
                 </div>
@@ -1068,81 +1041,97 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 </button>
               </div>
 
-              {/* Formulario simple para activar/pausar y cambiar fecha */}
-              <form onSubmit={handleSaveGiveawaySubmit} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 pt-2">
-                <div className="flex-1">
-                  <label className="font-sub font-bold text-xs text-gray-700 block mb-1">
-                    Fecha del Sorteo
-                  </label>
-                  <input
-                    type="text"
-                    value={giveawayForm.drawDate}
-                    onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
-                    placeholder="Ej. Fin de mes"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
-                  />
-                </div>
+              {/* Formulario Simple y Fácil de Entender */}
+              <form onSubmit={handleSaveGiveawaySubmit} className="space-y-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* 1. Premio que se sortea */}
+                  <div>
+                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                      🏆 ¿Qué premio se sortea? (Obligatorio):
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={giveawayForm.prizeName}
+                      onChange={(e) => setGiveawayForm({ ...giveawayForm, prizeName: e.target.value })}
+                      placeholder="Ej: Combo Carioca + Delivery Gratis"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                    <span className="font-sub text-[10px] text-gray-400 mt-0.5 block">
+                      Aparecerá automáticamente en la ruleta y en el mensaje de WhatsApp.
+                    </span>
+                  </div>
 
-                <button
-                  type="submit"
-                  className="btn-cartoon-primary text-xs sm:text-sm py-2.5 px-5 cursor-pointer shadow-cartoon-xs flex items-center justify-center gap-1.5 flex-shrink-0"
-                >
-                  <Icon name="save" size={16} />
-                  <span>Guardar Fecha</span>
-                </button>
-              </form>
-
-              {/* Los 4 Premios Oficiales en tarjetas compactas */}
-              <div className="pt-2 border-t border-gray-100">
-                <span className="font-sub font-black text-xs text-gray-600 uppercase tracking-wider block mb-2.5">
-                  Los 4 Premios del Sorteo
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
-                    <span className="text-xl">💻</span>
-                    <div className="min-w-0">
-                      <span className="font-display text-[9px] text-cartoon-red font-bold block">1° PREMIO</span>
-                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Diseño Web Profesional</p>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
-                    <span className="text-xl">🍔</span>
-                    <div className="min-w-0">
-                      <span className="font-display text-[9px] text-cartoon-red font-bold block">2° PREMIO</span>
-                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Combo Carioca + Delivery</p>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
-                    <span className="text-xl">📱</span>
-                    <div className="min-w-0">
-                      <span className="font-display text-[9px] text-cartoon-red font-bold block">3° PREMIO</span>
-                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Mes Redes Sociales</p>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-2">
-                    <span className="text-xl">🍗</span>
-                    <div className="min-w-0">
-                      <span className="font-display text-[9px] text-cartoon-red font-bold block">4° PREMIO</span>
-                      <p className="font-sub font-bold text-xs text-cartoon-ink truncate">Combo Pollo para Compartir</p>
-                    </div>
+                  {/* 2. Cantidad de ganadores */}
+                  <div>
+                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                      👥 Cantidad de ganadores a elegir:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      required
+                      value={giveawayForm.winnersCount}
+                      onChange={(e) => setGiveawayForm({ ...giveawayForm, winnersCount: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub font-bold text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                    <span className="font-sub text-[10px] text-gray-400 mt-0.5 block">
+                      La ruleta seleccionará automáticamente esta cantidad de ganadores.
+                    </span>
                   </div>
                 </div>
 
-                {/* Enlace directo a la sección de Clientes & Sorteo */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* 3. Nombre / Título */}
+                  <div>
+                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                      Título del Sorteo:
+                    </label>
+                    <input
+                      type="text"
+                      value={giveawayForm.title}
+                      onChange={(e) => setGiveawayForm({ ...giveawayForm, title: e.target.value })}
+                      placeholder="Ej: GRAN SORTEO OFICIAL TRICO'S"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                  </div>
+
+                  {/* 4. Fecha del Sorteo */}
+                  <div>
+                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                      Fecha o Vigencia:
+                    </label>
+                    <input
+                      type="text"
+                      value={giveawayForm.drawDate}
+                      onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
+                      placeholder="Ej: Fin de mes"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                    />
+                  </div>
+                </div>
+
+                {/* Botones de Guardar e ir a Ruleta */}
                 <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <span className="font-sub text-xs text-gray-500">
-                    💡 Todos los clientes que realizan pedidos participan automáticamente con su número de WhatsApp.
-                  </span>
+                  <button
+                    type="submit"
+                    className="btn-cartoon-primary text-xs sm:text-sm py-2.5 px-5 cursor-pointer shadow-cartoon-xs flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                  >
+                    <Icon name="save" size={16} />
+                    <span>Guardar Configuración</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setActiveTab('sorteo')}
-                    className="btn-cartoon-primary text-xs py-2 px-4 flex items-center gap-2 cursor-pointer shadow-cartoon-xs w-full sm:w-auto justify-center"
+                    className="px-4 py-2.5 rounded-xl bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink font-sub font-bold text-xs sm:text-sm border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
                   >
-                    <Icon name="groups" size={16} />
-                    <span>Ver Clientes y Participantes ({orders.length}) ➔</span>
+                    <span className="text-base">🎰</span>
+                    <span>Ir a Elegir Ganador / Ruleta ({orders.length}) ➔</span>
                   </button>
                 </div>
-              </div>
+              </form>
 
             </div>
 
@@ -1343,6 +1332,16 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         )}
 
         {/* ============================================================== */}
+        {/* SECCIÓN 5: INVENTARIO DE INGREDIENTES & RECETAS */}
+        {/* ============================================================== */}
+        {activeTab === 'ingredientes' && (
+          <IngredientsSection
+            ingredients={ingredients}
+            products={products}
+          />
+        )}
+
+        {/* ============================================================== */}
         {/* SECCIÓN 6: CLIENTES Y PARTICIPANTES DEL SORTEO */}
         {/* ============================================================== */}
         {activeTab === 'sorteo' && (
@@ -1358,11 +1357,11 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
       </main>
 
       {/* ============================================================== */}
-      {/* NAVEGACIÓN EN CELULAR: BARRA INFERIOR FIJA ESTILO APLICACIÓN */}
+      {/* NAVEGACIÓN EN CELULAR: BARRA INFERIOR DESLIZABLE Y PROLIJA */}
       {/* ============================================================== */}
       <nav
         aria-label="Navegación inferior móvil"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 border-t-2 border-gray-200 flex items-center justify-around py-2 px-1 backdrop-blur-md shadow-lg"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 border-t-2 border-gray-200 flex items-center gap-1 overflow-x-auto no-scrollbar py-2 px-2 backdrop-blur-md shadow-lg"
       >
         {navItems.map((item) => {
           const active = activeTab === item.id;
@@ -1370,12 +1369,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
-                active ? 'text-cartoon-ink bg-cartoon-yellow/25 font-black border border-cartoon-ink/20 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all cursor-pointer flex-shrink-0 ${
+                active ? 'text-cartoon-ink bg-cartoon-yellow/30 font-black border border-cartoon-ink/20 shadow-xs' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              <Icon name={item.icon} size={20} />
-              <span className="font-sub font-bold text-[10px] mt-0.5">{item.label}</span>
+              <Icon name={item.icon} size={18} />
+              <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">{item.label}</span>
             </button>
           );
         })}
