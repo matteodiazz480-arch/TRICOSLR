@@ -207,30 +207,6 @@
   transform: translate3d(0, 0, 0);
 }
 
-/* Marcadores del mapa de entrega */
-.map-store-marker img {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 6px rgba(30, 27, 24, 0.35));
-  user-select: none;
-}
-.map-home-marker {
-  cursor: grab;
-  filter: drop-shadow(0 4px 4px rgba(30, 27, 24, 0.3));
-  transition: transform 160ms var(--ease-out);
-}
-.map-home-marker:active {
-  cursor: grabbing;
-  transform: scale(1.08);
-}
-.maplibregl-ctrl-group {
-  border: 2px solid #1E1B18 !important;
-  border-radius: 12px !important;
-  box-shadow: 2px 2px 0 #1E1B18 !important;
-  overflow: hidden;
-}
-
 /* Silueta blanca tipo sticker siguiendo los trazos del personaje sin marco */
 .mascot-sticker-glow {
   filter:

@@ -7,7 +7,7 @@ import { PromosSection } from './components/PromosSection';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
-import { FreeDeliveryRibbon } from './components/FreeDeliveryRibbon';
+import { BrandRibbon } from './components/BrandRibbon';
 import { ScallopedMountainDivider } from './components/SectionDividers';
 import { ProductDetailSection } from './components/ProductDetailSection';
 import { Icon } from './components/Icon';
@@ -38,8 +38,6 @@ function StoreApp() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
-
-  const [deliveryType, setDeliveryType] = useState('delivery');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
 
   // Vista actual: 'store' o 'admin'
@@ -284,8 +282,8 @@ function StoreApp() {
               strokeColor="#1E1B18"
             />
 
-            {/* Cinta: delivery gratis desde $55.000 */}
-            <FreeDeliveryRibbon />
+            {/* Cinta con Sello y Puntos Fuertes de la Marca */}
+            <BrandRibbon />
 
             {/* 3. Carta de Comidas (#FFFDF6) con Stock en Tiempo Real */}
             <MenuSection
@@ -345,8 +343,6 @@ function StoreApp() {
         products={products}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
-        deliveryType={deliveryType}
-        setDeliveryType={setDeliveryType}
         appliedCoupon={appliedCoupon}
         setAppliedCoupon={setAppliedCoupon}
         onOrderSuccess={handleOrderSuccess}
