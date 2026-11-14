@@ -202,7 +202,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
   };
 
   return (
-    <div className="space-y-6 animate-modalIn select-none">
+    <div className="space-y-6 animate-fadeIn select-none">
       
       {/* Toast Notificación */}
       {toast && (
@@ -650,8 +650,8 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
       {/* MODAL: CREAR / EDITAR INGREDIENTE */}
       {/* ============================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modalIn select-none">
-          <div className="w-full max-w-md bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-md bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4 my-auto animate-modalIn max-h-[90vh] overflow-y-auto">
             
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <h3 className="font-display text-base sm:text-lg text-cartoon-ink">
@@ -757,8 +757,8 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
       {/* MODAL: CONFIRMACIÓN DE BORRADO DE INGREDIENTE */}
       {/* ============================================================== */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modalIn select-none">
-          <div className="w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4 my-auto animate-modalIn">
             <h3 className="font-display text-base text-cartoon-ink">¿Eliminar este ingrediente?</h3>
             <p className="font-sub text-xs text-gray-600">
               Vas a eliminar <strong>"{deleteCandidate.name}"</strong> del inventario.

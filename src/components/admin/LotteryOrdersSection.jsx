@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { Icon } from '../Icon';
+import { DEFAULT_PROMOTIONS_DATA } from '../../lib/promotionsStore';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
@@ -43,14 +44,24 @@ export const LotteryOrdersSection = ({
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null); // Ficha del Cliente
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-  // Configuración del Sorteo proveniente automáticamente de Promos
-  const prizeToRaffle = giveaway?.prizeName || 'Combo Carioca + Delivery Gratis';
-  const winnersCountConfig = Math.max(1, Number(giveaway?.winnersCount) || 1);
+  // Los 4 Premios Oficiales del Sorteo Trico's
+  const officialPrizes = useMemo(() => {
+    if (Array.isArray(giveaway?.prizes) && giveaway.prizes.length > 0) {
+      return giveaway.prizes;
+    }
+    return DEFAULT_PROMOTIONS_DATA.giveaway.prizes;
+  }, [giveaway]);
+
+  // Premio seleccionado actualmente para sortear
+  const [selectedPrizeId, setSelectedPrizeId] = useState(1);
+  const selectedPrize = useMemo(() => {
+    return officialPrizes.find((p) => p.id === selectedPrizeId) || officialPrizes[0];
+  }, [officialPrizes, selectedPrizeId]);
 
   // Estados de la Ruleta / Sorteador
   const [isSpinning, setIsSpinning] = useState(false);
   const [displayCandidate, setDisplayCandidate] = useState(null);
-  const [chosenWinners, setChosenWinners] = useState([]); // Array de ganadores seleccionados
+  const [chosenWinner, setChosenWinner] = useState(null);
   const spinIntervalRef = useRef(null);
 
   // Formulario de Participante Manual
@@ -101,10 +112,13 @@ export const LotteryOrdersSection = ({
     }
     const lines = [];
     lines.push(`🎁 *LISTA OFICIAL DE PARTICIPANTES - SORTEO TRICO'S* 🎁`);
-    lines.push(`🏆 Premio: ${prizeToRaffle}`);
-    lines.push(`👥 Ganadores a elegir: ${winnersCountConfig}`);
     lines.push(`📅 Sortea: ${giveaway?.drawDate || 'Fin de mes'}`);
     lines.push(`👥 Total participantes: ${orders.length}`);
+    lines.push(`────────────────────────────────────────`);
+    lines.push(`🏆 *PREMIOS OFICIALES:*`);
+    officialPrizes.forEach((p) => {
+      lines.push(`${p.badge}: ${p.emoji} ${p.title}`);
+    });
     lines.push(`────────────────────────────────────────`);
     orders.forEach((o, i) => {
       const ticket = o.ticketNumber ? `#TRICO-${o.ticketNumber}` : `#${i + 1}`;
@@ -132,11 +146,11 @@ export const LotteryOrdersSection = ({
     if (isSpinning) return;
 
     setIsSpinning(true);
-    setChosenWinners([]);
+    setChosenWinner(null);
 
-    // Filtramos participantes que aún no hayan ganado
+    // Filtramos participantes que aún no hayan ganado este u otro premio
     const eligibleOrders = orders.filter((o) => !o.isWinner);
-    const pool = eligibleOrders.length >= winnersCountConfig ? eligibleOrders : orders;
+    const pool = eligibleOrders.length > 0 ? eligibleOrders : orders;
 
     let counter = 0;
     const totalIterations = 35 + Math.floor(Math.random() * 10);
@@ -150,11 +164,7 @@ export const LotteryOrdersSection = ({
         clearInterval(spinIntervalRef.current);
         spinIntervalRef.current = null;
         setIsSpinning(false);
-
-        // Seleccionar los N ganadores sin duplicados
-        const shuffled = [...pool].sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, Math.min(winnersCountConfig, pool.length));
-        setChosenWinners(selected);
+        setChosenWinner(randomCandidate);
 
         // Festejo con confeti animado
         try {
@@ -169,7 +179,7 @@ export const LotteryOrdersSection = ({
     }, 65);
   };
 
-  // Reiniciar Sorteo (Limpia la ruleta por si hubo algún inconveniente)
+  // Reiniciar Sorteo (Limpia la ruleta por si ocurrió algún inconveniente)
   const handleResetSpin = () => {
     if (spinIntervalRef.current) {
       clearInterval(spinIntervalRef.current);
@@ -177,8 +187,8 @@ export const LotteryOrdersSection = ({
     }
     setIsSpinning(false);
     setDisplayCandidate(null);
-    setChosenWinners([]);
-    showToast('Sorteo reiniciado. Podés volver a girar la ruleta.');
+    setChosenWinner(null);
+    showToast('Ruleta reiniciada. Podés volver a girar.');
   };
 
   useEffect(() => {
@@ -187,24 +197,24 @@ export const LotteryOrdersSection = ({
     };
   }, []);
 
-  // Confirmar y guardar ganadores oficiales
-  const handleConfirmWinners = () => {
-    if (chosenWinners.length === 0) return;
-    chosenWinners.forEach((w) => {
-      if (typeof onToggleWinner === 'function') {
-        onToggleWinner(w.id, prizeToRaffle);
-      }
-    });
-    showToast(`¡${chosenWinners.length} ganador(es) registrado(s) oficialmente para "${prizeToRaffle}"! 🏆`);
+  // Confirmar y guardar ganador oficial para el premio seleccionado
+  const handleConfirmWinner = () => {
+    if (!chosenWinner) return;
+    const prizeLabel = `${selectedPrize?.badge || 'Premio'}: ${selectedPrize?.title || 'Oficial'}`;
+    if (typeof onToggleWinner === 'function') {
+      onToggleWinner(chosenWinner.id, prizeLabel);
+    }
+    showToast(`¡${chosenWinner.customerName} registrado como ganador de "${prizeLabel}"! 🏆`);
     setIsLotteryModalOpen(false);
   };
 
-  // Abrir WhatsApp para avisar a un ganador específico
+  // Abrir WhatsApp para avisar al ganador con mensaje del premio exacto
   const handleNotifyWinnerByWhatsApp = (winnerOrder) => {
     if (!winnerOrder) return;
+    const prizeLabel = `${selectedPrize?.badge || 'Premio'}: ${selectedPrize?.title || 'Oficial'}`;
     const rawPhone = winnerOrder.phone ? winnerOrder.phone.replace(/\D/g, '') : '';
     const cleanPhone = rawPhone ? (rawPhone.startsWith('549') ? rawPhone : `549${rawPhone}`) : '5493804379754';
-    const msg = `¡Hola ${winnerOrder.customerName}! 🥳🎉 Te escribimos desde *TRICO'S* para darte una gran noticia:\n\n¡Sos GANADOR/A de nuestro Gran Sorteo Oficial con tu ticket *#TRICO-${winnerOrder.ticketNumber}*!\n\n🏆 *Premio obtenido:* ${prizeToRaffle}\n\nPor favor respondé a este mensaje para coordinar la entrega de tu premio. ¡Felicitaciones de todo el equipo de Trico's! 🍔🍗`;
+    const msg = `¡Hola ${winnerOrder.customerName}! 🥳🎉 Te escribimos desde *TRICO'S* para darte una gran noticia:\n\n¡Sos GANADOR/A de nuestro Gran Sorteo Oficial con tu ticket *#TRICO-${winnerOrder.ticketNumber}*!\n\n🏆 *Premio obtenido:* ${prizeLabel}\n\nPor favor respondé a este mensaje para coordinar la entrega de tu premio. ¡Felicitaciones de todo el equipo de Trico's! 🍔🍗`;
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -241,7 +251,7 @@ export const LotteryOrdersSection = ({
   };
 
   return (
-    <div className="space-y-6 animate-modalIn select-none">
+    <div className="space-y-6 animate-fadeIn select-none">
       
       {/* Toast de notificación temporal */}
       {toastMessage && (
@@ -259,7 +269,7 @@ export const LotteryOrdersSection = ({
             <span>Clientes & Participantes del Sorteo</span>
           </h3>
           <p className="font-sub text-xs sm:text-sm text-gray-500 mt-0.5">
-            Premio configurado en Promos: <strong className="text-cartoon-ink">{prizeToRaffle}</strong> ({winnersCountConfig} {winnersCountConfig === 1 ? 'ganador' : 'ganadores'}).
+            Participan automáticamente todos los clientes con su pedido web y celular. Sorteo oficial por los 4 premios.
           </p>
         </div>
 
@@ -269,10 +279,10 @@ export const LotteryOrdersSection = ({
             type="button"
             onClick={() => {
               setDisplayCandidate(null);
-              setChosenWinners([]);
+              setChosenWinner(null);
               setIsLotteryModalOpen(true);
             }}
-            className="btn-cartoon-primary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 shadow-cartoon-xs cursor-pointer font-display"
+            className="btn-cartoon-primary text-xs sm:text-sm py-2 px-4 flex items-center gap-2 shadow-cartoon-xs cursor-pointer font-display"
           >
             <span className="text-lg">🎰</span>
             <span>Ruleta de Sorteo</span>
@@ -298,6 +308,74 @@ export const LotteryOrdersSection = ({
         </div>
       </div>
 
+      {/* ============================================================== */}
+      {/* TARJETAS DE LOS 4 PREMIOS OFICIALES DEL SORTEO */}
+      {/* ============================================================== */}
+      <div className="bg-white rounded-3xl border-2 sm:border-3 border-gray-200 p-4 sm:p-5 shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="font-display text-xs sm:text-sm text-cartoon-ink uppercase tracking-wider flex items-center gap-1.5">
+            <span>🏆</span>
+            <span>Los 4 Premios Oficiales del Sorteo Trico's</span>
+          </span>
+          <span className="font-sub text-xs text-gray-500">
+            Fecha: <strong>{giveaway?.drawDate || 'Fin de mes'}</strong>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {officialPrizes.map((p) => {
+            // Buscar si ya hay un ganador para este premio
+            const winnerOfThis = orders.find(
+              (o) => o.isWinner && (o.winnerPrize || '').includes(p.badge || p.title)
+            );
+
+            return (
+              <div
+                key={p.id}
+                onClick={() => {
+                  setSelectedPrizeId(p.id);
+                  setDisplayCandidate(null);
+                  setChosenWinner(null);
+                  setIsLotteryModalOpen(true);
+                }}
+                className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-2 hover:scale-[1.02] shadow-2xs ${
+                  winnerOfThis
+                    ? 'bg-amber-50 border-amber-300'
+                    : selectedPrizeId === p.id
+                    ? 'bg-yellow-50/70 border-cartoon-yellow ring-2 ring-cartoon-yellow/40'
+                    : 'bg-gray-50 border-gray-200 hover:border-cartoon-ink'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <span className="text-2xl flex-shrink-0">{p.emoji || '🎁'}</span>
+                  <div className="min-w-0">
+                    <span className="font-display text-[10px] text-cartoon-red font-bold uppercase block">
+                      {p.badge}
+                    </span>
+                    <h5 className="font-display text-xs sm:text-sm text-cartoon-ink leading-tight line-clamp-2">
+                      {p.title}
+                    </h5>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px] font-sub">
+                  {winnerOfThis ? (
+                    <span className="text-amber-800 font-bold flex items-center gap-1 truncate">
+                      <span>🏆</span>
+                      <span>Ganador: {winnerOfThis.customerName}</span>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-700 font-bold">
+                      🎲 Sortear este premio ➔
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Métricas Resumen */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
@@ -312,27 +390,27 @@ export const LotteryOrdersSection = ({
           </span>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
-          <span className="font-sub font-bold text-xs text-gray-400 uppercase tracking-wider block">
-            🏆 Premio Configurado
+        <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs">
+          <span className="font-sub font-bold text-xs text-amber-700 uppercase tracking-wider block">
+            🏆 Premios en Juego
           </span>
-          <span className="font-display text-sm sm:text-base text-cartoon-ink block mt-1 line-clamp-2 leading-tight">
-            {prizeToRaffle}
+          <span className="font-display text-2xl sm:text-3xl text-amber-600 block mt-0.5">
+            4 Premios
           </span>
-          <span className="font-sub text-[11px] text-gray-500 block mt-0.5">
-            {winnersCountConfig} ganador(es) a sortear
+          <span className="font-sub text-[11px] text-amber-700 font-bold block mt-0.5">
+            Web, Combo, Redes, Pollo
           </span>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs">
-          <span className="font-sub font-bold text-xs text-amber-700 uppercase tracking-wider block">
-            ⭐ Ganadores Elegidos
+        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
+          <span className="font-sub font-bold text-xs text-gray-400 uppercase tracking-wider block">
+            ⭐ Ganadores Asignados
           </span>
-          <span className="font-display text-2xl sm:text-3xl text-amber-600 block mt-0.5">
+          <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block mt-0.5">
             {totalWinners}
           </span>
-          <span className="font-sub text-[11px] text-amber-700 font-bold block mt-0.5">
-            Con premio asignado
+          <span className="font-sub text-[11px] text-gray-500 block mt-0.5">
+            De 4 premios disponibles
           </span>
         </div>
 
@@ -543,7 +621,8 @@ export const LotteryOrdersSection = ({
                           onToggleWinner(order.id, null);
                           showToast(`Se quitó la marca de ganador a ${order.customerName}`);
                         } else {
-                          onToggleWinner(order.id, prizeToRaffle);
+                          const prizeLabel = `${selectedPrize?.badge || 'Premio'}: ${selectedPrize?.title || 'Oficial'}`;
+                          onToggleWinner(order.id, prizeLabel);
                           showToast(`¡${order.customerName} registrado como ganador! 🏆`);
                         }
                       }}
@@ -555,7 +634,7 @@ export const LotteryOrdersSection = ({
                       title={isWinner ? 'Quitar condición de ganador' : 'Asignar como ganador'}
                     >
                       <span>🏆</span>
-                      <span>{isWinner ? 'Ganador' : 'Hacer Ganador'}</span>
+                      <span>{isWinner ? 'Quitar' : 'Ganador'}</span>
                     </button>
 
                     {/* Botón Borrar */}
@@ -576,11 +655,11 @@ export const LotteryOrdersSection = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: RULETA Y SORTEADOR INTERACTIVO */}
+      {/* MODAL: RULETA Y SORTEADOR INTERACTIVO (PERFECTAMENTE CENTRADO) */}
       {/* ============================================================== */}
       {isLotteryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 select-none animate-modalIn">
-          <div className="relative w-full max-w-lg bg-cartoon-cream rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-xl overflow-hidden p-4 sm:p-6 text-center space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-3.5 sm:p-5 select-none">
+          <div className="relative w-full max-w-lg bg-cartoon-cream rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-xl overflow-hidden p-4 sm:p-6 text-center space-y-4 my-auto animate-modalIn max-h-[92vh] overflow-y-auto">
             
             {/* Cabecera del Sorteador */}
             <div className="flex items-center justify-between pb-3 border-b-2 border-cartoon-ink/15">
@@ -605,21 +684,43 @@ export const LotteryOrdersSection = ({
               </button>
             </div>
 
-            {/* Información del Premio Actual (Sincronizado desde Promos) */}
-            <div className="p-3 rounded-2xl bg-white border-2 border-cartoon-ink/20 text-left flex items-center justify-between">
-              <div>
-                <span className="font-sub font-bold text-[10px] text-gray-400 uppercase tracking-wider block">
-                  Premio a Sortear (Configurado en Promos):
-                </span>
-                <span className="font-display text-sm sm:text-base text-cartoon-ink block mt-0.5">
-                  🏆 {prizeToRaffle}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="font-sub text-[10px] text-gray-400 block">Ganadores:</span>
-                <span className="badge-cartoon bg-cartoon-yellow text-cartoon-ink font-display text-xs">
-                  {winnersCountConfig} {winnersCountConfig === 1 ? 'Ganador' : 'Ganadores'}
-                </span>
+            {/* Selector de los 4 Premios Oficiales */}
+            <div className="text-left space-y-1.5">
+              <label className="font-sub font-bold text-xs text-cartoon-ink/80 block">
+                Seleccioná qué premio vas a sortear ahora:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {officialPrizes.map((p) => {
+                  const isSelected = selectedPrizeId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      disabled={isSpinning}
+                      onClick={() => {
+                        setSelectedPrizeId(p.id);
+                        setChosenWinner(null);
+                      }}
+                      className={`p-2 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-bold'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-lg">{p.emoji || '🎁'}</span>
+                        <div className="min-w-0">
+                          <span className="font-display text-[9px] text-cartoon-red uppercase block">
+                            {p.badge}
+                          </span>
+                          <span className="font-display text-xs truncate block">
+                            {p.title}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -638,53 +739,38 @@ export const LotteryOrdersSection = ({
                   </div>
                   <p className="font-sub text-xs text-gray-500 font-bold">¡Girando ruleta de participantes...!</p>
                 </div>
-              ) : chosenWinners.length > 0 ? (
-                <div className="space-y-3 w-full">
+              ) : chosenWinner ? (
+                <div className="space-y-3 w-full animate-bounce">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 border-2 border-cartoon-ink shadow-cartoon-xs">
                     <span className="text-base">🏆</span>
                     <span className="font-display text-xs text-cartoon-ink uppercase">
-                      ¡{chosenWinners.length === 1 ? 'TENEMOS GANADOR' : `${chosenWinners.length} GANADORES SELECCIONADOS`}!
+                      ¡TENEMOS GANADOR DEL {selectedPrize?.badge}!
                     </span>
                   </div>
 
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {chosenWinners.map((winner, idx) => (
-                      <div
-                        key={winner.id}
-                        className="p-2.5 rounded-xl bg-amber-50 border-2 border-amber-300 flex items-center justify-between gap-2 text-left"
-                      >
-                        <div>
-                          <span className="font-display text-[10px] text-amber-800 uppercase block">
-                            Ganador {idx + 1} • Ticket #TRICO-{winner.ticketNumber}
-                          </span>
-                          <span className="font-display text-base text-cartoon-ink block">
-                            {winner.customerName}
-                          </span>
-                          {winner.phone && (
-                            <span className="font-sub font-bold text-xs text-emerald-700 block">
-                              📱 {winner.phone}
-                            </span>
-                          )}
-                        </div>
+                  <div>
+                    <span className="font-display text-xs text-gray-500 block">
+                      Ticket #TRICO-{chosenWinner.ticketNumber}
+                    </span>
+                    <h3 className="font-display text-2xl sm:text-3xl text-cartoon-ink">
+                      {chosenWinner.customerName}
+                    </h3>
+                    {chosenWinner.phone && (
+                      <p className="font-sub font-bold text-xs text-emerald-700 mt-0.5">
+                        📱 WhatsApp: {chosenWinner.phone}
+                      </p>
+                    )}
+                  </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleNotifyWinnerByWhatsApp(winner)}
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-sub font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs flex-shrink-0"
-                          title="Avisar por WhatsApp"
-                        >
-                          <Icon name="chat" size={14} />
-                          <span>Avisar</span>
-                        </button>
-                      </div>
-                    ))}
+                  <div className="p-2.5 rounded-xl bg-amber-50 border-2 border-amber-300 font-sub text-xs text-amber-900 font-bold">
+                    Premio: {selectedPrize?.emoji} {selectedPrize?.badge} - {selectedPrize?.title}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-1.5 text-center">
-                  <span className="text-4xl block">🎁</span>
+                  <span className="text-4xl block">{selectedPrize?.emoji || '🎁'}</span>
                   <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
-                    ¿Quién se lleva el premio?
+                    ¿Quién se lleva el {selectedPrize?.badge}?
                   </h4>
                   <p className="font-sub text-xs text-gray-500 max-w-xs">
                     Tocá el botón abajo para iniciar el sorteo aleatorio entre todos los clientes.
@@ -695,7 +781,7 @@ export const LotteryOrdersSection = ({
 
             {/* Botones de Control de la Ruleta (Iniciar, Reiniciar, Volver a Sortear) */}
             <div className="space-y-2 pt-1">
-              {chosenWinners.length === 0 ? (
+              {!chosenWinner ? (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     type="button"
@@ -704,7 +790,7 @@ export const LotteryOrdersSection = ({
                     className="flex-1 btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer disabled:opacity-50"
                   >
                     <span className="text-xl">🎲</span>
-                    <span>{isSpinning ? 'GIRANDO...' : '¡Iniciar Sorteo!'}</span>
+                    <span>{isSpinning ? 'GIRANDO...' : `¡Sortear ${selectedPrize?.badge}!`}</span>
                   </button>
 
                   <button
@@ -721,17 +807,28 @@ export const LotteryOrdersSection = ({
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       type="button"
-                      onClick={handleConfirmWinners}
+                      onClick={handleConfirmWinner}
                       className="flex-1 btn-cartoon-primary text-xs sm:text-sm py-2.5 flex items-center justify-center gap-1.5 shadow-cartoon-xs cursor-pointer"
                     >
                       <Icon name="check_circle" size={18} />
-                      <span>Guardar Ganador(es)</span>
+                      <span>Guardar como Ganador</span>
                     </button>
 
                     <button
                       type="button"
+                      onClick={() => handleNotifyWinnerByWhatsApp(chosenWinner)}
+                      className="flex-1 btn-cartoon-green text-xs sm:text-sm py-2.5 flex items-center justify-center gap-1.5 shadow-cartoon-xs cursor-pointer"
+                    >
+                      <Icon name="chat" size={18} />
+                      <span>Avisar por WhatsApp</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
                       onClick={handleStartSpin}
-                      className="px-3 py-2.5 rounded-xl bg-white hover:bg-gray-100 border-2 border-cartoon-ink font-sub font-bold text-xs text-cartoon-ink cursor-pointer flex items-center justify-center gap-1"
+                      className="px-3 py-2 rounded-xl bg-white hover:bg-gray-100 border-2 border-cartoon-ink font-sub font-bold text-xs text-cartoon-ink cursor-pointer flex items-center gap-1"
                     >
                       <span>🔁</span>
                       <span>Volver a Sortear</span>
@@ -740,7 +837,7 @@ export const LotteryOrdersSection = ({
                     <button
                       type="button"
                       onClick={handleResetSpin}
-                      className="px-3 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 font-sub font-bold text-xs text-gray-700 cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 font-sub font-bold text-xs text-gray-700 cursor-pointer"
                     >
                       🔄 Reiniciar
                     </button>
@@ -754,11 +851,11 @@ export const LotteryOrdersSection = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: FICHA COMPLETA DEL CLIENTE */}
+      {/* MODAL: FICHA COMPLETA DEL CLIENTE (PERFECTAMENTE CENTRADO) */}
       {/* ============================================================== */}
       {selectedOrderDetails && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modalIn select-none">
-          <div className="w-full max-w-lg bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4 my-auto animate-modalIn max-h-[90vh] overflow-y-auto">
             
             <div className="flex items-center justify-between pb-3 border-b border-gray-200">
               <div className="flex items-center gap-2.5">
@@ -922,11 +1019,11 @@ export const LotteryOrdersSection = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: AGREGAR PARTICIPANTE MANUAL */}
+      {/* MODAL: AGREGAR PARTICIPANTE MANUAL (PERFECTAMENTE CENTRADO) */}
       {/* ============================================================== */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modalIn select-none">
-          <div className="w-full max-w-md bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-md bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4 my-auto animate-modalIn max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">➕</span>
@@ -1009,8 +1106,8 @@ export const LotteryOrdersSection = ({
       {/* MODAL: CONFIRMACIÓN DE BORRADO DE PEDIDO */}
       {/* ============================================================== */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modalIn select-none">
-          <div className="w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4 my-auto animate-modalIn">
             <h3 className="font-display text-base text-cartoon-ink">¿Eliminar este pedido?</h3>
             <p className="font-sub text-xs text-gray-600">
               Se quitará el registro del cliente y su participación del sorteo.

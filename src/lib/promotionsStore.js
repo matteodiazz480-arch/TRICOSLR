@@ -74,7 +74,14 @@ export const getPromotions = () => {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
         return {
-          giveaway: { ...DEFAULT_PROMOTIONS_DATA.giveaway, ...(parsed.giveaway || {}) },
+          giveaway: {
+            ...DEFAULT_PROMOTIONS_DATA.giveaway,
+            ...(parsed.giveaway || {}),
+            prizes:
+              Array.isArray(parsed.giveaway?.prizes) && parsed.giveaway.prizes.length > 0
+                ? parsed.giveaway.prizes
+                : DEFAULT_PROMOTIONS_DATA.giveaway.prizes,
+          },
           coupons: Array.isArray(parsed.coupons) ? parsed.coupons : DEFAULT_PROMOTIONS_DATA.coupons,
         };
       }

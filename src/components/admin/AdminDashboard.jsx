@@ -406,7 +406,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* SECCIÓN 1: BALANCE GENERAL */}
         {/* ============================================================== */}
         {activeTab === 'balance' && (
-          <div className="space-y-6 sm:space-y-8 animate-modalIn">
+          <div className="space-y-6 sm:space-y-8 animate-fadeIn">
             
             {/* Tarjetas de Totales Proporcionadas */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
@@ -514,7 +514,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* SECCIÓN 2: GANANCIAS */}
         {/* ============================================================== */}
         {activeTab === 'ganancias' && (
-          <div className="space-y-6 sm:space-y-8 animate-modalIn">
+          <div className="space-y-6 sm:space-y-8 animate-fadeIn">
             <div className="bg-white p-5 sm:p-6 lg:p-7 rounded-3xl border-2 border-gray-200 shadow-sm">
               <h3 className="font-display text-lg sm:text-xl lg:text-2xl text-emerald-700 mb-1 flex items-center gap-2.5">
                 <Icon name="trending_up" size={24} />
@@ -611,7 +611,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* SECCIÓN 3: GASTOS */}
         {/* ============================================================== */}
         {activeTab === 'gastos' && (
-          <div className="space-y-6 sm:space-y-8 animate-modalIn">
+          <div className="space-y-6 sm:space-y-8 animate-fadeIn">
             <div className="bg-white p-5 sm:p-6 lg:p-7 rounded-3xl border-2 border-gray-200 shadow-sm">
               <h3 className="font-display text-lg sm:text-xl lg:text-2xl text-rose-700 mb-1 flex items-center gap-2.5">
                 <Icon name="trending_down" size={24} />
@@ -725,7 +725,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* SECCIÓN 4: CARTA Y MENÚ DIGITAL (Sin conteo de hamburguesas) */}
         {/* ============================================================== */}
         {(activeTab === 'carta' || activeTab === 'stock') && (
-          <div className="space-y-6 animate-modalIn">
+          <div className="space-y-6 animate-fadeIn">
             
             {/* Tarjetas Resumen de la Carta Digital */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
@@ -985,7 +985,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* SECCIÓN 5: PROMOCIONES, SORTEO Y CUPONES */}
         {/* ============================================================== */}
         {activeTab === 'promociones' && (
-          <div className="space-y-6 sm:space-y-8 animate-modalIn">
+          <div className="space-y-6 sm:space-y-8 animate-fadeIn">
             
             {/* Mensaje de notificación temporal si existe */}
             {promoMessage && (
@@ -1003,25 +1003,25 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   <span>Gestión de Promociones y Sorteo</span>
                 </h3>
                 <p className="font-sub text-xs sm:text-sm text-gray-500 mt-0.5">
-                  Activá o pausá el sorteo oficial y administrá los cupones de descuento para tus clientes.
+                  Activá o pausá el gran sorteo oficial y administrá los cupones de descuento.
                 </p>
               </div>
             </div>
 
-            {/* TARJETA 1: GESTIÓN DEL GRAN SORTEO TRICO'S */}
-            <div className="bg-white rounded-3xl border-2 sm:border-3 border-gray-200 p-4 sm:p-7 shadow-sm space-y-6">
+            {/* TARJETA 1: GESTIÓN DEL GRAN SORTEO OFICIAL TRICO'S */}
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-gray-200 p-5 sm:p-7 shadow-sm space-y-6">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-2xl flex-shrink-0">
-                    🎁
+                    🏆
                   </div>
                   <div>
                     <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
-                      Configuración del Sorteo Oficial
+                      Gran Sorteo Oficial de Trico's
                     </h4>
                     <span className="font-sub text-xs text-gray-500">
-                      Definí el premio y los ganadores que se utilizarán automáticamente en la ruleta
+                      Sorteo activo en la web y visible para todos los clientes que hacen pedidos
                     </span>
                   </div>
                 </div>
@@ -1041,97 +1041,132 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 </button>
               </div>
 
-              {/* Formulario Simple y Fácil de Entender */}
-              <form onSubmit={handleSaveGiveawaySubmit} className="space-y-4 pt-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* 1. Premio que se sortea */}
-                  <div>
-                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
-                      🏆 ¿Qué premio se sortea? (Obligatorio):
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={giveawayForm.prizeName}
-                      onChange={(e) => setGiveawayForm({ ...giveawayForm, prizeName: e.target.value })}
-                      placeholder="Ej: Combo Carioca + Delivery Gratis"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
-                    />
-                    <span className="font-sub text-[10px] text-gray-400 mt-0.5 block">
-                      Aparecerá automáticamente en la ruleta y en el mensaje de WhatsApp.
-                    </span>
-                  </div>
-
-                  {/* 2. Cantidad de ganadores */}
-                  <div>
-                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
-                      👥 Cantidad de ganadores a elegir:
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      required
-                      value={giveawayForm.winnersCount}
-                      onChange={(e) => setGiveawayForm({ ...giveawayForm, winnersCount: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub font-bold text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
-                    />
-                    <span className="font-sub text-[10px] text-gray-400 mt-0.5 block">
-                      La ruleta seleccionará automáticamente esta cantidad de ganadores.
-                    </span>
-                  </div>
+              {/* Formulario de Fecha y Título */}
+              <form onSubmit={handleSaveGiveawaySubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                    Título del Sorteo:
+                  </label>
+                  <input
+                    type="text"
+                    value={giveawayForm.title}
+                    onChange={(e) => setGiveawayForm({ ...giveawayForm, title: e.target.value })}
+                    placeholder="Ej: GRAN SORTEO OFICIAL TRICO'S"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* 3. Nombre / Título */}
-                  <div>
-                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
-                      Título del Sorteo:
-                    </label>
-                    <input
-                      type="text"
-                      value={giveawayForm.title}
-                      onChange={(e) => setGiveawayForm({ ...giveawayForm, title: e.target.value })}
-                      placeholder="Ej: GRAN SORTEO OFICIAL TRICO'S"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
-                    />
-                  </div>
-
-                  {/* 4. Fecha del Sorteo */}
-                  <div>
-                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
-                      Fecha o Vigencia:
-                    </label>
+                <div>
+                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                    Fecha del Sorteo:
+                  </label>
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       value={giveawayForm.drawDate}
                       onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
                       placeholder="Ej: Fin de mes"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow"
                     />
+                    <button
+                      type="submit"
+                      className="btn-cartoon-primary text-xs sm:text-sm py-2 px-4 cursor-pointer shadow-cartoon-xs flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      <Icon name="save" size={16} />
+                      <span>Guardar</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Los 4 Premios Oficiales del Sorteo */}
+              <div className="pt-2 border-t border-gray-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-sub font-black text-xs text-gray-700 uppercase tracking-wider block">
+                    Los 4 Premios Oficiales del Sorteo
+                  </span>
+                  <span className="font-sub text-xs text-gray-400">
+                    Se sortean entre todos los que pidieron por la web
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border-2 border-amber-200 flex flex-col justify-between space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-2xl">💻</span>
+                      <div>
+                        <span className="font-display text-[9px] text-cartoon-red font-bold block">1° PREMIO</span>
+                        <h5 className="font-display text-xs sm:text-sm text-cartoon-ink leading-tight">
+                          Diseño Web Profesional
+                        </h5>
+                      </div>
+                    </div>
+                    <p className="font-sub text-[11px] text-gray-500 leading-snug">
+                      Página web para oficios, emprendimientos o comercio.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border-2 border-amber-200 flex flex-col justify-between space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-2xl">🍔</span>
+                      <div>
+                        <span className="font-display text-[9px] text-cartoon-red font-bold block">2° PREMIO</span>
+                        <h5 className="font-display text-xs sm:text-sm text-cartoon-ink leading-tight">
+                          Combo Carioca + Delivery
+                        </h5>
+                      </div>
+                    </div>
+                    <p className="font-sub text-[11px] text-gray-500 leading-snug">
+                      Banquete de hamburguesas con papas y delivery bonificado.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border-2 border-amber-200 flex flex-col justify-between space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-2xl">📱</span>
+                      <div>
+                        <span className="font-display text-[9px] text-cartoon-red font-bold block">3° PREMIO</span>
+                        <h5 className="font-display text-xs sm:text-sm text-cartoon-ink leading-tight">
+                          Mes Redes Sociales
+                        </h5>
+                      </div>
+                    </div>
+                    <p className="font-sub text-[11px] text-gray-500 leading-snug">
+                      Gestión de redes, diseño gráfico y publicaciones.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border-2 border-amber-200 flex flex-col justify-between space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-2xl">🍗</span>
+                      <div>
+                        <span className="font-display text-[9px] text-cartoon-red font-bold block">4° PREMIO</span>
+                        <h5 className="font-display text-xs sm:text-sm text-cartoon-ink leading-tight">
+                          Combo Pollo Compartir
+                        </h5>
+                      </div>
+                    </div>
+                    <p className="font-sub text-[11px] text-gray-500 leading-snug">
+                      Tiras y piezas ultra crocantes con doble salsa especial.
+                    </p>
                   </div>
                 </div>
 
-                {/* Botones de Guardar e ir a Ruleta */}
-                <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <button
-                    type="submit"
-                    className="btn-cartoon-primary text-xs sm:text-sm py-2.5 px-5 cursor-pointer shadow-cartoon-xs flex items-center justify-center gap-1.5 w-full sm:w-auto"
-                  >
-                    <Icon name="save" size={16} />
-                    <span>Guardar Configuración</span>
-                  </button>
-
+                {/* Acceso directo a Ruleta */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <span className="font-sub text-xs text-gray-500">
+                    💡 Cada cliente que realizó un pedido en la tienda participa automáticamente.
+                  </span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('sorteo')}
-                    className="px-4 py-2.5 rounded-xl bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink font-sub font-bold text-xs sm:text-sm border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+                    className="btn-cartoon-primary text-xs sm:text-sm py-2.5 px-5 flex items-center justify-center gap-2 cursor-pointer shadow-cartoon-xs w-full sm:w-auto"
                   >
                     <span className="text-base">🎰</span>
-                    <span>Ir a Elegir Ganador / Ruleta ({orders.length}) ➔</span>
+                    <span>Ir a Sortear los Premios ({orders.length} clientes) ➔</span>
                   </button>
                 </div>
-              </form>
+              </div>
 
             </div>
 
@@ -1393,8 +1428,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
       {/* Modal de Confirmación de Borrado */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modalIn">
-          <div className="w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4 my-auto animate-modalIn">
             <h3 className="font-display text-base text-cartoon-ink">¿Eliminar este plato?</h3>
             <p className="font-sub text-xs text-gray-600">
               Vas a eliminar <strong>"{deleteCandidate.name}"</strong> del catálogo.

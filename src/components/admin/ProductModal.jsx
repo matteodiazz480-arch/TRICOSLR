@@ -98,8 +98,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-cartoon-ink/70 backdrop-blur-sm flex items-center justify-center p-3.5 sm:p-5 select-none animate-modalIn">
-      <div className="w-full max-w-lg bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-3.5 sm:p-5 select-none">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg overflow-hidden flex flex-col max-h-[92vh] my-auto animate-modalIn">
         
         {/* Cabecera Limpia y Espaciosa */}
         <div className="p-4 sm:p-5 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
