@@ -318,8 +318,14 @@ export const recordOrderInFirestore = async (orderData) => {
 
 // Actualizar stock de un producto específico
 export const updateProductStock = async (productId, newStock) => {
-  const stock = Math.max(0, Math.round(Number(newStock)));
+  const parsed = Number(newStock);
+  const stock = isNaN(parsed) ? 0 : Math.max(0, Math.round(parsed));
   const { isConfigured, db } = initFirebase();
+
+  // Actualizar local inmediatamente
+  const current = getLocalProducts();
+  const next = current.map((p) => (p.id === productId ? { ...p, stock, updatedAt: new Date().toISOString() } : p));
+  saveLocalProducts(next);
 
   if (isConfigured && db) {
     try {
@@ -329,14 +335,10 @@ export const updateProductStock = async (productId, newStock) => {
         updatedAt: new Date().toISOString(),
       });
     } catch (err) {
-      console.warn('Error en Firestore updateDoc, actualizando local:', err);
+      console.warn('Error en Firestore updateDoc:', err);
     }
   }
 
-  // Actualizar local
-  const current = getLocalProducts();
-  const next = current.map((p) => (p.id === productId ? { ...p, stock, updatedAt: new Date().toISOString() } : p));
-  saveLocalProducts(next);
   logSecurityEvent('STOCK_UPDATED', { productId, newStock: stock });
   return next;
 };

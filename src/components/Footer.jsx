@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { RESTAURANT_INFO } from '../data/products';
+import { buildWhatsAppUrl } from '../lib/whatsapp';
 
 export const Footer = () => {
   const scrollToTop = () => {
@@ -45,9 +46,9 @@ export const Footer = () => {
             {/* Redes */}
             <div className="flex items-center gap-3">
               <a
-                href={`https://wa.me/${RESTAURANT_INFO.phone}`}
+                href={buildWhatsAppUrl(RESTAURANT_INFO.phone, "¡Hola TRICO'S! Quiero hacer una consulta sobre la carta...")}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-xl bg-cartoon-green text-cartoon-ink border-2 border-white flex items-center justify-center hover:scale-105 transition-transform shadow-cartoon-sm"
                 aria-label="WhatsApp"
               >

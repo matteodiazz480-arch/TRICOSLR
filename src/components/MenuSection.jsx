@@ -56,6 +56,10 @@ export const MenuSection = ({ onAddToCart, onSelectProduct }) => {
     return [...burgers, ...combos];
   }, [products]);
 
+  const totalActivePlates = useMemo(() => {
+    return products.filter((p) => p.active !== false).length;
+  }, [products]);
+
   // Filtrado para el buscador en tiempo real
   const searchedProducts = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -218,7 +222,7 @@ export const MenuSection = ({ onAddToCart, onSelectProduct }) => {
                 className="btn-cartoon-red text-sm sm:text-lg py-3 px-6 sm:px-9 rounded-2xl sm:rounded-3xl border-3 border-cartoon-ink shadow-cartoon hover:shadow-cartoon-lg active:scale-95 inline-flex items-center gap-2 group cursor-pointer transition-all"
               >
                 <Icon name="restaurant_menu" size={20} />
-                <span>Ver Carta Completa (24 Platos)</span>
+                <span>Ver Carta Completa ({totalActivePlates} Platos)</span>
                 <Icon name="arrow_downward" size={20} className="transition-transform group-hover:translate-y-1" />
               </button>
             </div>

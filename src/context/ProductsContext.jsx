@@ -34,18 +34,48 @@ export const ProductsProvider = ({ children }) => {
   }, []);
 
   const handleUpdateStock = useCallback(async (productId, newStock) => {
-    const next = await updateProductStock(productId, newStock);
+    const parsed = Number(newStock);
+    const stockVal = isNaN(parsed) ? 0 : Math.max(0, Math.round(parsed));
+
+    // 1. Actualización optimista e inmediata para garantizar respuesta táctil fluida y sin retrasos
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, stock: stockVal, updatedAt: new Date().toISOString() } : p))
+    );
+
+    // 2. Persistir localmente y sincronizar en Firestore
+    const next = await updateProductStock(productId, stockVal);
     if (next) setProducts(next);
     return next;
   }, []);
 
   const handleDiscountStock = useCallback(async (orderItems) => {
+    if (!orderItems || orderItems.length === 0) return;
+
+    // Actualización inmediata del stock local para evitar sobreventas
+    setProducts((prev) => {
+      const copy = [...prev];
+      orderItems.forEach((oi) => {
+        const id = oi.productId || oi.originalId || oi.id;
+        const idx = copy.findIndex((p) => p.id === id || (p.id && id && id.startsWith(p.id)));
+        if (idx !== -1) {
+          const currentStock = Number(copy[idx].stock !== undefined ? copy[idx].stock : 35);
+          const newStock = Math.max(0, currentStock - (Number(oi.quantity) || 1));
+          copy[idx] = { ...copy[idx], stock: newStock };
+        }
+      });
+      return copy;
+    });
+
     const next = await discountStockForOrder(orderItems);
     if (next) setProducts(next);
     return next;
   }, []);
 
   const handleToggleActive = useCallback(async (productId, currentActive) => {
+    const nextActive = !currentActive;
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, active: nextActive } : p))
+    );
     const next = await toggleProductActive(productId, currentActive);
     if (next) setProducts(next);
     return next;

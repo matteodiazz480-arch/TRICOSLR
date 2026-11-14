@@ -55,6 +55,19 @@ export const OrderSuccessModal = ({ isOpen, onClose, orderDetails }) => {
           </div>
         </div>
 
+        {/* Botón directo de WhatsApp para reenvío y confirmación 100% garantizada */}
+        {orderDetails?.whatsappUrl && (
+          <a
+            href={orderDetails.whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full mb-3 py-3 px-4 rounded-2xl bg-cartoon-green hover:bg-[#25D366] text-cartoon-ink font-display text-sm sm:text-base border-3 border-cartoon-ink shadow-cartoon-sm hover:shadow-cartoon active:scale-95 flex items-center justify-center gap-2 transition-all cursor-pointer no-underline"
+          >
+            <Icon name="chat" size={20} />
+            <span>Abrir WhatsApp y Enviar Pedido</span>
+          </a>
+        )}
+
         <button
           onClick={onClose}
           className="w-full btn-cartoon-primary py-3 text-base sm:text-lg cursor-pointer"

@@ -6,8 +6,45 @@ import { RESTAURANT_INFO } from '../data/products';
 import { isFreeDelivery, shippingFor } from '../lib/delivery';
 import { isProductOutOfStock } from '../lib/firebase';
 import { getPromotions } from '../lib/promotionsStore';
+import { buildWhatsAppUrl, openWhatsApp } from '../lib/whatsapp';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
+const STORAGE_FORM_KEY = 'tricos_customer_form_v1';
+const STORAGE_DELIVERY_KEY = 'tricos_customer_delivery_v1';
+
+const getInitialFormData = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_FORM_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        name: parsed.name || '',
+        addressNotes: parsed.addressNotes || '',
+        notes: parsed.notes || '',
+        paymentMethod: parsed.paymentMethod || 'Efectivo',
+        changeAmount: parsed.changeAmount || '',
+      };
+    }
+  } catch {}
+  return {
+    name: '',
+    addressNotes: '',
+    notes: '',
+    paymentMethod: 'Efectivo',
+    changeAmount: '',
+  };
+};
+
+const getInitialDeliveryInfo = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_DELIVERY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.lat && parsed.lng) return parsed;
+    }
+  } catch {}
+  return null;
+};
 
 export const CartDrawer = ({
   isOpen,
@@ -26,16 +63,26 @@ export const CartDrawer = ({
   const [step, setStep] = useState('cart');
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
-  const [deliveryInfo, setDeliveryInfo] = useState(null);
+  const [deliveryInfo, setDeliveryInfo] = useState(getInitialDeliveryInfo);
   const [locationError, setLocationError] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    addressNotes: '',
-    notes: '',
-    paymentMethod: 'Efectivo',
-    changeAmount: '',
-  });
+  const [formData, setFormData] = useState(getInitialFormData);
   const [errors, setErrors] = useState({});
+
+  // Persistir datos del formulario para que el cliente no los pierda al navegar o cerrar
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_FORM_KEY, JSON.stringify(formData));
+    } catch {}
+  }, [formData]);
+
+  // Persistir ubicación de delivery
+  useEffect(() => {
+    if (deliveryInfo) {
+      try {
+        localStorage.setItem(STORAGE_DELIVERY_KEY, JSON.stringify(deliveryInfo));
+      } catch {}
+    }
+  }, [deliveryInfo]);
 
   // Detección en tiempo real de platos sin stock en el carrito
   const outOfStockItems = useMemo(() => {
@@ -196,37 +243,35 @@ export const CartDrawer = ({
       return;
     }
 
-    // 1. Descontar stock y registrar ganancias en Firestore de forma confiable antes de saltar a WhatsApp
+    // 1. Construir URL limpia y oficial de WhatsApp
+    const messageText = L.join('\n');
+    const whatsappUrl = buildWhatsAppUrl(RESTAURANT_INFO.phone, messageText);
+
+    // 2. Abrir WhatsApp INMEDIATAMENTE en el hilo sincrónico de interacción del usuario
+    // Esto garantiza que Safari en iOS, Chrome en Android y webviews móviles jamás bloqueen la redirección
+    openWhatsApp(RESTAURANT_INFO.phone, messageText);
+
+    // 3. Descontar stock y registrar ganancias en Firestore de forma concurrente
     try {
       if (typeof onOrderSuccess === 'function') {
-        await Promise.race([
-          onOrderSuccess({
-            customerName: formData.name,
-            total,
-            deliveryType,
-            items: items.map((item) => ({
-              productId: item.product.originalId || item.product.id,
-              originalId: item.product.originalId || item.product.id,
-              name: item.product.name,
-              quantity: item.quantity,
-              price: item.product.price,
-            })),
-          }),
-          new Promise((resolve) => setTimeout(resolve, 1500)), // Salvaguarda para no demorar la apertura de WhatsApp
-        ]);
+        onOrderSuccess({
+          customerName: formData.name.trim(),
+          total,
+          deliveryType,
+          whatsappUrl,
+          items: items.map((item) => ({
+            productId: item.product.originalId || item.product.id,
+            originalId: item.product.originalId || item.product.id,
+            name: item.product.name,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+        });
       }
     } catch (err) {
       console.warn('Error en onOrderSuccess:', err);
     }
 
-    // 2. Abrir WhatsApp para enviar el pedido al local
-    try {
-      window.open(`https://wa.me/${RESTAURANT_INFO.phone}?text=${encodeURIComponent(L.join('\n'))}`, '_blank');
-    } catch (e) {
-      console.warn('Error abriendo WhatsApp:', e);
-    }
-
-    setDeliveryInfo(null);
     setStep('cart');
   };
 
