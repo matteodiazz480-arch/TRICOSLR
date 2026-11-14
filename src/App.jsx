@@ -15,6 +15,7 @@ import { ProductsProvider, useProducts } from './context/ProductsContext';
 import { getSession } from './lib/security';
 import { addEarning } from './lib/financesStore';
 import { recordOrderInFirestore } from './lib/firebase';
+import { addOrder } from './lib/ordersStore';
 
 // Carga perezosa (lazy-load) para máxima velocidad de la tienda pública
 const AdminLogin = React.lazy(() =>
@@ -201,11 +202,11 @@ function StoreApp() {
       console.warn('Error registrando ganancia automática:', err);
     }
 
-    // 3. Registro formal en la colección 'orders' de Firestore
+    // 3. Registro formal en el store de pedidos y Firestore para el sorteo
     try {
-      await recordOrderInFirestore(orderDetails);
+      addOrder(orderDetails);
     } catch (err) {
-      console.warn('Error guardando pedido en Firestore:', err);
+      console.warn('Error guardando pedido en ordersStore:', err);
     }
 
     setIsCartOpen(false);

@@ -20,6 +20,7 @@ const getInitialFormData = () => {
       const parsed = JSON.parse(raw);
       return {
         name: parsed.name || '',
+        phone: parsed.phone || '',
         deliveryType: parsed.deliveryType || 'delivery',
         addressNotes: parsed.addressNotes || '',
         notes: parsed.notes || '',
@@ -30,6 +31,7 @@ const getInitialFormData = () => {
   } catch {}
   return {
     name: '',
+    phone: '',
     deliveryType: 'delivery',
     addressNotes: '',
     notes: '',
@@ -387,6 +389,7 @@ export const CartDrawer = ({
       try {
         onOrderSuccess({
           customerName: formData.name.trim(),
+          phone: (formData.phone || '').trim(),
           deliveryType: formData.deliveryType,
           address: displayAddress,
           addressNotes: formData.addressNotes.trim(),
@@ -968,6 +971,25 @@ export const CartDrawer = ({
                   />
                 </div>
                 {errors.name && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.name}</p>}
+              </div>
+
+              {/* Teléfono / WhatsApp para el sorteo */}
+              <div>
+                <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
+                  Teléfono / WhatsApp (para avisarte si ganás el sorteo):
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
+                    <Icon name="call" size={16} />
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="Ej: 3804-123456"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                  />
+                </div>
               </div>
 
               {/* Piso, Depto o Referencia visual (Solo si es Delivery) */}

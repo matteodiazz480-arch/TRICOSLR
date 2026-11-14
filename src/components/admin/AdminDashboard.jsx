@@ -21,6 +21,14 @@ import {
   DEFAULT_PROMOTIONS_DATA,
 } from '../../lib/promotionsStore';
 import { compressImageFile } from '../../lib/imageCompressor';
+import { LotteryOrdersSection } from './LotteryOrdersSection';
+import {
+  getOrders,
+  subscribeToOrders,
+  deleteOrder,
+  toggleOrderWinner,
+  addOrder,
+} from '../../lib/ordersStore';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
@@ -35,6 +43,17 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   useEffect(() => {
     const unsubscribe = subscribeToFinances((items) => {
       setFinances(items);
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Pedidos y Participantes del Sorteo en tiempo real
+  const [orders, setOrders] = useState(() => getOrders());
+  useEffect(() => {
+    const unsubscribe = subscribeToOrders((items) => {
+      setOrders(items);
     });
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
@@ -253,7 +272,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     { id: 'ganancias', label: 'Ganancias', icon: 'trending_up', badge: `+${money(financialTotals.totalEarnings)}` },
     { id: 'gastos', label: 'Gastos', icon: 'trending_down', badge: `-${money(financialTotals.totalExpenses)}` },
     { id: 'stock', label: 'Stock', icon: 'inventory_2', badge: `${products.length} platos` },
-    { id: 'promociones', label: 'Promos', icon: 'campaign', badge: 'Sorteo & Cupones' },
+    { id: 'sorteo', label: 'Sorteo & Clientes', icon: 'emoji_events', badge: `${orders.length} pedidos` },
+    { id: 'promociones', label: 'Promos', icon: 'campaign', badge: 'Premios & Cupones' },
   ];
 
   return (
@@ -1107,6 +1127,21 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                     </div>
                   </div>
                 </div>
+
+                {/* Enlace directo a la sección de Clientes & Sorteo */}
+                <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <span className="font-sub text-xs text-gray-500">
+                    💡 Todos los clientes que realizan pedidos participan automáticamente con su número de WhatsApp.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('sorteo')}
+                    className="btn-cartoon-primary text-xs py-2 px-4 flex items-center gap-2 cursor-pointer shadow-cartoon-xs w-full sm:w-auto justify-center"
+                  >
+                    <Icon name="groups" size={16} />
+                    <span>Ver Clientes y Participantes ({orders.length}) ➔</span>
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -1305,6 +1340,19 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             </div>
 
           </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* SECCIÓN 6: CLIENTES Y PARTICIPANTES DEL SORTEO */}
+        {/* ============================================================== */}
+        {activeTab === 'sorteo' && (
+          <LotteryOrdersSection
+            orders={orders}
+            giveaway={giveawayForm}
+            onDeleteOrder={deleteOrder}
+            onToggleWinner={toggleOrderWinner}
+            onAddManualOrder={addOrder}
+          />
         )}
 
       </main>
