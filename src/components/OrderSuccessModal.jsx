@@ -89,6 +89,20 @@ export const OrderSuccessModal = ({ isOpen, onClose, orderDetails }) => {
                 </span>
               </div>
             )}
+            {orderDetails.deliveryType === 'delivery' && orderDetails.mapUrl && (
+              <div className="flex justify-between items-center pt-0.5">
+                <span className="text-cartoon-ink/60">Ubicación Mapa:</span>
+                <a
+                  href={orderDetails.mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-cartoon-red hover:underline flex items-center gap-1 text-[11px]"
+                >
+                  <Icon name="location_on" size={13} />
+                  <span>Ver en Google Maps ↗</span>
+                </a>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-cartoon-ink/60">Forma de Pago:</span>
               <span className="font-bold text-cartoon-ink">

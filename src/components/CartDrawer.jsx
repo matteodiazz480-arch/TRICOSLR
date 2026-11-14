@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { Icon } from './Icon';
+import DeliveryMap from './DeliveryMap';
 import { RESTAURANT_INFO } from '../data/products';
 import { isProductOutOfStock } from '../lib/firebase';
 import { getPromotions } from '../lib/promotionsStore';
 import { buildWhatsAppUrl, openWhatsApp } from '../lib/whatsapp';
+import { searchAddress, reverseAddress, buildGoogleMapsUrl } from '../lib/delivery';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 const STORAGE_FORM_KEY = 'tricos_customer_form_v2';
+const STORAGE_LOCATION_KEY = 'tricos_customer_location_v1';
 const FREE_DELIVERY_THRESHOLD = RESTAURANT_INFO.freeDeliveryThreshold || 55000;
 
 const getInitialFormData = () => {
@@ -37,6 +40,14 @@ const getInitialFormData = () => {
   };
 };
 
+const getInitialLocation = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_LOCATION_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
 export const CartDrawer = ({
   isOpen,
   onClose,
@@ -48,12 +59,22 @@ export const CartDrawer = ({
   setAppliedCoupon,
   onOrderSuccess,
 }) => {
-  // Apartado de tienda organizado por etapas: 'cart' (Etapa 1) -> 'checkout' (Etapa 2)
+  // Apartado de tienda organizado por etapas:
+  // 'cart' (Etapa 1: Tu Pedido) -> 'checkout' (Etapa 2: Tus Datos y Pago) -> 'location' (Etapa 3: Ubicación de tu Casa en Mapa)
   const [step, setStep] = useState('cart');
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [formData, setFormData] = useState(getInitialFormData);
   const [errors, setErrors] = useState({});
+
+  // Estado de ubicación y mapa interactivo
+  const [selectedLocation, setSelectedLocation] = useState(getInitialLocation);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [geoError, setGeoError] = useState('');
+  const [isGeoLoading, setIsGeoLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   // Persistir datos del formulario para que el cliente no los pierda al navegar o cerrar
   useEffect(() => {
@@ -62,11 +83,24 @@ export const CartDrawer = ({
     } catch {}
   }, [formData]);
 
+  // Persistir última ubicación seleccionada
+  useEffect(() => {
+    try {
+      if (selectedLocation) {
+        localStorage.setItem(STORAGE_LOCATION_KEY, JSON.stringify(selectedLocation));
+      }
+    } catch {}
+  }, [selectedLocation]);
+
   // Al cerrar o si el carrito se vacía, volver al primer paso
   useEffect(() => {
     if (!isOpen) {
       setStep('cart');
       setErrors({});
+      setLocationError('');
+      setGeoError('');
+      setSearchQuery('');
+      setSearchResults([]);
     }
   }, [isOpen]);
 
@@ -75,6 +109,28 @@ export const CartDrawer = ({
       setStep('cart');
     }
   }, [items.length]);
+
+  // Búsqueda de direcciones con debounce para La Rioja
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      setIsSearching(true);
+      searchAddress(q, ctrl.signal)
+        .then((res) => setSearchResults(res))
+        .catch(() => {})
+        .finally(() => setIsSearching(false));
+    }, 450);
+
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [searchQuery]);
 
   // Detección en tiempo real de platos sin stock en el carrito
   const outOfStockItems = useMemo(() => {
@@ -158,14 +214,11 @@ export const CartDrawer = ({
     setStep('checkout');
   };
 
-  // Enviar pedido final con listado organizado completo
-  const handleSubmitOrder = (ev) => {
-    ev.preventDefault();
+  // Pasar de Etapa 2 (checkout) a Etapa 3 (ubicación en mapa) o confirmar si es retiro
+  const handleProceedFromCheckout = async (ev) => {
+    if (ev && ev.preventDefault) ev.preventDefault();
     const e = {};
     if (!formData.name.trim()) e.name = 'Ingresá tu nombre';
-    if (formData.deliveryType === 'delivery' && !formData.address.trim()) {
-      e.address = 'Ingresá tu dirección de entrega';
-    }
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
@@ -173,6 +226,106 @@ export const CartDrawer = ({
       alert('Uno o más platos en tu carrito se han quedado sin stock. Por favor quitalos para continuar.');
       setStep('cart');
       return;
+    }
+
+    // Si es retiro en local, confirma directamente sin necesidad de ubicar casa
+    if (formData.deliveryType === 'takeaway') {
+      handleSubmitOrder(ev);
+      return;
+    }
+
+    // Modalidad delivery: avanzar a etapa de selección de casa en mapa interactivo
+    setStep('location');
+    setLocationError('');
+
+    // Si el usuario ya escribió calle y aún no eligió pin, pre-buscar para centrar el mapa
+    if (formData.address.trim() && !selectedLocation) {
+      try {
+        const results = await searchAddress(formData.address.trim());
+        if (results && results.length > 0) {
+          setSelectedLocation({
+            lat: results[0].lat,
+            lng: results[0].lng,
+            address: results[0].label || formData.address.trim(),
+          });
+        }
+      } catch {}
+    }
+  };
+
+  // Al tocar el mapa interactivo para marcar la casa
+  const handlePickLocation = async ({ lat, lng }) => {
+    setLocationError('');
+    setGeoError('');
+    setSelectedLocation({
+      lat,
+      lng,
+      address: 'Detectando dirección...',
+    });
+
+    try {
+      const addr = await reverseAddress({ lat, lng });
+      const finalAddress = addr || 'Ubicación seleccionada en La Rioja';
+      setSelectedLocation({
+        lat,
+        lng,
+        address: finalAddress,
+      });
+
+      // Si la dirección escrita estaba vacía, completarla automáticamente
+      if (finalAddress && (!formData.address.trim() || formData.address.length < 4)) {
+        setFormData((prev) => ({ ...prev, address: finalAddress }));
+      }
+    } catch {
+      setSelectedLocation((prev) => ({
+        ...prev,
+        address: 'Ubicación marcada en el mapa',
+      }));
+    }
+  };
+
+  // Botón GPS: centrar en ubicación del cliente
+  const handleUseMyLocation = () => {
+    setGeoError('');
+    setLocationError('');
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGeoError('Tu navegador no permite compartir ubicación GPS.');
+      return;
+    }
+
+    setIsGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsGeoLoading(false);
+        handlePickLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      () => {
+        setIsGeoLoading(false);
+        setGeoError('No pudimos acceder a tu GPS. Podés tocar directamente en el mapa.');
+      },
+      { enableHighAccuracy: true, timeout: 9000 }
+    );
+  };
+
+  // Enviar pedido final con listado organizado completo y enlace de ubicación en Google Maps
+  const handleSubmitOrder = (ev) => {
+    if (ev && ev.preventDefault) ev.preventDefault();
+
+    if (hasOutOfStockItems) {
+      alert('Uno o más platos en tu carrito se han quedado sin stock. Por favor quitalos para continuar.');
+      setStep('cart');
+      return;
+    }
+
+    // Si es delivery, requerir que haya seleccionado su casa en el mapa
+    if (formData.deliveryType === 'delivery') {
+      if (!selectedLocation || selectedLocation.lat == null || selectedLocation.lng == null) {
+        setLocationError('Por favor marcá en el mapa la ubicación de tu casa antes de confirmar 📍');
+        return;
+      }
     }
 
     try {
@@ -184,7 +337,14 @@ export const CartDrawer = ({
       });
     } catch {}
 
-    // Generar Listado Organizado para WhatsApp
+    const googleMapsUrl =
+      formData.deliveryType === 'delivery' && selectedLocation?.lat && selectedLocation?.lng
+        ? buildGoogleMapsUrl(selectedLocation.lat, selectedLocation.lng)
+        : null;
+
+    const displayAddress = formData.address.trim() || selectedLocation?.address || '';
+
+    // Generar Listado Organizado para WhatsApp con el link de ubicación
     const L = [];
     L.push(`🍔 *PEDIDO TRICO'S*`);
     L.push(`────────────────────────`);
@@ -192,7 +352,12 @@ export const CartDrawer = ({
     L.push(`🛵 *Entrega:* ${formData.deliveryType === 'delivery' ? 'A Domicilio' : 'Retiro en Local'}`);
 
     if (formData.deliveryType === 'delivery') {
-      L.push(`📍 *Dirección:* ${formData.address.trim()}`);
+      if (displayAddress) {
+        L.push(`📍 *Dirección:* ${displayAddress}`);
+      }
+      if (googleMapsUrl) {
+        L.push(`🗺️ *Ubicación en Google Maps:* ${googleMapsUrl}`);
+      }
       if (formData.addressNotes.trim()) {
         L.push(`   ↳ *Referencia:* ${formData.addressNotes.trim()}`);
       }
@@ -241,14 +406,16 @@ export const CartDrawer = ({
     // 1. Abrir WhatsApp inmediatamente en el hilo de interacción del usuario
     openWhatsApp(RESTAURANT_INFO.phone, messageText);
 
-    // 2. Notificar al sistema de la orden completada
+    // 2. Notificar al sistema de la orden completada (Firestore, ganancias, modal)
     if (typeof onOrderSuccess === 'function') {
       try {
         onOrderSuccess({
           customerName: formData.name.trim(),
           deliveryType: formData.deliveryType,
-          address: formData.address.trim(),
+          address: displayAddress,
           addressNotes: formData.addressNotes.trim(),
+          location: selectedLocation,
+          mapUrl: googleMapsUrl,
           paymentMethod: formData.paymentMethod,
           changeAmount: formData.changeAmount.trim(),
           notes: formData.notes.trim(),
@@ -280,7 +447,23 @@ export const CartDrawer = ({
       hasError ? 'border-cartoon-red bg-rose-50/50' : 'border-cartoon-ink focus:border-cartoon-yellow'
     }`;
 
-  const headerTitle = step === 'cart' ? 'Tu Pedido' : 'Tus Datos y Pago';
+  const headerTitle =
+    step === 'cart'
+      ? 'Tu Pedido'
+      : step === 'checkout'
+      ? 'Tus Datos y Pago'
+      : 'Ubicá tu Casa';
+
+  const headerSubtitle =
+    step === 'cart'
+      ? items.length === 1
+        ? '1 producto seleccionado'
+        : `${items.length} productos seleccionados`
+      : step === 'checkout'
+      ? formData.deliveryType === 'delivery'
+        ? 'Paso 2 de 3 • Datos de entrega'
+        : 'Paso 2 de 2 • Confirmación'
+      : 'Paso 3 de 3 • Seleccionar en el mapa';
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-cartoon-cream sm:bg-cartoon-ink/65 sm:backdrop-blur-sm flex justify-end">
@@ -303,6 +486,15 @@ export const CartDrawer = ({
               >
                 <Icon name="arrow_back" size={18} />
               </button>
+            ) : step === 'location' ? (
+              <button
+                type="button"
+                onClick={() => setStep('checkout')}
+                aria-label="Volver a tus datos"
+                className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
+              >
+                <Icon name="arrow_back" size={18} />
+              </button>
             ) : (
               <div className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center">
                 <Icon name="shopping_bag" size={18} className="text-cartoon-ink" />
@@ -311,9 +503,7 @@ export const CartDrawer = ({
             <div>
               <h2 className="font-display text-base sm:text-lg text-cartoon-ink leading-tight">{headerTitle}</h2>
               <span className="font-sub font-bold text-[10px] sm:text-xs text-cartoon-ink/70">
-                {step === 'cart'
-                  ? (items.length === 1 ? '1 producto seleccionado' : `${items.length} productos seleccionados`)
-                  : 'Paso 2 de 2 • Confirmación'}
+                {headerSubtitle}
               </span>
             </div>
           </div>
@@ -399,73 +589,67 @@ export const CartDrawer = ({
                               {product.image ? (
                                 <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-xl select-none">{product.emoji || '🍔'}</span>
+                                <span className="text-xl">🍔</span>
                               )}
                             </div>
 
-                            {/* Info y Precio Unitario */}
+                            {/* Info */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1">
-                                <h4 className="font-display text-xs sm:text-sm text-cartoon-ink leading-tight truncate">
+                              <div className="flex items-start justify-between gap-1">
+                                <h4 className="font-display text-xs sm:text-sm text-cartoon-ink truncate leading-tight">
                                   {product.name}
                                 </h4>
                                 <button
                                   type="button"
                                   onClick={() => onRemoveItem(product.id)}
-                                  className="text-cartoon-ink/40 hover:text-cartoon-red p-1 cursor-pointer transition-colors"
-                                  title="Eliminar producto"
+                                  className="text-cartoon-ink/40 hover:text-cartoon-red transition-colors p-0.5 cursor-pointer"
+                                  title="Quitar plato"
+                                  aria-label="Quitar plato"
                                 >
-                                  <Icon name="delete" size={15} />
+                                  <Icon name="close" size={14} />
                                 </button>
                               </div>
 
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="font-sub text-[11px] text-cartoon-ink/70">
-                                  {money(product.price)} c/u
-                                </span>
-                                {isItemOutOfStock && (
-                                  <span className="px-1.5 py-0.2 rounded bg-cartoon-red text-white text-[9px] font-black uppercase">
-                                    Agotado
-                                  </span>
-                                )}
-                              </div>
+                              <p className="font-sub text-[11px] text-cartoon-ink/70">
+                                {money(product.price)} c/u
+                              </p>
 
-                              {note && (
-                                <p className="font-sub text-[10px] text-cartoon-ink/60 italic truncate mt-0.5">
-                                  ↳ {note}
-                                </p>
+                              {isItemOutOfStock && (
+                                <span className="inline-block mt-0.5 text-[10px] font-bold text-cartoon-red bg-rose-100 px-1.5 py-0.2 rounded border border-cartoon-red/40">
+                                  Sin stock disponible
+                                </span>
                               )}
                             </div>
                           </div>
 
-                          {/* Modificador de Cantidades y Subtotal de Ítem */}
-                          <div className="flex items-center justify-between pt-1.5 border-t border-cartoon-ink/10">
-                            <div className="flex items-center gap-1.5 bg-cartoon-cream/80 p-1 rounded-xl border border-cartoon-ink/20">
+                          {/* Control de cantidad y subtotal del item */}
+                          <div className="flex items-center justify-between pt-1 border-t border-cartoon-ink/10 text-xs">
+                            <div className="flex items-center gap-1.5 bg-cartoon-cream border-2 border-cartoon-ink rounded-xl p-0.5 shadow-cartoon-xs">
                               <button
                                 type="button"
                                 onClick={() => onUpdateQuantity(product.id, quantity - 1)}
-                                aria-label="Restar 1"
-                                className="w-6 h-6 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer font-bold text-xs"
+                                className="w-6 h-6 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink font-bold hover:bg-cartoon-yellow active:scale-95 cursor-pointer"
+                                aria-label="Restar una unidad"
                               >
                                 -
                               </button>
-                              <span className="font-display text-xs text-cartoon-ink w-5 text-center font-bold">
+                              <span className="font-display text-xs w-5 text-center text-cartoon-ink">
                                 {quantity}
                               </span>
                               <button
                                 type="button"
-                                disabled={isItemOutOfStock}
                                 onClick={() => onUpdateQuantity(product.id, quantity + 1)}
-                                aria-label="Sumar 1"
-                                className="w-6 h-6 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink active:scale-90 transition-transform cursor-pointer font-bold text-xs disabled:opacity-40"
+                                disabled={isItemOutOfStock}
+                                className="w-6 h-6 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink font-bold hover:bg-cartoon-yellow active:scale-95 cursor-pointer disabled:opacity-40"
+                                aria-label="Sumar una unidad"
                               >
                                 +
                               </button>
                             </div>
 
                             <div className="text-right">
-                              <span className="font-sub text-[10px] text-cartoon-ink/60 block leading-none">Subtotal:</span>
-                              <span className="font-display text-xs sm:text-sm text-cartoon-ink font-bold">
+                              <span className="font-sub text-[10px] text-cartoon-ink/60 block">Subtotal:</span>
+                              <span className="font-display text-xs sm:text-sm text-cartoon-ink">
                                 {money(itemSubtotal)}
                               </span>
                             </div>
@@ -476,24 +660,17 @@ export const CartDrawer = ({
                   </div>
 
                   {/* Cupón de descuento */}
-                  <div className="bg-white p-3 rounded-2xl border-2 border-cartoon-ink shadow-cartoon-xs">
+                  <div className="p-2.5 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs">
                     {appliedCoupon ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">🎟️</span>
-                          <div>
-                            <span className="font-display text-xs text-cartoon-green block">
-                              Cupón: {appliedCoupon.code}
-                            </span>
-                            <span className="font-sub text-[10px] text-cartoon-ink/70">
-                              Descuento: -{money(discountAmount)}
-                            </span>
-                          </div>
+                      <div className="flex items-center justify-between bg-cartoon-green/15 border border-cartoon-green rounded-xl p-2">
+                        <div className="flex items-center gap-1.5 text-xs font-sub font-bold text-cartoon-green-dark">
+                          <span>🎟️</span>
+                          <span>Cupón: {appliedCoupon.code}</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => setAppliedCoupon(null)}
-                          className="font-sub text-[11px] text-cartoon-red hover:underline cursor-pointer font-bold"
+                          className="text-xs text-cartoon-red font-bold hover:underline cursor-pointer"
                         >
                           Quitar
                         </button>
@@ -562,9 +739,8 @@ export const CartDrawer = ({
         {/* ETAPA 2: DATOS DEL CLIENTE, ENTREGA Y PAGO */}
         {/* ============================================================== */}
         {step === 'checkout' && (
-          <form onSubmit={handleSubmitOrder} className="flex-1 flex flex-col min-h-0 animate-modalIn">
+          <form onSubmit={handleProceedFromCheckout} className="flex-1 flex flex-col min-h-0 animate-modalIn">
             <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 min-h-0">
-              
               {/* Nombre */}
               <div>
                 <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
@@ -614,12 +790,12 @@ export const CartDrawer = ({
                 </div>
               </div>
 
-              {/* Dirección simple si es A Domicilio (sin mapas ni km) */}
+              {/* Dirección si es A Domicilio */}
               {formData.deliveryType === 'delivery' ? (
                 <div className="space-y-2 pt-1 border-t border-cartoon-ink/10">
                   <div>
                     <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
-                      Dirección de Entrega: <span className="text-cartoon-red">*</span>
+                      Dirección aproximada (calle y número):
                     </label>
                     <div className="relative">
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
@@ -627,7 +803,7 @@ export const CartDrawer = ({
                       </div>
                       <input
                         type="text"
-                        placeholder="Calle y número (ej: San Martín 450)"
+                        placeholder="Ej: San Martín 450 (luego marcarás tu casa exacta en el mapa)"
                         value={formData.address}
                         onChange={(e) => {
                           setFormData({ ...formData, address: e.target.value });
@@ -636,25 +812,22 @@ export const CartDrawer = ({
                         className={inputClass(errors.address)}
                       />
                     </div>
-                    {errors.address && (
-                      <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.address}</p>
-                    )}
                   </div>
 
                   <div>
                     <label className="block font-sub font-bold text-xs text-cartoon-ink/70 mb-1">
-                      Piso, Depto o Referencia (opcional):
+                      Piso, Depto o Referencia visual (opcional):
                     </label>
                     <input
                       type="text"
-                      placeholder="Ej: Piso 2 B / Portón negro"
+                      placeholder="Ej: Portón negro, timbre blanco, casa con rejas"
                       value={formData.addressNotes}
                       onChange={(e) => setFormData({ ...formData, addressNotes: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
                     />
                   </div>
 
-                  {/* Aviso de beneficio de delivery gratis */}
+                  {/* Beneficio de delivery gratis */}
                   {isFreeDeliveryQualified ? (
                     <div className="p-2 rounded-xl bg-cartoon-green/20 border border-cartoon-green text-[11px] font-sub text-cartoon-green-dark font-bold flex items-center gap-1.5">
                       <span>🎉</span>
@@ -662,7 +835,7 @@ export const CartDrawer = ({
                     </div>
                   ) : (
                     <p className="text-[11px] font-sub text-cartoon-ink/65 italic">
-                      🛵 El costo del delivery se coordina directamente con el cadete al confirmar.
+                      🛵 En el siguiente paso marcarás tu casa en el mapa interactivo.
                     </p>
                   )}
                 </div>
@@ -731,7 +904,7 @@ export const CartDrawer = ({
               </div>
             </div>
 
-            {/* Pie de Etapa 2: Resumen y Confirmación Final a WhatsApp */}
+            {/* Pie de Etapa 2 */}
             <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0">
               <div className="space-y-1 text-xs font-sub">
                 <div className="flex justify-between text-cartoon-ink/80">
@@ -745,11 +918,11 @@ export const CartDrawer = ({
                   </div>
                 )}
                 <div className="flex justify-between text-cartoon-ink/80">
-                  <span>Entrega:</span>
+                  <span>Modalidad:</span>
                   <span className="font-bold text-cartoon-ink">
                     {formData.deliveryType === 'delivery'
-                      ? (isFreeDeliveryQualified ? '¡GRATIS!' : 'A Domicilio')
-                      : 'Retiro en Local'}
+                      ? (isFreeDeliveryQualified ? '🛵 A Domicilio (¡Envío Gratis!)' : '🛵 A Domicilio')
+                      : '🏪 Retiro en Local'}
                   </span>
                 </div>
                 <div className="pt-1.5 border-t border-cartoon-ink/15 flex justify-between items-center text-cartoon-ink font-display text-base sm:text-lg">
@@ -758,15 +931,172 @@ export const CartDrawer = ({
                 </div>
               </div>
 
+              {formData.deliveryType === 'delivery' ? (
+                <button
+                  type="submit"
+                  className="w-full btn-cartoon-primary text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
+                >
+                  <Icon name="location_on" size={20} className="text-cartoon-red" />
+                  <span>ELEGIR UBICACIÓN EN MAPA (PASO 3) ➔</span>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
+                >
+                  <Icon name="chat" size={20} />
+                  <span>CONFIRMAR PEDIDO Y ABRIR WHATSAPP</span>
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+
+        {/* ============================================================== */}
+        {/* ETAPA 3: UBICACIÓN DE TU CASA EN EL MAPA INTERACTIVO */}
+        {/* ============================================================== */}
+        {step === 'location' && (
+          <div className="flex-1 flex flex-col min-h-0 animate-modalIn">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-2.5 min-h-0 flex flex-col">
+              {/* Banner amigable */}
+              <div className="p-2.5 rounded-xl bg-cartoon-yellow-light/80 border-2 border-cartoon-ink shadow-cartoon-xs flex items-center gap-2 flex-shrink-0">
+                <span className="text-xl flex-shrink-0 animate-bounce">📍</span>
+                <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight">
+                  Tocá el mapa exactamente donde está tu casa para que el cadete llegue directo.
+                </p>
+              </div>
+
+              {/* Buscador de calles y botón GPS */}
+              <div className="flex gap-2 flex-shrink-0">
+                <div className="relative flex-1">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 pointer-events-none flex items-center">
+                    <Icon name="search" size={16} />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscá tu calle en La Rioja..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                  />
+                  {(searchResults.length > 0 || isSearching) && (
+                    <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border-2 border-cartoon-ink rounded-xl shadow-cartoon overflow-hidden max-h-48 overflow-y-auto">
+                      {isSearching && searchResults.length === 0 && (
+                        <li className="px-3 py-2 font-sub text-xs text-cartoon-ink/60">Buscando calles...</li>
+                      )}
+                      {searchResults.map((r, i) => (
+                        <li key={`${r.lat}-${r.lng}-${i}`}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handlePickLocation({ lat: r.lat, lng: r.lng });
+                              setSearchQuery('');
+                              setSearchResults([]);
+                            }}
+                            className="w-full text-left px-3 py-2 font-sub text-xs text-cartoon-ink hover:bg-cartoon-yellow-light flex items-center gap-2 border-b border-cartoon-ink/10 last:border-0 cursor-pointer"
+                          >
+                            <Icon name="location_on" size={14} className="text-cartoon-red flex-shrink-0" />
+                            <span className="truncate">{r.label}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleUseMyLocation}
+                  title="Usar mi ubicación GPS actual"
+                  aria-label="Usar mi ubicación GPS"
+                  disabled={isGeoLoading}
+                  className="px-3 rounded-xl bg-cartoon-yellow hover:bg-cartoon-yellow-light border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink active:scale-95 cursor-pointer font-sub font-bold text-xs gap-1 flex-shrink-0"
+                >
+                  <Icon name="my_location" size={16} className={isGeoLoading ? 'animate-spin' : ''} />
+                  <span className="hidden xs:inline">Mi GPS</span>
+                </button>
+              </div>
+
+              {geoError && (
+                <p className="text-[11px] font-sub font-bold text-cartoon-red px-1 flex-shrink-0">{geoError}</p>
+              )}
+
+              {/* Contenedor del Mapa interactivo */}
+              <div
+                className={`relative flex-1 min-h-[300px] sm:min-h-[380px] rounded-2xl border-2 sm:border-3 overflow-hidden shadow-cartoon-xs bg-cartoon-cream-dark ${
+                  locationError ? 'border-cartoon-red ring-2 ring-cartoon-red/40' : 'border-cartoon-ink'
+                }`}
+              >
+                <DeliveryMap value={selectedLocation} onPick={handlePickLocation} />
+
+                {!selectedLocation && (
+                  <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none z-20">
+                    <div className="bg-cartoon-ink text-white font-sub font-bold text-xs px-3.5 py-1.5 rounded-full shadow-cartoon border border-white/20 flex items-center gap-1.5 animate-bounce">
+                      <span>📍</span>
+                      <span>Tocá el mapa donde está tu casa</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tarjeta de casa elegida y link de Google Maps */}
+              <div className="bg-white rounded-xl border-2 border-cartoon-ink/40 p-2.5 shadow-cartoon-xs flex flex-col gap-1 text-xs font-sub flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-cartoon-ink/70 font-bold flex items-center gap-1">
+                    <Icon name="home" size={14} className="text-cartoon-red" />
+                    Casa seleccionada:
+                  </span>
+                  {selectedLocation?.lat ? (
+                    <span className="badge-cartoon bg-cartoon-green text-cartoon-ink text-[10px]">
+                      Ubicada ✓
+                    </span>
+                  ) : (
+                    <span className="badge-cartoon bg-cartoon-yellow text-cartoon-ink text-[10px]">
+                      Pendiente
+                    </span>
+                  )}
+                </div>
+
+                <p className="font-bold text-cartoon-ink truncate">
+                  {selectedLocation?.address || 'Ninguna casa seleccionada aún'}
+                </p>
+
+                {selectedLocation?.lat && (
+                  <div className="pt-1 border-t border-cartoon-ink/10 flex items-center justify-between text-[11px]">
+                    <span className="text-cartoon-ink/60 truncate max-w-[200px]">
+                      🔗 {buildGoogleMapsUrl(selectedLocation.lat, selectedLocation.lng)}
+                    </span>
+                    <span className="font-bold text-cartoon-green-dark flex-shrink-0 ml-2">
+                      Se enviará en el mensaje
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {locationError && (
+                <p className="text-xs font-sub font-bold text-cartoon-red text-center animate-shake flex-shrink-0">
+                  {locationError}
+                </p>
+              )}
+            </div>
+
+            {/* Pie de Etapa 3: Resumen y Botón Final */}
+            <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0">
+              <div className="flex justify-between items-center text-xs font-sub">
+                <span className="text-cartoon-ink/80">Total del pedido:</span>
+                <span className="font-display text-lg text-cartoon-red font-black">{money(total)}</span>
+              </div>
+
               <button
-                type="submit"
+                type="button"
+                onClick={handleSubmitOrder}
                 className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
               >
                 <Icon name="chat" size={20} />
-                <span>REALIZAR PEDIDO POR WHATSAPP</span>
+                <span>CONFIRMAR PEDIDO Y ABRIR WHATSAPP</span>
               </button>
             </div>
-          </form>
+          </div>
         )}
       </aside>
     </div>

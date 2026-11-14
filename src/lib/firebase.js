@@ -299,6 +299,8 @@ export const recordOrderInFirestore = async (orderData) => {
       customerName: (orderData.customerName || 'Cliente').trim(),
       total: Number(orderData.total || 0),
       deliveryType: orderData.deliveryType || 'delivery',
+      address: orderData.address || '',
+      mapUrl: orderData.mapUrl || '',
       items: (orderData.items || []).map((it) => ({
         productId: it.productId || it.id || '',
         name: it.name || '',
