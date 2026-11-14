@@ -6,6 +6,7 @@ export const RESTAURANT_INFO = {
   address: "Santa Cruz 524, B° San Martín",
   city: "La Rioja, Argentina",
   schedule: "Mar a Dom: 20:00 a 00:30 hs",
+  freeDeliveryThreshold: 55000,
   coupons: {
     "TRICO10": { discount: 0.10, label: "10% OFF Especial de Bienvenida" },
   }

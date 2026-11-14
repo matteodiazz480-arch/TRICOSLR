@@ -76,7 +76,9 @@ export const OrderSuccessModal = ({ isOpen, onClose, orderDetails }) => {
             <div className="flex justify-between items-center">
               <span className="text-cartoon-ink/60">Modalidad:</span>
               <span className="font-bold text-cartoon-ink">
-                {orderDetails.deliveryType === 'delivery' ? '🛵 A Domicilio' : '🏪 Retiro en Local'}
+                {orderDetails.deliveryType === 'delivery'
+                  ? (orderDetails.isFreeDelivery ? '🛵 A Domicilio (¡Envío Gratis!)' : '🛵 A Domicilio')
+                  : '🏪 Retiro en Local'}
               </span>
             </div>
             {orderDetails.deliveryType === 'delivery' && orderDetails.address && (
