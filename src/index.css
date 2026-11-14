@@ -198,8 +198,8 @@
   flex-wrap: nowrap !important;
   width: max-content !important;
   min-width: 100% !important;
-  -webkit-animation: infiniteMarqueeScroll 20s linear infinite !important;
-  animation: infiniteMarqueeScroll 20s linear infinite !important;
+  -webkit-animation: infiniteMarqueeScroll 52s linear infinite !important;
+  animation: infiniteMarqueeScroll 52s linear infinite !important;
   will-change: transform;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;

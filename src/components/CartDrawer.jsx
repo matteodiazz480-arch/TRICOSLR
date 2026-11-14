@@ -21,7 +21,6 @@ const getInitialFormData = () => {
       return {
         name: parsed.name || '',
         deliveryType: parsed.deliveryType || 'delivery',
-        address: parsed.address || '',
         addressNotes: parsed.addressNotes || '',
         notes: parsed.notes || '',
         paymentMethod: parsed.paymentMethod || 'Efectivo',
@@ -32,7 +31,6 @@ const getInitialFormData = () => {
   return {
     name: '',
     deliveryType: 'delivery',
-    address: '',
     addressNotes: '',
     notes: '',
     paymentMethod: 'Efectivo',
@@ -59,15 +57,15 @@ export const CartDrawer = ({
   setAppliedCoupon,
   onOrderSuccess,
 }) => {
-  // Apartado de tienda organizado por etapas:
-  // 'cart' (Etapa 1: Tu Pedido) -> 'checkout' (Etapa 2: Tus Datos y Pago) -> 'location' (Etapa 3: Ubicación de tu Casa en Mapa)
+  // Flujo organizado por etapas:
+  // 'cart' (Paso 1: Tu Pedido) -> 'location' (Paso 2: Ubicación en Mapa) -> 'checkout' (Paso 3: Tus Datos y Pago)
   const [step, setStep] = useState('cart');
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [formData, setFormData] = useState(getInitialFormData);
   const [errors, setErrors] = useState({});
 
-  // Estado de ubicación y mapa interactivo
+  // Ubicación y mapa interactivo (Paso 2)
   const [selectedLocation, setSelectedLocation] = useState(getInitialLocation);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -76,7 +74,7 @@ export const CartDrawer = ({
   const [isGeoLoading, setIsGeoLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  // Persistir datos del formulario para que el cliente no los pierda al navegar o cerrar
+  // Persistir datos del formulario
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_FORM_KEY, JSON.stringify(formData));
@@ -92,7 +90,7 @@ export const CartDrawer = ({
     } catch {}
   }, [selectedLocation]);
 
-  // Al cerrar o si el carrito se vacía, volver al primer paso
+  // Reset al cerrar drawer
   useEffect(() => {
     if (!isOpen) {
       setStep('cart');
@@ -110,7 +108,7 @@ export const CartDrawer = ({
     }
   }, [items.length]);
 
-  // Búsqueda de direcciones con debounce para La Rioja
+  // Búsqueda de calles en La Rioja con debounce
   useEffect(() => {
     const q = searchQuery.trim();
     if (q.length < 3) {
@@ -132,7 +130,7 @@ export const CartDrawer = ({
     };
   }, [searchQuery]);
 
-  // Detección en tiempo real de platos sin stock en el carrito
+  // Detección en tiempo real de platos sin stock
   const outOfStockItems = useMemo(() => {
     return items.filter((item) => {
       const baseId = item.product.originalId || item.product.id;
@@ -144,7 +142,7 @@ export const CartDrawer = ({
 
   const hasOutOfStockItems = outOfStockItems.length > 0;
 
-  // Bloquear el scroll del fondo mientras el drawer esté abierto
+  // Bloquear scroll de fondo mientras el drawer esté abierto
   useEffect(() => {
     if (isOpen) {
       const prevOverflow = document.body.style.overflow;
@@ -205,52 +203,13 @@ export const CartDrawer = ({
     }
   };
 
-  // Pasar de Etapa 1 a Etapa 2
-  const handleProceedToCheckout = () => {
+  // Pasar de Etapa 1 (cart) a Etapa 2 (ubicación en mapa)
+  const handleProceedToLocation = () => {
     if (hasOutOfStockItems) {
       alert('Uno o más platos en tu carrito se han quedado sin stock. Por favor quitalos para continuar.');
       return;
     }
-    setStep('checkout');
-  };
-
-  // Pasar de Etapa 2 (checkout) a Etapa 3 (ubicación en mapa) o confirmar si es retiro
-  const handleProceedFromCheckout = async (ev) => {
-    if (ev && ev.preventDefault) ev.preventDefault();
-    const e = {};
-    if (!formData.name.trim()) e.name = 'Ingresá tu nombre';
-    setErrors(e);
-    if (Object.keys(e).length > 0) return;
-
-    if (hasOutOfStockItems) {
-      alert('Uno o más platos en tu carrito se han quedado sin stock. Por favor quitalos para continuar.');
-      setStep('cart');
-      return;
-    }
-
-    // Si es retiro en local, confirma directamente sin necesidad de ubicar casa
-    if (formData.deliveryType === 'takeaway') {
-      handleSubmitOrder(ev);
-      return;
-    }
-
-    // Modalidad delivery: avanzar a etapa de selección de casa en mapa interactivo
     setStep('location');
-    setLocationError('');
-
-    // Si el usuario ya escribió calle y aún no eligió pin, pre-buscar para centrar el mapa
-    if (formData.address.trim() && !selectedLocation) {
-      try {
-        const results = await searchAddress(formData.address.trim());
-        if (results && results.length > 0) {
-          setSelectedLocation({
-            lat: results[0].lat,
-            lng: results[0].lng,
-            address: results[0].label || formData.address.trim(),
-          });
-        }
-      } catch {}
-    }
   };
 
   // Al tocar el mapa interactivo para marcar la casa
@@ -271,11 +230,6 @@ export const CartDrawer = ({
         lng,
         address: finalAddress,
       });
-
-      // Si la dirección escrita estaba vacía, completarla automáticamente
-      if (finalAddress && (!formData.address.trim() || formData.address.length < 4)) {
-        setFormData((prev) => ({ ...prev, address: finalAddress }));
-      }
     } catch {
       setSelectedLocation((prev) => ({
         ...prev,
@@ -284,7 +238,7 @@ export const CartDrawer = ({
     }
   };
 
-  // Botón GPS: centrar en ubicación del cliente
+  // Botón GPS
   const handleUseMyLocation = () => {
     setGeoError('');
     setLocationError('');
@@ -310,9 +264,26 @@ export const CartDrawer = ({
     );
   };
 
+  // Pasar de Etapa 2 (ubicación en mapa) a Etapa 3 (datos del cliente y pago)
+  const handleProceedFromLocation = () => {
+    if (formData.deliveryType === 'delivery') {
+      if (!selectedLocation || selectedLocation.lat == null || selectedLocation.lng == null) {
+        setLocationError('Por favor tocá en el mapa para marcar la casa donde querés recibir el pedido 📍');
+        return;
+      }
+    }
+    setLocationError('');
+    setStep('checkout');
+  };
+
   // Enviar pedido final con listado organizado completo y enlace de ubicación en Google Maps
   const handleSubmitOrder = (ev) => {
     if (ev && ev.preventDefault) ev.preventDefault();
+
+    const e = {};
+    if (!formData.name.trim()) e.name = 'Ingresá tu nombre para el pedido';
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
 
     if (hasOutOfStockItems) {
       alert('Uno o más platos en tu carrito se han quedado sin stock. Por favor quitalos para continuar.');
@@ -320,9 +291,9 @@ export const CartDrawer = ({
       return;
     }
 
-    // Si es delivery, requerir que haya seleccionado su casa en el mapa
     if (formData.deliveryType === 'delivery') {
       if (!selectedLocation || selectedLocation.lat == null || selectedLocation.lng == null) {
+        setStep('location');
         setLocationError('Por favor marcá en el mapa la ubicación de tu casa antes de confirmar 📍');
         return;
       }
@@ -342,9 +313,12 @@ export const CartDrawer = ({
         ? buildGoogleMapsUrl(selectedLocation.lat, selectedLocation.lng)
         : null;
 
-    const displayAddress = formData.address.trim() || selectedLocation?.address || '';
+    const displayAddress =
+      formData.deliveryType === 'delivery'
+        ? selectedLocation?.address || 'Ubicación seleccionada en el mapa'
+        : RESTAURANT_INFO.address;
 
-    // Generar Listado Organizado para WhatsApp con el link de ubicación
+    // Generar Listado Organizado para WhatsApp con el enlace directo al mapa
     const L = [];
     L.push(`🍔 *PEDIDO TRICO'S*`);
     L.push(`────────────────────────`);
@@ -359,11 +333,13 @@ export const CartDrawer = ({
         L.push(`🗺️ *Ubicación en Google Maps:* ${googleMapsUrl}`);
       }
       if (formData.addressNotes.trim()) {
-        L.push(`   ↳ *Referencia:* ${formData.addressNotes.trim()}`);
+        L.push(`   ↳ *Referencia de la casa:* ${formData.addressNotes.trim()}`);
       }
       if (isFreeDeliveryQualified) {
         L.push(`🎉 *Beneficio:* ¡Delivery Gratis bonificado!`);
       }
+    } else {
+      L.push(`📍 *Punto de Retiro:* ${RESTAURANT_INFO.address}`);
     }
 
     L.push(
@@ -450,20 +426,20 @@ export const CartDrawer = ({
   const headerTitle =
     step === 'cart'
       ? 'Tu Pedido'
-      : step === 'checkout'
-      ? 'Tus Datos y Pago'
-      : 'Ubicá tu Casa';
+      : step === 'location'
+      ? formData.deliveryType === 'delivery'
+        ? 'Ubicá tu Casa'
+        : 'Punto de Retiro'
+      : 'Tus Datos y Pago';
 
   const headerSubtitle =
     step === 'cart'
       ? items.length === 1
         ? '1 producto seleccionado'
         : `${items.length} productos seleccionados`
-      : step === 'checkout'
-      ? formData.deliveryType === 'delivery'
-        ? 'Paso 2 de 3 • Datos de entrega'
-        : 'Paso 2 de 2 • Confirmación'
-      : 'Paso 3 de 3 • Seleccionar en el mapa';
+      : step === 'location'
+      ? 'Paso 2 de 3 • Selección en el mapa'
+      : 'Paso 3 de 3 • Confirmación final';
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-cartoon-cream sm:bg-cartoon-ink/65 sm:backdrop-blur-sm flex justify-end">
@@ -477,7 +453,7 @@ export const CartDrawer = ({
         {/* Encabezado con navegación por etapas */}
         <div className="p-3.5 sm:p-4 bg-cartoon-yellow border-b-2 sm:border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            {step === 'checkout' ? (
+            {step === 'location' ? (
               <button
                 type="button"
                 onClick={() => setStep('cart')}
@@ -486,11 +462,11 @@ export const CartDrawer = ({
               >
                 <Icon name="arrow_back" size={18} />
               </button>
-            ) : step === 'location' ? (
+            ) : step === 'checkout' ? (
               <button
                 type="button"
-                onClick={() => setStep('checkout')}
-                aria-label="Volver a tus datos"
+                onClick={() => setStep('location')}
+                aria-label="Volver a la ubicación"
                 className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink active:scale-95 transition-transform cursor-pointer"
               >
                 <Icon name="arrow_back" size={18} />
@@ -702,7 +678,7 @@ export const CartDrawer = ({
               )}
             </div>
 
-            {/* Pie de Etapa 1: Resumen y Botón para avanzar a Etapa 2 */}
+            {/* Pie de Etapa 1: Resumen y Botón para avanzar a Etapa 2 (Ubicación en mapa) */}
             {items.length > 0 && (
               <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0">
                 <div className="space-y-1 text-xs font-sub">
@@ -724,10 +700,11 @@ export const CartDrawer = ({
 
                 <button
                   type="button"
-                  onClick={handleProceedToCheckout}
+                  onClick={handleProceedToLocation}
                   className="w-full btn-cartoon-red text-xs sm:text-sm py-3 flex items-center justify-center gap-2 group cursor-pointer shadow-cartoon active:scale-95 transition-transform"
                 >
-                  <span>CONTINUAR A TUS DATOS</span>
+                  <Icon name="location_on" size={18} />
+                  <span>ELEGIR UBICACIÓN DE ENTREGA</span>
                   <Icon name="arrow_forward" size={18} className="transition-transform group-hover:translate-x-1" />
                 </button>
               </div>
@@ -736,12 +713,241 @@ export const CartDrawer = ({
         )}
 
         {/* ============================================================== */}
-        {/* ETAPA 2: DATOS DEL CLIENTE, ENTREGA Y PAGO */}
+        {/* ETAPA 2: UBICACIÓN DE TU CASA EN EL MAPA INTERACTIVO */}
+        {/* ============================================================== */}
+        {step === 'location' && (
+          <div className="flex-1 flex flex-col min-h-0 animate-modalIn">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-2.5 min-h-0 flex flex-col">
+              {/* Selector de Modalidad: Delivery o Retiro */}
+              <div className="flex-shrink-0">
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'delivery', label: '🛵 A Domicilio' },
+                    { id: 'takeaway', label: '🏪 Retiro en Local' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, deliveryType: opt.id });
+                        setLocationError('');
+                      }}
+                      className={`py-2 px-2 rounded-xl border-2 font-sub font-bold text-xs cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+                        formData.deliveryType === opt.id
+                          ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black'
+                          : 'bg-white text-cartoon-ink/70 border-cartoon-ink/30 hover:border-cartoon-ink'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {formData.deliveryType === 'delivery' ? (
+                <>
+                  {/* Banner amigable */}
+                  <div className="p-2.5 rounded-xl bg-cartoon-yellow-light/80 border-2 border-cartoon-ink shadow-cartoon-xs flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xl flex-shrink-0 animate-bounce">📍</span>
+                    <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight">
+                      Tocá el mapa exactamente donde está tu casa para que el cadete llegue directo.
+                    </p>
+                  </div>
+
+                  {/* Buscador de calles y botón GPS */}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <div className="relative flex-1">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 pointer-events-none flex items-center">
+                        <Icon name="search" size={16} />
+                      </div>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Buscá tu calle en La Rioja..."
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                      />
+                      {(searchResults.length > 0 || isSearching) && (
+                        <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border-2 border-cartoon-ink rounded-xl shadow-cartoon overflow-hidden max-h-48 overflow-y-auto">
+                          {isSearching && searchResults.length === 0 && (
+                            <li className="px-3 py-2 font-sub text-xs text-cartoon-ink/60">Buscando calles...</li>
+                          )}
+                          {searchResults.map((r, i) => (
+                            <li key={`${r.lat}-${r.lng}-${i}`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handlePickLocation({ lat: r.lat, lng: r.lng });
+                                  setSearchQuery('');
+                                  setSearchResults([]);
+                                }}
+                                className="w-full text-left px-3 py-2 font-sub text-xs text-cartoon-ink hover:bg-cartoon-yellow-light flex items-center gap-2 border-b border-cartoon-ink/10 last:border-0 cursor-pointer"
+                              >
+                                <Icon name="location_on" size={14} className="text-cartoon-red flex-shrink-0" />
+                                <span className="truncate">{r.label}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleUseMyLocation}
+                      title="Usar mi ubicación GPS actual"
+                      aria-label="Usar mi ubicación GPS"
+                      disabled={isGeoLoading}
+                      className="px-3 rounded-xl bg-cartoon-yellow hover:bg-cartoon-yellow-light border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink active:scale-95 cursor-pointer font-sub font-bold text-xs gap-1 flex-shrink-0"
+                    >
+                      <Icon name="my_location" size={16} className={isGeoLoading ? 'animate-spin' : ''} />
+                      <span className="hidden xs:inline">Mi GPS</span>
+                    </button>
+                  </div>
+
+                  {geoError && (
+                    <p className="text-[11px] font-sub font-bold text-cartoon-red px-1 flex-shrink-0">{geoError}</p>
+                  )}
+
+                  {/* Contenedor del Mapa interactivo */}
+                  <div
+                    className={`relative flex-1 min-h-[290px] sm:min-h-[360px] rounded-2xl border-2 sm:border-3 overflow-hidden shadow-cartoon-xs bg-cartoon-cream-dark ${
+                      locationError ? 'border-cartoon-red ring-2 ring-cartoon-red/40' : 'border-cartoon-ink'
+                    }`}
+                  >
+                    <DeliveryMap value={selectedLocation} onPick={handlePickLocation} />
+
+                    {!selectedLocation && (
+                      <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none z-20">
+                        <div className="bg-cartoon-ink text-white font-sub font-bold text-xs px-3.5 py-1.5 rounded-full shadow-cartoon border border-white/20 flex items-center gap-1.5 animate-bounce">
+                          <span>📍</span>
+                          <span>Tocá el mapa donde está tu casa</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tarjeta de casa elegida y link de Google Maps */}
+                  <div className="bg-white rounded-xl border-2 border-cartoon-ink/40 p-2.5 shadow-cartoon-xs flex flex-col gap-1 text-xs font-sub flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-cartoon-ink/70 font-bold flex items-center gap-1">
+                        <Icon name="home" size={14} className="text-cartoon-red" />
+                        Casa seleccionada:
+                      </span>
+                      {selectedLocation?.lat ? (
+                        <span className="badge-cartoon bg-cartoon-green text-cartoon-ink text-[10px]">
+                          Ubicada ✓
+                        </span>
+                      ) : (
+                        <span className="badge-cartoon bg-cartoon-yellow text-cartoon-ink text-[10px]">
+                          Pendiente
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="font-bold text-cartoon-ink truncate">
+                      {selectedLocation?.address || 'Ninguna casa seleccionada aún (tocá en el mapa)'}
+                    </p>
+
+                    {selectedLocation?.lat && (
+                      <div className="pt-1 border-t border-cartoon-ink/10 flex items-center justify-between text-[11px]">
+                        <span className="text-cartoon-ink/60 truncate max-w-[200px]">
+                          🔗 {buildGoogleMapsUrl(selectedLocation.lat, selectedLocation.lng)}
+                        </span>
+                        <span className="font-bold text-cartoon-green-dark flex-shrink-0 ml-2">
+                          Se enviará en el mensaje
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {locationError && (
+                    <p className="text-xs font-sub font-bold text-cartoon-red text-center animate-shake flex-shrink-0">
+                      {locationError}
+                    </p>
+                  )}
+                </>
+              ) : (
+                /* Retiro en Local */
+                <div className="space-y-3 pt-2">
+                  <div className="p-4 rounded-2xl bg-white border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs text-xs font-sub text-cartoon-ink space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">🏪</span>
+                      <div>
+                        <h4 className="font-display text-sm sm:text-base text-cartoon-ink">
+                          Retiro en el Local Trico's
+                        </h4>
+                        <p className="text-cartoon-ink/70">{RESTAURANT_INFO.address}, La Rioja</p>
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-cartoon-cream border border-cartoon-ink/20 flex items-center gap-2">
+                      <span>⏰</span>
+                      <p className="font-bold text-xs text-cartoon-ink">Horario: {RESTAURANT_INFO.schedule}</p>
+                    </div>
+                  </div>
+
+                  {/* Mapa centrado en el local */}
+                  <div className="relative h-64 rounded-2xl border-2 sm:border-3 border-cartoon-ink overflow-hidden shadow-cartoon-xs bg-cartoon-cream-dark">
+                    <DeliveryMap value={null} onPick={() => {}} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Pie de Etapa 2: Botón para continuar a datos del cliente */}
+            <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0">
+              <div className="flex justify-between items-center text-xs font-sub">
+                <span className="text-cartoon-ink/80">Total del pedido:</span>
+                <span className="font-display text-lg text-cartoon-red font-black">{money(total)}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleProceedFromLocation}
+                className="w-full btn-cartoon-primary text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
+              >
+                <span>CONTINUAR A TUS DATOS (PASO 3)</span>
+                <Icon name="arrow_forward" size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* ETAPA 3: DATOS DEL CLIENTE Y PAGO (Sin campos innecesarios) */}
         {/* ============================================================== */}
         {step === 'checkout' && (
-          <form onSubmit={handleProceedFromCheckout} className="flex-1 flex flex-col min-h-0 animate-modalIn">
+          <form onSubmit={handleSubmitOrder} className="flex-1 flex flex-col min-h-0 animate-modalIn">
             <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 min-h-0">
-              {/* Nombre */}
+              
+              {/* Tarjeta de Resumen de Ubicación Elegida */}
+              <div className="p-3 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-between gap-2.5">
+                <div className="min-w-0 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-cartoon-yellow border border-cartoon-ink flex items-center justify-center flex-shrink-0 text-base">
+                    {formData.deliveryType === 'delivery' ? '🛵' : '🏪'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-display text-xs text-cartoon-ink truncate leading-tight">
+                      {formData.deliveryType === 'delivery'
+                        ? selectedLocation?.address || 'Ubicación marcada en el mapa'
+                        : `Retiro: ${RESTAURANT_INFO.address}`}
+                    </p>
+                    <span className="font-sub font-bold text-[10px] text-cartoon-green-dark block mt-0.5">
+                      {formData.deliveryType === 'delivery' ? 'Ubicación confirmada en el mapa ✓' : 'Listo para retirar ✓'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setStep('location')}
+                  className="text-xs font-sub font-bold text-cartoon-red hover:underline flex-shrink-0 cursor-pointer"
+                >
+                  Cambiar
+                </button>
+              </div>
+
+              {/* Nombre del Cliente */}
               <div>
                 <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
                   Tu Nombre: <span className="text-cartoon-red">*</span>
@@ -764,88 +970,19 @@ export const CartDrawer = ({
                 {errors.name && <p className="mt-1 text-xs font-sub font-bold text-cartoon-red">{errors.name}</p>}
               </div>
 
-              {/* Modalidad de Entrega */}
-              <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
-                  ¿Cómo querés recibir tu pedido?:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'delivery', label: '🛵 A Domicilio' },
-                    { id: 'takeaway', label: '🏪 Retiro en Local' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, deliveryType: opt.id })}
-                      className={`py-2 px-2 rounded-xl border-2 font-sub font-bold text-xs cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
-                        formData.deliveryType === opt.id
-                          ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black'
-                          : 'bg-white text-cartoon-ink/70 border-cartoon-ink/30 hover:border-cartoon-ink'
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dirección si es A Domicilio */}
-              {formData.deliveryType === 'delivery' ? (
-                <div className="space-y-2 pt-1 border-t border-cartoon-ink/10">
-                  <div>
-                    <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
-                      Dirección aproximada (calle y número):
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 flex items-center">
-                        <Icon name="location_on" size={16} />
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Ej: San Martín 450 (luego marcarás tu casa exacta en el mapa)"
-                        value={formData.address}
-                        onChange={(e) => {
-                          setFormData({ ...formData, address: e.target.value });
-                          if (errors.address) setErrors({ ...errors, address: '' });
-                        }}
-                        className={inputClass(errors.address)}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-sub font-bold text-xs text-cartoon-ink/70 mb-1">
-                      Piso, Depto o Referencia visual (opcional):
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ej: Portón negro, timbre blanco, casa con rejas"
-                      value={formData.addressNotes}
-                      onChange={(e) => setFormData({ ...formData, addressNotes: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
-                    />
-                  </div>
-
-                  {/* Beneficio de delivery gratis */}
-                  {isFreeDeliveryQualified ? (
-                    <div className="p-2 rounded-xl bg-cartoon-green/20 border border-cartoon-green text-[11px] font-sub text-cartoon-green-dark font-bold flex items-center gap-1.5">
-                      <span>🎉</span>
-                      <span>¡Tu pedido supera los $55.000! Tenés envío 100% bonificado.</span>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] font-sub text-cartoon-ink/65 italic">
-                      🛵 En el siguiente paso marcarás tu casa en el mapa interactivo.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="p-3 rounded-xl bg-white border-2 border-cartoon-ink/30 text-xs font-sub text-cartoon-ink space-y-1 shadow-cartoon-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">📍</span>
-                    <p className="font-bold">Retiro en: {RESTAURANT_INFO.address}</p>
-                  </div>
-                  <p className="text-[11px] text-cartoon-ink/70 pl-6">⏰ {RESTAURANT_INFO.schedule}</p>
+              {/* Piso, Depto o Referencia visual (Solo si es Delivery) */}
+              {formData.deliveryType === 'delivery' && (
+                <div>
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink/80 mb-1">
+                    Detalles de la casa, Piso o Referencia (opcional):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Portón negro, timbre blanco, casa con rejas"
+                    value={formData.addressNotes}
+                    onChange={(e) => setFormData({ ...formData, addressNotes: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                  />
                 </div>
               )}
 
@@ -904,7 +1041,7 @@ export const CartDrawer = ({
               </div>
             </div>
 
-            {/* Pie de Etapa 2 */}
+            {/* Pie de Etapa 3: Resumen y Confirmación Final a WhatsApp */}
             <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0">
               <div className="space-y-1 text-xs font-sub">
                 <div className="flex justify-between text-cartoon-ink/80">
@@ -931,172 +1068,15 @@ export const CartDrawer = ({
                 </div>
               </div>
 
-              {formData.deliveryType === 'delivery' ? (
-                <button
-                  type="submit"
-                  className="w-full btn-cartoon-primary text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
-                >
-                  <Icon name="location_on" size={20} className="text-cartoon-red" />
-                  <span>ELEGIR UBICACIÓN EN MAPA (PASO 3) ➔</span>
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
-                >
-                  <Icon name="chat" size={20} />
-                  <span>CONFIRMAR PEDIDO Y ABRIR WHATSAPP</span>
-                </button>
-              )}
-            </div>
-          </form>
-        )}
-
-        {/* ============================================================== */}
-        {/* ETAPA 3: UBICACIÓN DE TU CASA EN EL MAPA INTERACTIVO */}
-        {/* ============================================================== */}
-        {step === 'location' && (
-          <div className="flex-1 flex flex-col min-h-0 animate-modalIn">
-            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-2.5 min-h-0 flex flex-col">
-              {/* Banner amigable */}
-              <div className="p-2.5 rounded-xl bg-cartoon-yellow-light/80 border-2 border-cartoon-ink shadow-cartoon-xs flex items-center gap-2 flex-shrink-0">
-                <span className="text-xl flex-shrink-0 animate-bounce">📍</span>
-                <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight">
-                  Tocá el mapa exactamente donde está tu casa para que el cadete llegue directo.
-                </p>
-              </div>
-
-              {/* Buscador de calles y botón GPS */}
-              <div className="flex gap-2 flex-shrink-0">
-                <div className="relative flex-1">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cartoon-ink/50 pointer-events-none flex items-center">
-                    <Icon name="search" size={16} />
-                  </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscá tu calle en La Rioja..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
-                  />
-                  {(searchResults.length > 0 || isSearching) && (
-                    <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border-2 border-cartoon-ink rounded-xl shadow-cartoon overflow-hidden max-h-48 overflow-y-auto">
-                      {isSearching && searchResults.length === 0 && (
-                        <li className="px-3 py-2 font-sub text-xs text-cartoon-ink/60">Buscando calles...</li>
-                      )}
-                      {searchResults.map((r, i) => (
-                        <li key={`${r.lat}-${r.lng}-${i}`}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handlePickLocation({ lat: r.lat, lng: r.lng });
-                              setSearchQuery('');
-                              setSearchResults([]);
-                            }}
-                            className="w-full text-left px-3 py-2 font-sub text-xs text-cartoon-ink hover:bg-cartoon-yellow-light flex items-center gap-2 border-b border-cartoon-ink/10 last:border-0 cursor-pointer"
-                          >
-                            <Icon name="location_on" size={14} className="text-cartoon-red flex-shrink-0" />
-                            <span className="truncate">{r.label}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleUseMyLocation}
-                  title="Usar mi ubicación GPS actual"
-                  aria-label="Usar mi ubicación GPS"
-                  disabled={isGeoLoading}
-                  className="px-3 rounded-xl bg-cartoon-yellow hover:bg-cartoon-yellow-light border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink active:scale-95 cursor-pointer font-sub font-bold text-xs gap-1 flex-shrink-0"
-                >
-                  <Icon name="my_location" size={16} className={isGeoLoading ? 'animate-spin' : ''} />
-                  <span className="hidden xs:inline">Mi GPS</span>
-                </button>
-              </div>
-
-              {geoError && (
-                <p className="text-[11px] font-sub font-bold text-cartoon-red px-1 flex-shrink-0">{geoError}</p>
-              )}
-
-              {/* Contenedor del Mapa interactivo */}
-              <div
-                className={`relative flex-1 min-h-[300px] sm:min-h-[380px] rounded-2xl border-2 sm:border-3 overflow-hidden shadow-cartoon-xs bg-cartoon-cream-dark ${
-                  locationError ? 'border-cartoon-red ring-2 ring-cartoon-red/40' : 'border-cartoon-ink'
-                }`}
-              >
-                <DeliveryMap value={selectedLocation} onPick={handlePickLocation} />
-
-                {!selectedLocation && (
-                  <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none z-20">
-                    <div className="bg-cartoon-ink text-white font-sub font-bold text-xs px-3.5 py-1.5 rounded-full shadow-cartoon border border-white/20 flex items-center gap-1.5 animate-bounce">
-                      <span>📍</span>
-                      <span>Tocá el mapa donde está tu casa</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Tarjeta de casa elegida y link de Google Maps */}
-              <div className="bg-white rounded-xl border-2 border-cartoon-ink/40 p-2.5 shadow-cartoon-xs flex flex-col gap-1 text-xs font-sub flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-cartoon-ink/70 font-bold flex items-center gap-1">
-                    <Icon name="home" size={14} className="text-cartoon-red" />
-                    Casa seleccionada:
-                  </span>
-                  {selectedLocation?.lat ? (
-                    <span className="badge-cartoon bg-cartoon-green text-cartoon-ink text-[10px]">
-                      Ubicada ✓
-                    </span>
-                  ) : (
-                    <span className="badge-cartoon bg-cartoon-yellow text-cartoon-ink text-[10px]">
-                      Pendiente
-                    </span>
-                  )}
-                </div>
-
-                <p className="font-bold text-cartoon-ink truncate">
-                  {selectedLocation?.address || 'Ninguna casa seleccionada aún'}
-                </p>
-
-                {selectedLocation?.lat && (
-                  <div className="pt-1 border-t border-cartoon-ink/10 flex items-center justify-between text-[11px]">
-                    <span className="text-cartoon-ink/60 truncate max-w-[200px]">
-                      🔗 {buildGoogleMapsUrl(selectedLocation.lat, selectedLocation.lng)}
-                    </span>
-                    <span className="font-bold text-cartoon-green-dark flex-shrink-0 ml-2">
-                      Se enviará en el mensaje
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {locationError && (
-                <p className="text-xs font-sub font-bold text-cartoon-red text-center animate-shake flex-shrink-0">
-                  {locationError}
-                </p>
-              )}
-            </div>
-
-            {/* Pie de Etapa 3: Resumen y Botón Final */}
-            <div className="p-3.5 sm:p-4 bg-white border-t-2 sm:border-t-3 border-cartoon-ink space-y-2 flex-shrink-0">
-              <div className="flex justify-between items-center text-xs font-sub">
-                <span className="text-cartoon-ink/80">Total del pedido:</span>
-                <span className="font-display text-lg text-cartoon-red font-black">{money(total)}</span>
-              </div>
-
               <button
-                type="button"
-                onClick={handleSubmitOrder}
+                type="submit"
                 className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
               >
                 <Icon name="chat" size={20} />
                 <span>CONFIRMAR PEDIDO Y ABRIR WHATSAPP</span>
               </button>
             </div>
-          </div>
+          </form>
         )}
       </aside>
     </div>
