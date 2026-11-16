@@ -168,7 +168,7 @@ export const addOrder = (orderData) => {
     })),
     participatingGiveaway: true,
     createdAt: orderData.createdAt || new Date().toISOString(),
-    status: orderData.status || 'confirmado',
+    status: orderData.status || 'pendiente',
     isWinner: false,
     winnerPrize: null,
   };
@@ -185,6 +185,38 @@ export const addOrder = (orderData) => {
   }
 
   return newOrder;
+};
+
+/**
+ * Actualizar el estado operativo de un pedido ('pendiente' | 'preparacion' | 'enviado')
+ */
+export const updateOrderStatus = async (orderId, newStatus) => {
+  const current = getOrders();
+  const updated = current.map((o) => {
+    if (o.id !== orderId) return o;
+    return {
+      ...o,
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  saveOrders(updated, false);
+
+  const { isConfigured, db } = initFirebase();
+  if (isConfigured && db && orderId) {
+    try {
+      await setDoc(
+        doc(db, 'orders', orderId),
+        { status: newStatus, updatedAt: new Date().toISOString() },
+        { merge: true }
+      );
+    } catch (err) {
+      console.warn('Error actualizando estado del pedido en Firestore:', err);
+    }
+  }
+
+  return updated;
 };
 
 /**

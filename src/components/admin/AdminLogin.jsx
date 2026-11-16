@@ -81,48 +81,43 @@ export const AdminLogin = ({ onLoginSuccess, onBackToSite }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-cartoon-ink flex flex-col justify-center items-center px-4 py-8 select-none relative">
-      {/* Botón sutil para volver a la tienda */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center items-center px-4 py-8 select-none relative">
       <button
         onClick={onBackToSite}
-        className="absolute top-4 left-4 sm:top-6 sm:left-6 text-gray-500 hover:text-cartoon-ink text-xs sm:text-sm py-2 px-3 flex items-center gap-2 cursor-pointer transition-colors font-sub font-bold rounded-xl hover:bg-gray-100"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 text-slate-600 hover:text-slate-900 text-xs sm:text-sm py-2 px-3 flex items-center gap-2 cursor-pointer transition-colors font-sub font-semibold rounded-xl hover:bg-slate-200/60"
       >
         <Icon name="arrow_back" size={16} />
         <span>Volver a la Tienda</span>
       </button>
 
-      {/* Tarjeta de Login en Estilo Blanco */}
-      <div className="w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-6 sm:p-8 animate-modalIn">
-        
-        {/* Cabecera con Logo Oficial Circular Nítido */}
+      <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-lg p-6 sm:p-8 animate-modalIn">
         <div className="text-center mb-6">
-          <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-sm p-1 flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-slate-50 border border-slate-200 p-1.5 flex items-center justify-center">
             <img
               src="/assets/logo.svg?v=4"
               alt="Logo TRICO'S"
               className="w-full h-full object-contain block"
             />
           </div>
-          <h1 className="font-display text-3xl text-cartoon-ink tracking-wide">
-            PANEL ADMIN
+          <h1 className="font-display text-2xl text-slate-900 tracking-tight">
+            Panel de Administración
           </h1>
-          <p className="font-sub text-xs sm:text-sm text-gray-500 mt-1 font-semibold">
-            Gastos, ganancias y stock
+          <p className="font-sub text-xs text-slate-500 mt-1">
+            Gestión de carta, inventario, pedidos y finanzas
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 bg-cartoon-red/10 border-2 border-cartoon-red text-cartoon-red text-xs font-sub font-bold p-3 rounded-xl flex items-center gap-2">
+          <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-sub font-semibold p-3 rounded-xl flex items-center gap-2">
             <Icon name="error" size={16} className="flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Formulario */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block font-sub font-bold text-xs text-gray-700 mb-1.5">
-              Contraseña de acceso:
+            <label className="block font-sub font-semibold text-xs text-slate-700 mb-1.5">
+              Contraseña de acceso
             </label>
             <div className="relative">
               <input
@@ -131,13 +126,13 @@ export const AdminLogin = ({ onLoginSuccess, onBackToSite }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 disabled={rateLimit.locked || loading}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border-2 border-gray-200 font-sub text-sm text-cartoon-ink placeholder-gray-400 focus:outline-none focus:border-cartoon-yellow focus:bg-white shadow-inner transition-colors"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-sub text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:bg-white transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cartoon-ink cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <Icon name={showPassword ? 'visibility_off' : 'visibility'} size={18} />
               </button>
@@ -147,14 +142,14 @@ export const AdminLogin = ({ onLoginSuccess, onBackToSite }) => {
           <button
             type="submit"
             disabled={rateLimit.locked || loading}
-            className={`w-full py-3 rounded-2xl font-display text-sm border-2 border-cartoon-ink shadow-cartoon transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`w-full py-3 rounded-xl font-display text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
               rateLimit.locked || loading
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none border-gray-300'
-                : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink active:translate-x-[2px] active:translate-y-[2px]'
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-900 hover:bg-slate-800 text-white'
             }`}
           >
             {loading ? (
-              <span>Verificando…</span>
+              <span>Verificando...</span>
             ) : (
               <>
                 <Icon name="login" size={18} />
@@ -163,7 +158,6 @@ export const AdminLogin = ({ onLoginSuccess, onBackToSite }) => {
             )}
           </button>
         </form>
-
       </div>
     </div>
   );

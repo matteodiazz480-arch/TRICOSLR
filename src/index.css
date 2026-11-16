@@ -11,18 +11,20 @@
 
 @layer base {
   html {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
-  h1, h2, h3, .font-cartoon {
-    font-family: 'Lilita One', cursive, sans-serif;
-    letter-spacing: 0.02em;
+  h1, h2, h3, h4, .font-display, .font-cartoon {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
 
   body {
-    background-color: #FFFDF6;
-    color: #1E1B18;
+    background-color: #F8FAFC;
+    color: #0F172A;
     overflow-x: hidden;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -37,76 +39,74 @@
   }
 }
 
-/* Custom Cartoon Tactile Buttons (Emil Kowalski & Taste Skill) */
 @layer components {
   .btn-cartoon-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-3 
-           bg-cartoon-yellow hover:bg-cartoon-yellow-light text-cartoon-ink 
-           font-display text-lg tracking-wide rounded-2xl border-3 border-cartoon-ink 
-           shadow-cartoon hover:shadow-cartoon-lg 
-           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 
+           bg-slate-900 hover:bg-slate-800 text-white 
+           font-display font-bold text-sm tracking-tight rounded-xl border border-slate-900 
+           shadow-sm hover:shadow-md 
+           active:scale-[0.98] 
            select-none cursor-pointer;
     transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
   }
 
   .btn-cartoon-red {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-3 
-           bg-cartoon-red hover:bg-cartoon-red-dark text-white 
-           font-display text-lg tracking-wide rounded-2xl border-3 border-cartoon-ink 
-           shadow-cartoon hover:shadow-cartoon-lg 
-           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 
+           bg-rose-600 hover:bg-rose-700 text-white 
+           font-display font-bold text-sm tracking-tight rounded-xl border border-rose-700 
+           shadow-sm hover:shadow-md 
+           active:scale-[0.98] 
            select-none cursor-pointer;
     transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
   }
 
   .btn-cartoon-green {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-3 
-           bg-cartoon-green hover:bg-cartoon-green-dark text-cartoon-ink 
-           font-display text-lg tracking-wide rounded-2xl border-3 border-cartoon-ink 
-           shadow-cartoon hover:shadow-cartoon-lg 
-           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 
+           bg-emerald-600 hover:bg-emerald-700 text-white 
+           font-display font-bold text-sm tracking-tight rounded-xl border border-emerald-700 
+           shadow-sm hover:shadow-md 
+           active:scale-[0.98] 
            select-none cursor-pointer;
     transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
   }
 
   .btn-cartoon-white {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
-           bg-white hover:bg-cartoon-cream-dark text-cartoon-ink 
-           font-sub font-bold rounded-2xl border-3 border-cartoon-ink 
-           shadow-cartoon hover:shadow-cartoon-lg 
-           active:translate-x-[3px] active:translate-y-[3px] active:scale-[0.98] active:shadow-none 
+           bg-white hover:bg-slate-50 text-slate-900 
+           font-sub font-semibold text-sm rounded-xl border border-slate-200 
+           shadow-xs hover:shadow-sm 
+           active:scale-[0.98] 
            select-none cursor-pointer;
     transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background-color 140ms ease;
   }
 
   .card-cartoon {
-    @apply bg-white rounded-2xl sm:rounded-3xl border-3 border-cartoon-ink shadow-cartoon 
-           hover:-translate-y-0.5 hover:shadow-cartoon-lg;
+    @apply bg-white rounded-2xl border border-slate-200 shadow-sm 
+           hover:-translate-y-0.5 hover:shadow-md;
     transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
   }
 
   .badge-cartoon {
-    @apply inline-flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 
-           rounded-full border-2 border-cartoon-ink shadow-cartoon-sm 
-           font-sub font-bold text-[10px] sm:text-xs uppercase tracking-wider;
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 
+           rounded-md border border-slate-200 
+           font-sub font-semibold text-[11px] uppercase tracking-wider;
   }
 }
 
-/* Custom Cartoon Scrollbar */
+/* Scrollbar limpio y discreto */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #FFFDF6;
-  border-left: 2px solid #1E1B18;
+  background: #F1F5F9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #FFC93C;
-  border: 2px solid #1E1B18;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #FF4757;
+  background: #94A3B8;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -117,12 +117,11 @@
   scrollbar-width: none;
 }
 
-/* Halftone / Comic Dot pattern background */
 .bg-comic-dots {
-  background-image: radial-gradient(#1E1B18 12%, transparent 12%);
+  background-image: radial-gradient(#0F172A 1px, transparent 1px);
   background-position: 0 0;
-  background-size: 18px 18px;
-  opacity: 0.05;
+  background-size: 20px 20px;
+  opacity: 0.03;
 }
 
 @keyframes drawerSlideIn {
@@ -137,7 +136,7 @@
 @keyframes modalScaleIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(8px);
+    transform: scale(0.97) translateY(6px);
   }
   to {
     opacity: 1;
@@ -168,7 +167,7 @@
 }
 
 .animate-slideInRight {
-  animation: drawerSlideIn 280ms var(--ease-drawer) forwards;
+  animation: drawerSlideIn 260ms var(--ease-drawer) forwards;
 }
 
 @keyframes simpleFadeIn {
@@ -181,22 +180,21 @@
 }
 
 .animate-fadeIn {
-  animation: simpleFadeIn 200ms ease-out;
+  animation: simpleFadeIn 180ms ease-out;
 }
 
 .animate-modalIn {
-  animation: modalScaleIn 220ms var(--ease-out) forwards;
+  animation: modalScaleIn 200ms var(--ease-out) forwards;
 }
 
-/* Carrusel de fotos continuo garantizado en móvil y escritorio */
 .animate-photo-marquee {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   width: max-content !important;
   min-width: 100% !important;
-  -webkit-animation: infiniteMarqueeScroll 28s linear infinite !important;
-  animation: infiniteMarqueeScroll 28s linear infinite !important;
+  -webkit-animation: infiniteMarqueeScroll 32s linear infinite !important;
+  animation: infiniteMarqueeScroll 32s linear infinite !important;
   will-change: transform;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
@@ -204,15 +202,14 @@
   transform: translate3d(0, 0, 0);
 }
 
-/* Cinta de delivery gratis continua garantizada en móvil y escritorio */
 .ribbon-marquee {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   width: max-content !important;
   min-width: 100% !important;
-  -webkit-animation: infiniteMarqueeScroll 52s linear infinite !important;
-  animation: infiniteMarqueeScroll 52s linear infinite !important;
+  -webkit-animation: infiniteMarqueeScroll 50s linear infinite !important;
+  animation: infiniteMarqueeScroll 50s linear infinite !important;
   will-change: transform;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
@@ -220,16 +217,6 @@
   transform: translate3d(0, 0, 0);
 }
 
-/* Silueta blanca tipo sticker siguiendo los trazos del personaje sin marco */
 .mascot-sticker-glow {
-  filter:
-    drop-shadow(2px 0 0 #FFFDF6)
-    drop-shadow(-2px 0 0 #FFFDF6)
-    drop-shadow(0 2px 0 #FFFDF6)
-    drop-shadow(0 -2px 0 #FFFDF6)
-    drop-shadow(2px 2px 0 #FFFDF6)
-    drop-shadow(-2px -2px 0 #FFFDF6)
-    drop-shadow(2px -2px 0 #FFFDF6)
-    drop-shadow(-2px 2px 0 #FFFDF6)
-    drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.35));
 }

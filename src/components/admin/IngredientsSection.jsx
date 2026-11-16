@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Icon } from '../Icon';
 import {
   addIngredient,
   updateIngredient,
   deleteIngredient,
   adjustIngredientStock,
+  toggleIngredientOutOfStock,
   getProductRecipe,
   setProductRecipe,
-  getRecipeItemDeduction,
+  subscribeToRecipes,
 } from '../../lib/ingredientsStore';
 
 const UNITS = [
@@ -20,14 +21,10 @@ const UNITS = [
 ];
 
 export const IngredientsSection = ({ ingredients = [], products = [] }) => {
-  // Pestaña interna: 'inventario' | 'recetas'
   const [subTab, setSubTab] = useState('inventario');
-
-  // Búsqueda y Filtros de Ingredientes
   const [search, setSearch] = useState('');
-  const [filterAlert, setFilterAlert] = useState('all'); // 'all' | 'low' | 'out'
+  const [filterAlert, setFilterAlert] = useState('all');
 
-  // Modal para Crear / Editar Ingrediente
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
   const [formIngredient, setFormIngredient] = useState({
@@ -37,10 +34,8 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     minStock: 200,
   });
 
-  // Modal de Confirmación de Borrado
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
-  // Recetas: Plato seleccionado actualmente para editar su receta
   const [selectedProductId, setSelectedProductId] = useState(
     products[0]?.id || 'burger-ak47'
   );
@@ -49,39 +44,80 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     [products, selectedProductId]
   );
 
-  // Receta actual del plato seleccionado
+  const [allRecipesMap, setAllRecipesMap] = useState({});
   const [currentRecipe, setCurrentRecipe] = useState(() =>
     getProductRecipe(selectedProductId, selectedProduct)
   );
 
-  // Al cambiar de plato seleccionado, actualizar receta mostrada
+  useEffect(() => {
+    const unsub = subscribeToRecipes((recipes) => {
+      if (recipes && typeof recipes === 'object') {
+        setAllRecipesMap(recipes);
+      }
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
+
+  useEffect(() => {
+    const prod = products.find((p) => p.id === selectedProductId);
+    setCurrentRecipe(getProductRecipe(selectedProductId, prod));
+  }, [selectedProductId, products, allRecipesMap]);
+
   const handleSelectProduct = (prodId) => {
     setSelectedProductId(prodId);
     const prod = products.find((p) => p.id === prodId);
     setCurrentRecipe(getProductRecipe(prodId, prod));
   };
 
-  // Formulario para agregar ingrediente a la receta del plato con variantes Simple vs Doble
   const [recipeNewItem, setRecipeNewItem] = useState({
-    ingredientId: ingredients[0]?.id || 'ing-carne-medallon',
-    amountSimple: 150,
-    doubleRule: 'duplicate', // 'duplicate' (x2) | 'fixed' (x1, ej: huevo o pan) | 'custom'
-    amountDouble: 300,
+    ingredientId: ingredients[0]?.id || '',
+    amountSimple: 1,
+    doubleRule: 'duplicate',
+    amountDouble: 2,
   });
 
-  // Cambio inteligente al seleccionar un ingrediente en el formulario
+  // Garantizar que el selector de ingrediente siempre apunte a un ID válido existente
+  useEffect(() => {
+    if (ingredients.length > 0) {
+      const exists = ingredients.some((i) => i.id === recipeNewItem.ingredientId);
+      if (!exists) {
+        const first = ingredients[0];
+        const nameLower = `${first.id} ${first.name}`.toLowerCase();
+        const isSingle =
+          nameLower.includes('pan') ||
+          nameLower.includes('huevo') ||
+          nameLower.includes('salsa') ||
+          nameLower.includes('alioli') ||
+          nameLower.includes('barbacoa') ||
+          nameLower.includes('papas');
+        const rule = isSingle ? 'fixed' : 'duplicate';
+        const defaultAmt = first.unit === 'g' ? 150 : 1;
+        setRecipeNewItem({
+          ingredientId: first.id,
+          amountSimple: defaultAmt,
+          doubleRule: rule,
+          amountDouble: rule === 'duplicate' ? defaultAmt * 2 : defaultAmt,
+        });
+      }
+    }
+  }, [ingredients, recipeNewItem.ingredientId]);
+
   const handleIngredientSelectChange = (ingId) => {
+    const ingObj = ingredients.find((i) => i.id === ingId);
+    const refText = `${ingId} ${ingObj?.name || ''}`.toLowerCase();
     const isSingle =
-      ingId.includes('pan') ||
-      ingId.includes('huevo') ||
-      ingId.includes('salsa') ||
-      ingId.includes('alioli') ||
-      ingId.includes('barbacoa') ||
-      ingId.includes('lechuga') ||
-      ingId.includes('tomate') ||
-      ingId.includes('guacamole') ||
-      ingId.includes('doritos') ||
-      ingId.includes('papas');
+      refText.includes('pan') ||
+      refText.includes('huevo') ||
+      refText.includes('salsa') ||
+      refText.includes('alioli') ||
+      refText.includes('barbacoa') ||
+      refText.includes('lechuga') ||
+      refText.includes('tomate') ||
+      refText.includes('guacamole') ||
+      refText.includes('doritos') ||
+      refText.includes('papas');
 
     const defaultRule = isSingle ? 'fixed' : 'duplicate';
     const simple = Number(recipeNewItem.amountSimple) || 1;
@@ -93,50 +129,43 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     }));
   };
 
-  // Mensaje temporal toast
   const [toast, setToast] = useState('');
   const showToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    setTimeout(() => setToast(''), 2800);
   };
 
-  // Métricas de inventario
   const stats = useMemo(() => {
     const total = ingredients.length;
     const lowStock = ingredients.filter(
-      (i) => Number(i.stock) > 0 && Number(i.stock) <= Number(i.minStock || 0)
+      (i) => !i.outOfStock && Number(i.stock) > 0 && Number(i.stock) <= Number(i.minStock || 0)
     ).length;
-    const outOfStock = ingredients.filter((i) => Number(i.stock) <= 0).length;
+    const outOfStock = ingredients.filter((i) => i.outOfStock || Number(i.stock) <= 0).length;
     return { total, lowStock, outOfStock };
   }, [ingredients]);
 
-  // Lista filtrada de ingredientes
   const filteredIngredients = useMemo(() => {
     return ingredients.filter((item) => {
-      if (filterAlert === 'low' && !(Number(item.stock) > 0 && Number(item.stock) <= Number(item.minStock || 0))) {
-        return false;
-      }
-      if (filterAlert === 'out' && !(Number(item.stock) <= 0)) {
-        return false;
-      }
+      const isOut = item.outOfStock || Number(item.stock) <= 0;
+      const isLow = !isOut && Number(item.stock) <= Number(item.minStock || 0);
+      if (filterAlert === 'low' && !isLow) return false;
+      if (filterAlert === 'out' && !isOut) return false;
       if (!search.trim()) return true;
       return item.name.toLowerCase().includes(search.toLowerCase().trim());
     });
   }, [ingredients, search, filterAlert]);
 
-  // Abrir modal de creación
   const handleOpenCreate = () => {
     setEditingIngredient(null);
     setFormIngredient({
       name: '',
-      unit: 'g',
-      stock: 1000,
-      minStock: 200,
+      unit: 'unidades',
+      stock: 100,
+      minStock: 20,
     });
     setIsModalOpen(true);
   };
 
-  // Abrir modal de edición
   const handleOpenEdit = (item) => {
     setEditingIngredient(item);
     setFormIngredient({
@@ -148,7 +177,6 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     setIsModalOpen(true);
   };
 
-  // Guardar ingrediente (crear o editar)
   const handleSaveIngredient = (e) => {
     e.preventDefault();
     if (!formIngredient.name.trim()) return;
@@ -160,7 +188,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
         stock: Math.max(0, Number(formIngredient.stock) || 0),
         minStock: Math.max(0, Number(formIngredient.minStock) || 0),
       });
-      showToast(`Ingrediente "${formIngredient.name}" actualizado.`);
+      showToast(`Ingrediente "${formIngredient.name}" actualizado`);
     } else {
       addIngredient({
         name: formIngredient.name.trim(),
@@ -168,30 +196,27 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
         stock: Math.max(0, Number(formIngredient.stock) || 0),
         minStock: Math.max(0, Number(formIngredient.minStock) || 0),
       });
-      showToast(`Ingrediente "${formIngredient.name}" creado con éxito.`);
+      showToast(`Ingrediente "${formIngredient.name}" creado`);
     }
 
     setIsModalOpen(false);
   };
 
-  // Confirmar eliminación
   const handleConfirmDelete = () => {
     if (!deleteCandidate) return;
     deleteIngredient(deleteCandidate.id);
-    showToast(`Ingrediente "${deleteCandidate.name}" eliminado.`);
+    showToast(`Ingrediente "${deleteCandidate.name}" eliminado`);
     setDeleteCandidate(null);
   };
 
-  // Agregar o actualizar ingrediente en la receta del plato con variantes Simple vs Doble
-  const handleAddIngredientToRecipe = (e) => {
+  const handleAddIngredientToRecipe = async (e) => {
     e.preventDefault();
-    if (!recipeNewItem.ingredientId) return;
+    const targetIngId = recipeNewItem.ingredientId || ingredients[0]?.id;
+    if (!targetIngId) return;
 
+    const ingObj = ingredients.find((i) => i.id === targetIngId);
     const amountSimple = Number(recipeNewItem.amountSimple);
-    if (isNaN(amountSimple) || amountSimple <= 0) {
-      alert('Ingresá una cantidad válida mayor a 0 para hamburguesa simple.');
-      return;
-    }
+    if (isNaN(amountSimple) || amountSimple <= 0) return;
 
     let amountDouble = amountSimple;
     if (recipeNewItem.doubleRule === 'duplicate') {
@@ -199,20 +224,21 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     } else if (recipeNewItem.doubleRule === 'custom') {
       amountDouble = Number(recipeNewItem.amountDouble) || amountSimple;
     } else {
-      amountDouble = amountSimple; // fixed
+      amountDouble = amountSimple;
     }
 
     const newRecEntry = {
-      ingredientId: recipeNewItem.ingredientId,
+      ingredientId: targetIngId,
+      ingredientName: ingObj?.name || '',
+      unit: ingObj?.unit || '',
       amount: amountSimple,
       amountSimple,
       amountDouble,
       doubleRule: recipeNewItem.doubleRule,
     };
 
-    // Verificar si ya existe en la receta
     const existingIndex = currentRecipe.findIndex(
-      (r) => r.ingredientId === recipeNewItem.ingredientId
+      (r) => r.ingredientId === targetIngId
     );
 
     let updatedRecipe;
@@ -224,18 +250,25 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     }
 
     setCurrentRecipe(updatedRecipe);
-    setProductRecipe(selectedProductId, updatedRecipe);
-    showToast(`Receta de "${selectedProduct?.name}" configurada con éxito.`);
+    await setProductRecipe(selectedProductId, updatedRecipe);
+    showToast(`Receta de "${selectedProduct?.name}" guardada`);
   };
 
-  // Alternar rápidamente entre Duplicar y Fijo (ej: caso huevo o pan) directamente desde la tarjeta
-  const handleToggleRecipeDoubleRule = (ingredientId) => {
+  const handleToggleRecipeDoubleRule = async (ingredientId) => {
     const updatedRecipe = currentRecipe.map((item) => {
       if (item.ingredientId !== ingredientId) return item;
       const simple = Number(item.amountSimple ?? item.amount) || 1;
-      const currentRule = item.doubleRule || (
-        (item.ingredientId.includes('pan') || item.ingredientId.includes('huevo') || item.ingredientId.includes('salsa') || item.ingredientId.includes('alioli') || item.ingredientId.includes('barbacoa') || item.ingredientId.includes('papas')) ? 'fixed' : 'duplicate'
-      );
+      const refText = `${item.ingredientId} ${item.ingredientName || ''}`.toLowerCase();
+      const currentRule =
+        item.doubleRule ||
+        (refText.includes('pan') ||
+        refText.includes('huevo') ||
+        refText.includes('salsa') ||
+        refText.includes('alioli') ||
+        refText.includes('barbacoa') ||
+        refText.includes('papas')
+          ? 'fixed'
+          : 'duplicate');
       const nextRule = currentRule === 'duplicate' ? 'fixed' : 'duplicate';
       const nextDouble = nextRule === 'duplicate' ? simple * 2 : simple;
 
@@ -249,324 +282,230 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     });
 
     setCurrentRecipe(updatedRecipe);
-    setProductRecipe(selectedProductId, updatedRecipe);
-    showToast('Regla de variante Doble actualizada.');
+    await setProductRecipe(selectedProductId, updatedRecipe);
+    showToast('Regla de variante actualizada');
   };
 
-  // Quitar ingrediente de la receta del plato
-  const handleRemoveFromRecipe = (ingredientId) => {
+  const handleRemoveFromRecipe = async (ingredientId) => {
     const updatedRecipe = currentRecipe.filter((r) => r.ingredientId !== ingredientId);
     setCurrentRecipe(updatedRecipe);
-    setProductRecipe(selectedProductId, updatedRecipe);
-    showToast('Ingrediente quitado de la receta.');
+    await setProductRecipe(selectedProductId, updatedRecipe);
+    showToast('Ingrediente quitado de la receta');
   };
 
   return (
     <div className="space-y-6 animate-fadeIn select-none">
-      
-      {/* Toast Notificación */}
       {toast && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500 text-white font-sub font-bold text-sm shadow-cartoon-xs flex items-center gap-2">
-          <Icon name="check_circle" size={20} />
+        <div className="p-3 rounded-xl bg-slate-900 text-white font-sub font-medium text-xs shadow-md flex items-center gap-2">
+          <Icon name="check_circle" size={16} className="text-emerald-400" />
           <span>{toast}</span>
         </div>
       )}
 
-      {/* Cabecera y Selector de Sub-pestañas */}
+      {/* Cabecera */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink flex items-center gap-2">
-            <span>🥩</span>
-            <span>Gestión de Ingredientes & Stock Real</span>
+          <h3 className="font-display text-lg sm:text-xl text-slate-900">
+            Inventario de Ingredientes y Recetas
           </h3>
-          <p className="font-sub text-xs sm:text-sm text-gray-500 mt-0.5">
-            El stock se descuenta automáticamente de los ingredientes cada vez que un cliente realiza un pedido.
+          <p className="font-sub text-xs text-slate-500 mt-0.5">
+            El stock se descuenta automáticamente en tiempo real con cada pedido según su variante.
           </p>
         </div>
 
-        {/* Sub-Pestañas: Inventario de Ingredientes / Recetas por Plato */}
-        <div className="inline-flex bg-gray-200/80 p-1 rounded-2xl border-2 border-gray-300 flex-shrink-0 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setSubTab('inventario')}
-            className={`px-3.5 py-2 rounded-xl font-sub font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-lg font-sub font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
               subTab === 'inventario'
-                ? 'bg-white text-cartoon-ink shadow-cartoon-xs border-2 border-cartoon-ink font-black'
-                : 'text-gray-600 hover:text-cartoon-ink'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Icon name="inventory_2" size={16} />
-            <span>Inventario ({ingredients.length})</span>
+            <Icon name="inventory_2" size={15} />
+            <span>Stock de Insumos</span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              setSubTab('recetas');
-              if (selectedProduct) {
-                setCurrentRecipe(getProductRecipe(selectedProduct.id, selectedProduct));
-              }
-            }}
-            className={`px-3.5 py-2 rounded-xl font-sub font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+            onClick={() => setSubTab('recetas')}
+            className={`px-3.5 py-2 rounded-lg font-sub font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
               subTab === 'recetas'
-                ? 'bg-white text-cartoon-ink shadow-cartoon-xs border-2 border-cartoon-ink font-black'
-                : 'text-gray-600 hover:text-cartoon-ink'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Icon name="restaurant" size={16} />
-            <span>Recetas por Hamburguesa</span>
+            <Icon name="menu_book" size={15} />
+            <span>Recetas (Simple / Doble)</span>
           </button>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* VISTA 1: INVENTARIO DE INGREDIENTES */}
+      {/* SUB-PESTAÑA 1: INVENTARIO DE INSUMOS CON KILL-SWITCH */}
       {/* ============================================================== */}
       {subTab === 'inventario' && (
-        <div className="space-y-5">
-          
-          {/* Métricas Resumen */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="font-sub font-bold text-xs text-gray-500 uppercase tracking-wider block">
-                  Total Ingredientes
-                </span>
-                <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block mt-0.5">
-                  {stats.total}
-                </span>
-                <span className="font-sub text-[11px] text-gray-400 block mt-0.5">
-                  Materia prima registrada
-                </span>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center text-2xl">
-                📦
-              </div>
-            </div>
-
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="font-sub font-bold text-xs text-amber-700 uppercase tracking-wider block">
-                  Stock Bajo / Alerta
-                </span>
-                <span className="font-display text-2xl sm:text-3xl text-amber-600 block mt-0.5">
-                  {stats.lowStock}
-                </span>
-                <span className="font-sub text-[11px] text-amber-600 font-bold block mt-0.5">
-                  Próximos a reponer
-                </span>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-2xl">
-                ⚠️
-              </div>
-            </div>
-
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-200 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="font-sub font-bold text-xs text-rose-700 uppercase tracking-wider block">
-                  Ingredientes Agotados
-                </span>
-                <span className="font-display text-2xl sm:text-3xl text-rose-600 block mt-0.5">
-                  {stats.outOfStock}
-                </span>
-                <span className="font-sub text-[11px] text-rose-600 font-bold block mt-0.5">
-                  Requieren reposición urgente
-                </span>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-rose-100 border-2 border-rose-300 flex items-center justify-center text-2xl">
-                🚫
-              </div>
-            </div>
-          </div>
-
-          {/* Barra de Acciones: Buscador, Filtros y Botón Nuevo Ingrediente */}
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="space-y-4">
+          {/* Resumen y Filtros */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200">
             <div className="relative flex-1">
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                <Icon name="search" size={18} />
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
+                <Icon name="search" size={16} />
               </div>
               <input
                 type="text"
+                placeholder="Buscar ingrediente..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar ingrediente (ej: carne, cheddar, pan...)"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow shadow-xs"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-sub text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-slate-900"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Filtros */}
-              <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: 'all', label: `Todos (${stats.total})` },
+                { id: 'low', label: `Stock Bajo (${stats.lowStock})` },
+                { id: 'out', label: `Agotados (${stats.outOfStock})` },
+              ].map((f) => (
                 <button
+                  key={f.id}
                   type="button"
-                  onClick={() => setFilterAlert('all')}
-                  className={`px-2.5 py-1.5 rounded-lg font-sub font-bold text-xs cursor-pointer ${
-                    filterAlert === 'all' ? 'bg-white shadow-xs text-cartoon-ink font-black' : 'text-gray-500'
+                  onClick={() => setFilterAlert(f.id)}
+                  className={`px-3 py-2 rounded-xl font-sub font-semibold text-xs cursor-pointer transition-colors ${
+                    filterAlert === f.id
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Todos
+                  {f.label}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterAlert('low')}
-                  className={`px-2.5 py-1.5 rounded-lg font-sub font-bold text-xs cursor-pointer ${
-                    filterAlert === 'low' ? 'bg-amber-100 text-amber-800 font-black' : 'text-gray-500'
-                  }`}
-                >
-                  Bajos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterAlert('out')}
-                  className={`px-2.5 py-1.5 rounded-lg font-sub font-bold text-xs cursor-pointer ${
-                    filterAlert === 'out' ? 'bg-rose-100 text-rose-800 font-black' : 'text-gray-500'
-                  }`}
-                >
-                  Agotados
-                </button>
-              </div>
+              ))}
 
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="btn-cartoon-primary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-1.5 shadow-cartoon-xs cursor-pointer flex-shrink-0"
+                className="btn-cartoon-primary text-xs py-2 px-3.5"
               >
-                <Icon name="add" size={18} />
-                <span>Nuevo Ingrediente</span>
+                <Icon name="add" size={15} />
+                <span>Nuevo Insumo</span>
               </button>
             </div>
           </div>
 
-          {/* Grilla de Tarjetas de Ingredientes Espaciosa */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {/* Grilla de Ingredientes Simplificada */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredIngredients.map((item) => {
-              const stock = Number(item.stock || 0);
-              const minStock = Number(item.minStock || 0);
-              const isOut = stock <= 0;
-              const isLow = stock > 0 && stock <= minStock;
-
-              // Paso de ajuste rápido según unidad (+100g, +10 unidades, etc.)
-              const step = item.unit === 'g' ? 500 : item.unit === 'ml' ? 250 : 5;
+              const stock = Number(item.stock) || 0;
+              const min = Number(item.minStock) || 0;
+              const isOut = item.outOfStock === true || stock <= 0;
+              const isLow = !isOut && stock <= min;
+              const stepDelta = item.unit === 'g' || item.unit === 'ml' ? 500 : 10;
 
               return (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-2xl border-2 p-4 shadow-sm flex flex-col justify-between space-y-3 transition-all ${
+                  className={`bg-white rounded-2xl border p-4 flex flex-col justify-between gap-3 transition-all ${
                     isOut
                       ? 'border-rose-300 bg-rose-50/20'
                       : isLow
-                      ? 'border-amber-300 bg-amber-50/20'
-                      : 'border-gray-200 hover:border-cartoon-ink'
+                      ? 'border-amber-300'
+                      : 'border-slate-200'
                   }`}
                 >
-                  {/* Encabezado: Nombre y Badge de Estado */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h4 className="font-display text-sm sm:text-base text-cartoon-ink leading-snug truncate">
+                      <h4 className="font-display text-sm text-slate-900 truncate">
                         {item.name}
                       </h4>
-                      <span className="font-sub text-[11px] text-gray-500 block mt-0.5">
-                        Alerta de reposición: {minStock.toLocaleString('es-AR')} {item.unit}
+                      <span className="font-sub text-xs text-slate-400">
+                        Mínimo sugerido: {min.toLocaleString('es-AR')} {item.unit}
                       </span>
                     </div>
 
-                    {isOut ? (
-                      <span className="px-2 py-0.5 rounded-lg bg-cartoon-red text-white font-sub font-black text-[10px] uppercase shadow-xs flex-shrink-0">
-                        Agotado
-                      </span>
-                    ) : isLow ? (
-                      <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-white font-sub font-black text-[10px] uppercase shadow-xs flex-shrink-0">
-                        Stock Bajo
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 font-sub font-bold text-[10px] flex-shrink-0">
-                        Óptimo
-                      </span>
-                    )}
+                    {/* Botón Kill-Switch de 1 Clic: Disponible / Agotado */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleIngredientOutOfStock(item.id);
+                        showToast(
+                          isOut
+                            ? `"${item.name}" habilitado nuevamente`
+                            : `"${item.name}" marcado como Agotado`
+                        );
+                      }}
+                      className={`px-2.5 py-1 rounded-lg font-sub font-semibold text-[11px] cursor-pointer transition-colors flex-shrink-0 border ${
+                        isOut
+                          ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                      title="Marcar como agotado o disponible con un clic"
+                    >
+                      {isOut ? 'Agotado' : 'Disponible'}
+                    </button>
                   </div>
 
-                  {/* Stock Actual Grande y Claro */}
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
+                  {/* Cantidad Actual */}
+                  <div className="flex items-baseline justify-between pt-2 border-t border-slate-100">
                     <div>
-                      <span className="font-sub font-bold text-[10px] text-gray-400 uppercase tracking-wider block">
-                        Stock Disponible
+                      <span className="font-display text-xl text-slate-900">
+                        {stock.toLocaleString('es-AR')}
                       </span>
-                      <span className="font-display text-xl text-cartoon-ink block mt-0.5">
-                        {stock.toLocaleString('es-AR')}{' '}
-                        <span className="text-xs font-sub font-normal text-gray-500">{item.unit}</span>
+                      <span className="font-sub text-xs text-slate-500 ml-1">
+                        {item.unit}
                       </span>
                     </div>
 
-                    {/* Botones de Ajuste Rápido de Stock (+ y -) */}
-                    <div className="flex items-center gap-1.5">
+                    {/* Ajuste rápido y Edición */}
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => adjustIngredientStock(item.id, -step)}
-                        title={`Restar ${step} ${item.unit}`}
-                        className="w-8 h-8 rounded-lg bg-white hover:bg-rose-50 text-cartoon-ink hover:text-cartoon-red border border-gray-300 flex items-center justify-center font-display text-base active:scale-90 cursor-pointer shadow-2xs"
+                        onClick={() => adjustIngredientStock(item.id, -stepDelta)}
+                        className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-sub font-semibold text-xs cursor-pointer"
                       >
-                        -
+                        -{stepDelta}
                       </button>
                       <button
                         type="button"
-                        onClick={() => adjustIngredientStock(item.id, step)}
-                        title={`Sumar ${step} ${item.unit}`}
-                        className="w-8 h-8 rounded-lg bg-white hover:bg-emerald-50 text-cartoon-ink hover:text-emerald-700 border border-gray-300 flex items-center justify-center font-display text-base active:scale-90 cursor-pointer shadow-2xs"
+                        onClick={() => adjustIngredientStock(item.id, stepDelta)}
+                        className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-sub font-semibold text-xs cursor-pointer"
                       >
-                        +
+                        +{stepDelta}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(item)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 cursor-pointer"
+                        title="Editar"
+                      >
+                        <Icon name="edit" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteCandidate(item)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                        title="Eliminar"
+                      >
+                        <Icon name="delete" size={15} />
                       </button>
                     </div>
-                  </div>
-
-                  {/* Acciones de Edición y Eliminación */}
-                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(item)}
-                      className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-cartoon-yellow hover:text-cartoon-ink text-gray-700 font-sub font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <Icon name="edit" size={14} />
-                      <span>Editar</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteCandidate(item)}
-                      className="p-1.5 rounded-lg bg-rose-50 hover:bg-cartoon-red hover:text-white text-cartoon-red transition-colors cursor-pointer"
-                      title="Eliminar ingrediente"
-                    >
-                      <Icon name="delete" size={16} />
-                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
-
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* VISTA 2: RECETAS POR HAMBURGUESA / PLATO (ESCANDALLO) */}
+      {/* SUB-PESTAÑA 2: RECETAS Y VARIANTES (SIMPLE VS DOBLE) */}
       {/* ============================================================== */}
       {subTab === 'recetas' && (
-        <div className="space-y-6">
-          
-          {/* Tarjeta Explicativa */}
-          <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-cartoon-ink flex items-start gap-3">
-            <span className="text-2xl flex-shrink-0">💡</span>
-            <div className="text-xs sm:text-sm font-sub leading-relaxed">
-              <strong className="font-bold">¿Cómo funciona el descuento automático de stock?</strong>
-              <p className="text-gray-700 mt-0.5">
-                Seleccioná una hamburguesa o plato de la carta y definí qué ingredientes utiliza y cuántos gramos, fetas o unidades requiere por porción.
-                Cuando un cliente haga un pedido, el sistema descontará exactamente esas cantidades del inventario general.
-              </p>
-            </div>
-          </div>
-
-          {/* Selector de Plato de la Carta */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-gray-200 shadow-sm space-y-3">
-            <label className="block font-sub font-bold text-xs sm:text-sm text-cartoon-ink">
-              1. Seleccioná el Plato o Hamburguesa a configurar:
+        <div className="space-y-4">
+          {/* Selector de Producto */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2.5">
+            <label className="block font-sub font-semibold text-xs text-slate-600">
+              Seleccioná el producto para configurar su receta:
             </label>
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
               {products.map((prod) => {
@@ -576,64 +515,64 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     key={prod.id}
                     type="button"
                     onClick={() => handleSelectProduct(prod.id)}
-                    className={`px-3.5 py-2 rounded-xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border-2 flex items-center gap-2 ${
+                    className={`px-3.5 py-2 rounded-xl font-sub font-semibold text-xs whitespace-nowrap cursor-pointer transition-all border ${
                       isSelected
-                        ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black scale-102'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300'
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <span>{prod.emoji || '🍔'}</span>
-                    <span>{prod.name}</span>
+                    {prod.name}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Lista de Ingredientes de la Receta del Plato */}
-          <div className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-gray-200 shadow-sm space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl">{selectedProduct?.emoji || '🍔'}</span>
-                <div>
-                  <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
-                    Receta Oficial de {selectedProduct?.name}
-                  </h4>
-                  <span className="font-sub text-xs text-gray-500">
-                    Ingredientes que se descuentan por cada porción que pide un cliente
-                  </span>
-                </div>
+          {/* Configuración de la Receta */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h4 className="font-display text-base text-slate-900">
+                  Receta de {selectedProduct?.name}
+                </h4>
+                <p className="font-sub text-xs text-slate-500">
+                  Definí cuánto se descuenta en versión Simple y cómo se comporta en versión Doble.
+                </p>
               </div>
-
-              <span className="badge-cartoon bg-gray-100 text-gray-700 border-gray-300 text-xs">
-                {currentRecipe.length} ingredientes asignados
+              <span className="badge-cartoon bg-slate-100 text-slate-700">
+                {currentRecipe.length} insumos
               </span>
             </div>
 
-            {/* Listado de Ingredientes Asignados con Variante Simple vs Doble */}
             {currentRecipe.length === 0 ? (
-              <div className="p-6 text-center text-gray-400 font-sub text-xs bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                Este plato todavía no tiene ingredientes asignados a su receta. Agregá el primero abajo.
+              <div className="p-6 text-center text-slate-400 font-sub text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                Sin ingredientes asignados. Utilizá el formulario inferior para agregarlos.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {currentRecipe.map((recItem) => {
-                  const ingInfo = ingredients.find((i) => i.id === recItem.ingredientId);
-                  const ingName = ingInfo ? ingInfo.name : recItem.ingredientId;
-                  const unit = ingInfo ? ingInfo.unit : '';
+                  const ingInfo =
+                    ingredients.find((i) => i.id === recItem.ingredientId) ||
+                    ingredients.find(
+                      (i) =>
+                        recItem.ingredientName &&
+                        i.name.toLowerCase() === recItem.ingredientName.toLowerCase()
+                    );
+                  const ingName = ingInfo ? ingInfo.name : recItem.ingredientName || recItem.ingredientId;
+                  const unit = ingInfo ? ingInfo.unit : recItem.unit || '';
 
                   const simpleVal = Number(recItem.amountSimple ?? recItem.amount) || 0;
+                  const refText = `${recItem.ingredientId} ${ingName}`.toLowerCase();
                   const isFixed =
                     recItem.doubleRule === 'fixed' ||
                     (recItem.amountDouble !== undefined && Number(recItem.amountDouble) === simpleVal) ||
-                    (!recItem.doubleRule && (
-                      recItem.ingredientId.includes('pan') ||
-                      recItem.ingredientId.includes('huevo') ||
-                      recItem.ingredientId.includes('salsa') ||
-                      recItem.ingredientId.includes('alioli') ||
-                      recItem.ingredientId.includes('barbacoa') ||
-                      recItem.ingredientId.includes('papas')
-                    ));
+                    (!recItem.doubleRule &&
+                      (refText.includes('pan') ||
+                        refText.includes('huevo') ||
+                        refText.includes('salsa') ||
+                        refText.includes('alioli') ||
+                        refText.includes('barbacoa') ||
+                        refText.includes('papas')));
 
                   const doubleVal = isFixed
                     ? simpleVal
@@ -644,60 +583,48 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   return (
                     <div
                       key={recItem.ingredientId}
-                      className="p-3.5 rounded-2xl bg-gray-50 border-2 border-gray-200 flex flex-col justify-between gap-3 shadow-2xs hover:border-cartoon-ink transition-colors"
+                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between gap-3"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <span className="font-display text-xs sm:text-sm text-cartoon-ink block truncate">
-                            {ingName}
-                          </span>
-                          <span className="font-sub text-[10px] text-gray-500 block">
-                            Unidad: <strong>{unit}</strong>
-                          </span>
-                        </div>
-
+                        <span className="font-display text-xs sm:text-sm text-slate-900 truncate">
+                          {ingName}
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveFromRecipe(recItem.ingredientId)}
-                          className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-cartoon-red text-cartoon-red hover:text-white flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
-                          title="Quitar de la receta"
+                          className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                          title="Quitar"
                         >
                           <Icon name="close" size={16} />
                         </button>
                       </div>
 
-                      {/* Descuentos por Variante Simple vs Doble */}
-                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-200 text-[11px]">
-                        <div className="bg-white p-2 rounded-xl border border-gray-200">
-                          <span className="font-sub text-[10px] text-gray-500 block">🍔 Simple</span>
-                          <span className="font-display text-xs text-cartoon-ink">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white p-2 rounded-lg border border-slate-200">
+                          <span className="font-sub text-[10px] text-slate-400 block">Simple</span>
+                          <span className="font-display text-xs text-slate-900">
                             {simpleVal} {unit}
                           </span>
                         </div>
-                        <div className="bg-amber-50/70 p-2 rounded-xl border border-amber-200">
-                          <span className="font-sub text-[10px] text-amber-800 block">🍔🍔 Doble</span>
-                          <span className="font-display text-xs text-amber-900 font-bold">
+                        <div className="bg-white p-2 rounded-lg border border-slate-200">
+                          <span className="font-sub text-[10px] text-slate-400 block">Doble</span>
+                          <span className="font-display text-xs text-slate-900">
                             {doubleVal} {unit}
                           </span>
                         </div>
                       </div>
 
-                      {/* Botón interactivo para alternar regla de duplicación o excepción fija */}
                       <button
                         type="button"
                         onClick={() => handleToggleRecipeDoubleRule(recItem.ingredientId)}
-                        className={`py-1.5 px-2.5 rounded-xl font-sub font-bold text-[10px] flex items-center justify-between cursor-pointer transition-colors border ${
+                        className={`py-1.5 px-2.5 rounded-lg font-sub font-semibold text-[11px] flex items-center justify-between cursor-pointer transition-colors border ${
                           isFixed
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                            : 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-blue-50 text-blue-800 border-blue-200'
                         }`}
-                        title="Hacé clic para cambiar la regla de variante"
                       >
-                        <span className="flex items-center gap-1">
-                          <span>{isFixed ? '🔒' : '🔄'}</span>
-                          <span>{isFixed ? 'Fijo (No duplica en Doble)' : 'Se duplica en Doble (x2)'}</span>
-                        </span>
-                        <span className="text-[9px] underline">Cambiar</span>
+                        <span>{isFixed ? 'Fijo en Doble (No duplica)' : 'Se duplica en Doble (x2)'}</span>
+                        <span className="underline text-[10px]">Cambiar</span>
                       </button>
                     </div>
                   );
@@ -705,31 +632,20 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
               </div>
             )}
 
-            {/* Formulario para Asignar Nuevo Ingrediente a este Plato con regla de variante */}
+            {/* Formulario para Agregar Insumo a la Receta */}
             <form
               onSubmit={handleAddIngredientToRecipe}
-              className="p-4 sm:p-5 rounded-2xl bg-cartoon-cream/50 border-2 border-cartoon-ink/30 space-y-3.5 shadow-cartoon-xs"
+              className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3"
             >
-              <div className="flex items-center justify-between pb-2 border-b border-cartoon-ink/15">
-                <span className="font-display text-xs sm:text-sm text-cartoon-ink flex items-center gap-1.5">
-                  <span>➕</span>
-                  <span>Asignar Ingrediente y Regla de Doble para {selectedProduct?.name}</span>
-                </span>
-                <span className="font-sub text-[11px] text-gray-500">
-                  Control granular de Simple vs Doble
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                {/* Ingrediente */}
-                <div className="sm:col-span-5">
-                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                    Ingrediente a utilizar:
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div className="sm:col-span-4">
+                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                    Ingrediente
                   </label>
                   <select
                     value={recipeNewItem.ingredientId}
                     onChange={(e) => handleIngredientSelectChange(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-xs"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                   >
                     {ingredients.map((ing) => (
                       <option key={ing.id} value={ing.id}>
@@ -739,10 +655,9 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   </select>
                 </div>
 
-                {/* Cantidad en Simple */}
                 <div className="sm:col-span-3">
-                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                    Cantidad Simple (1x):
+                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                    Cantidad en Simple
                   </label>
                   <input
                     type="number"
@@ -758,15 +673,13 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                         amountDouble: prev.doubleRule === 'duplicate' ? simple * 2 : simple,
                       }));
                     }}
-                    placeholder="Ej: 150 (g) ó 1 (u.)"
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub font-bold text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-xs"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-sub font-semibold text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                   />
                 </div>
 
-                {/* Comportamiento en Variante Doble */}
-                <div className="sm:col-span-4">
-                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                    En Variante Doble:
+                <div className="sm:col-span-3">
+                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                    Comportamiento en Doble
                   </label>
                   <select
                     value={recipeNewItem.doubleRule}
@@ -779,20 +692,28 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                         amountDouble: rule === 'duplicate' ? simple * 2 : simple,
                       }));
                     }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-xs"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                   >
-                    <option value="duplicate">🔄 Duplicar en Doble (x2) [Carne, Cheddar, Bacon]</option>
-                    <option value="fixed">🔒 Fijo / No Duplicar (x1) [Excepción: Huevo frito, Pan, Salsas]</option>
-                    <option value="custom">⚙️ Cantidad Personalizada en Doble</option>
+                    <option value="duplicate">Duplicar (x2 - Carne, Queso)</option>
+                    <option value="fixed">Fijo (x1 - Ej: Huevo, Pan)</option>
+                    <option value="custom">Cantidad personalizada</option>
                   </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="w-full btn-cartoon-primary py-2 px-3 text-xs"
+                  >
+                    Guardar
+                  </button>
                 </div>
               </div>
 
-              {/* Si es personalizado, mostrar campo numérico de Doble */}
               {recipeNewItem.doubleRule === 'custom' && (
-                <div className="p-3 bg-white rounded-xl border-2 border-cartoon-yellow flex items-center gap-3">
-                  <label className="font-sub font-bold text-xs text-cartoon-ink whitespace-nowrap">
-                    Cantidad exacta a descontar en Doble:
+                <div className="pt-2 flex items-center gap-3">
+                  <label className="font-sub font-semibold text-xs text-slate-700">
+                    Cantidad en Doble:
                   </label>
                   <input
                     type="number"
@@ -803,97 +724,68 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     onChange={(e) =>
                       setRecipeNewItem((prev) => ({ ...prev, amountDouble: e.target.value }))
                     }
-                    className="w-36 px-3 py-1.5 rounded-lg border-2 border-cartoon-ink font-sub font-bold text-xs text-cartoon-ink"
+                    className="w-32 px-3 py-1.5 rounded-lg bg-white border border-slate-300 font-sub font-semibold text-xs text-slate-900"
                   />
                 </div>
               )}
-
-              {/* Resumen y Botón de Asignar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-cartoon-ink/15">
-                <div className="font-sub text-xs text-gray-600 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                  <span>
-                    Descuento: <strong>{recipeNewItem.amountSimple}</strong> en Simple |{' '}
-                    <strong>
-                      {recipeNewItem.doubleRule === 'duplicate'
-                        ? Number(recipeNewItem.amountSimple) * 2
-                        : recipeNewItem.amountDouble}
-                    </strong>{' '}
-                    en Doble.
-                  </span>
-                </div>
-
-                <button
-                  type="submit"
-                  className="btn-cartoon-primary text-xs sm:text-sm py-2 px-5 flex items-center justify-center gap-2 cursor-pointer shadow-cartoon-xs font-display flex-shrink-0"
-                >
-                  <Icon name="add" size={16} />
-                  <span>Guardar en la Receta</span>
-                </button>
-              </div>
             </form>
-
           </div>
-
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* MODAL: CREAR / EDITAR INGREDIENTE */}
-      {/* ============================================================== */}
+      {/* MODAL CREAR / EDITAR INGREDIENTE (SIMPLIFICADO) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-md bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4 my-auto animate-modalIn max-h-[90vh] overflow-y-auto">
-            
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <h3 className="font-display text-base sm:text-lg text-cartoon-ink">
-                {editingIngredient ? 'Editar Ingrediente' : 'Nuevo Ingrediente'}
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 my-auto animate-modalIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-display text-base text-slate-900">
+                {editingIngredient ? 'Editar Insumo' : 'Nuevo Insumo'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
               >
-                <Icon name="close" size={18} />
+                <Icon name="close" size={16} />
               </button>
             </div>
 
             <form onSubmit={handleSaveIngredient} className="space-y-3.5">
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                  Nombre del Ingrediente:
+                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                  Nombre del Insumo
                 </label>
                 <input
                   type="text"
                   required
                   value={formIngredient.name}
                   onChange={(e) => setFormIngredient({ ...formIngredient, name: e.target.value })}
-                  placeholder="Ej: Medallón de Carne Vacuna, Pan Brioche, Cheddar"
-                  className="w-full px-3.5 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                  placeholder="Ej: Pan Brioche, Queso Cheddar"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                 />
+              </div>
+
+              <div>
+                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                  Unidad de Medida
+                </label>
+                <select
+                  value={formIngredient.unit}
+                  onChange={(e) => setFormIngredient({ ...formIngredient, unit: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 bg-white focus:outline-none focus:border-slate-900"
+                >
+                  {UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                    Unidad de Medida:
-                  </label>
-                  <select
-                    value={formIngredient.unit}
-                    onChange={(e) => setFormIngredient({ ...formIngredient, unit: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
-                  >
-                    {UNITS.map((u) => (
-                      <option key={u.value} value={u.value}>
-                        {u.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                    Stock Actual:
+                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                    Stock Actual
                   </label>
                   <input
                     type="number"
@@ -902,71 +794,66 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     required
                     value={formIngredient.stock}
                     onChange={(e) => setFormIngredient({ ...formIngredient, stock: e.target.value })}
-                    placeholder="1000"
-                    className="w-full px-3 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub font-semibold text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                    Alerta Mínimo
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    value={formIngredient.minStock}
+                    onChange={(e) => setFormIngredient({ ...formIngredient, minStock: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                  Stock Mínimo (Alerta de reposición):
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={formIngredient.minStock}
-                  onChange={(e) => setFormIngredient({ ...formIngredient, minStock: e.target.value })}
-                  placeholder="200"
-                  className="w-full px-3.5 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2.5">
+              <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-sub text-xs cursor-pointer"
+                  className="btn-cartoon-white py-2 px-4 text-xs"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="btn-cartoon-primary text-xs py-2 px-5 flex items-center gap-1.5 shadow-cartoon-xs cursor-pointer"
+                  className="btn-cartoon-primary py-2 px-5 text-xs"
                 >
-                  <Icon name="save" size={16} />
-                  <span>Guardar</span>
+                  Guardar
                 </button>
               </div>
             </form>
-
           </div>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* MODAL: CONFIRMACIÓN DE BORRADO DE INGREDIENTE */}
-      {/* ============================================================== */}
+      {/* MODAL CONFIRMAR ELIMINACIÓN */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4 my-auto animate-modalIn">
-            <h3 className="font-display text-base text-cartoon-ink">¿Eliminar este ingrediente?</h3>
-            <p className="font-sub text-xs text-gray-600">
-              Vas a eliminar <strong>"{deleteCandidate.name}"</strong> del inventario.
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-5 text-center space-y-4 my-auto animate-modalIn">
+            <h3 className="font-display text-sm text-slate-900">Eliminar insumo</h3>
+            <p className="font-sub text-xs text-slate-500">
+              ¿Confirmás eliminar <strong>{deleteCandidate.name}</strong> del inventario?
             </p>
-            <div className="flex gap-2 justify-center pt-2">
+            <div className="flex gap-2 justify-center">
               <button
                 type="button"
                 onClick={() => setDeleteCandidate(null)}
-                className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-sub text-xs cursor-pointer"
+                className="btn-cartoon-white py-2 px-4 text-xs"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-cartoon-red text-white font-sub font-bold text-xs cursor-pointer shadow-sm hover:bg-cartoon-red-dark"
+                className="btn-cartoon-red py-2 px-4 text-xs"
               >
                 Eliminar
               </button>
@@ -974,7 +861,6 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

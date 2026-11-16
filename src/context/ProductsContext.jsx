@@ -22,14 +22,23 @@ export const ProductsProvider = ({ children }) => {
     const status = initFirebase();
     setFirebaseStatus(status);
 
-    // Suscribirse a cambios en tiempo real
+    // Suscribirse a cambios en tiempo real de productos
     const unsubscribe = subscribeToProducts((items) => {
       setProducts(items);
       setLoading(false);
     });
 
+    // Re-evaluar disponibilidad de platos cuando cambia el inventario de ingredientes o recetas
+    const handleInventoryChange = () => {
+      setProducts((prev) => [...prev]);
+    };
+    window.addEventListener('tricos_ingredients_sync', handleInventoryChange);
+    window.addEventListener('tricos_recipes_sync', handleInventoryChange);
+
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
+      window.removeEventListener('tricos_ingredients_sync', handleInventoryChange);
+      window.removeEventListener('tricos_recipes_sync', handleInventoryChange);
     };
   }, []);
 

@@ -1,24 +1,64 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import confetti from 'canvas-confetti';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Icon } from '../Icon';
+import { buildWhatsAppUrl } from '../../lib/whatsapp';
 import { DEFAULT_PROMOTIONS_DATA } from '../../lib/promotionsStore';
+import { updateOrderStatus } from '../../lib/ordersStore';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
-const formatOrderDate = (isoStr) => {
-  if (!isoStr) return '';
+const formatDate = (iso) => {
+  if (!iso) return '-';
   try {
-    const d = new Date(isoStr);
-    return d.toLocaleString('es-AR', {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-AR', {
       day: '2-digit',
-      month: 'short',
+      month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
     });
   } catch {
-    return isoStr;
+    return iso;
   }
 };
+
+const ORDER_STATUSES = [
+  {
+    id: 'pendiente',
+    label: 'Pendiente',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+    dotClass: 'bg-amber-500',
+  },
+  {
+    id: 'preparacion',
+    label: 'En preparación',
+    badgeClass: 'bg-blue-50 text-blue-800 border-blue-200',
+    dotClass: 'bg-blue-500',
+  },
+  {
+    id: 'enviado',
+    label: 'Enviado',
+    badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    dotClass: 'bg-emerald-500',
+  },
+];
+
+const normalizeStatus = (raw) => {
+  const s = String(raw || '').toLowerCase();
+  if (s === 'preparacion' || s === 'en preparacion' || s === 'en preparación') return 'preparacion';
+  if (s === 'enviado' || s === 'entregado' || s === 'completado') return 'enviado';
+  return 'pendiente';
+};
+
+const WHEEL_COLORS = [
+  '#0F172A',
+  '#1E293B',
+  '#B45309',
+  '#334155',
+  '#BE123C',
+  '#1D4ED8',
+  '#047857',
+  '#475569',
+];
 
 export const LotteryOrdersSection = ({
   orders = [],
@@ -27,24 +67,22 @@ export const LotteryOrdersSection = ({
   onToggleWinner,
   onAddManualOrder,
 }) => {
-  // Filtros y búsqueda
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('all'); // 'all' | 'delivery' | 'takeaway' | 'winners'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pendiente' | 'preparacion' | 'enviado' | 'winners'
 
-  // Notificación temporal toast
   const [toastMessage, setToastMessage] = useState('');
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3200);
+    setTimeout(() => setToastMessage(''), 2800);
   };
 
   // Modales
   const [isLotteryModalOpen, setIsLotteryModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null); // Ficha del Cliente
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-  // Los 4 Premios Oficiales del Sorteo Trico's
+  // Premios oficiales
   const officialPrizes = useMemo(() => {
     if (Array.isArray(giveaway?.prizes) && giveaway.prizes.length > 0) {
       return giveaway.prizes;
@@ -52,190 +90,139 @@ export const LotteryOrdersSection = ({
     return DEFAULT_PROMOTIONS_DATA.giveaway.prizes;
   }, [giveaway]);
 
-  // Premio seleccionado actualmente para sortear
   const [selectedPrizeId, setSelectedPrizeId] = useState(1);
   const selectedPrize = useMemo(() => {
     return officialPrizes.find((p) => p.id === selectedPrizeId) || officialPrizes[0];
   }, [officialPrizes, selectedPrizeId]);
 
-  // Estados de la Ruleta / Sorteador
+  // Estados de la Ruleta Visual
   const [isSpinning, setIsSpinning] = useState(false);
-  const [displayCandidate, setDisplayCandidate] = useState(null);
+  const [wheelRotation, setWheelRotation] = useState(0);
   const [chosenWinner, setChosenWinner] = useState(null);
-  const spinIntervalRef = useRef(null);
-
-  // Formulario de Participante Manual
-  const [manualForm, setManualForm] = useState({
-    name: '',
-    phone: '',
-    concept: 'Participación Sorteo (Instagram / Local)',
-    total: '',
-  });
-
-  // Filtrado reactivo de pedidos participantes
-  const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      if (filterType === 'delivery' && o.deliveryType !== 'delivery') return false;
-      if (filterType === 'takeaway' && o.deliveryType !== 'takeaway') return false;
-      if (filterType === 'winners' && !o.isWinner) return false;
-
-      if (!search.trim()) return true;
-      const q = search.toLowerCase().trim();
-      const name = (o.customerName || '').toLowerCase();
-      const phone = (o.phone || '').toLowerCase();
-      const ticket = String(o.ticketNumber || '').toLowerCase();
-      const address = (o.address || '').toLowerCase();
-      const itemsStr = (o.items || []).map((i) => i.name).join(' ').toLowerCase();
-
-      return (
-        name.includes(q) ||
-        phone.includes(q) ||
-        ticket.includes(q) ||
-        address.includes(q) ||
-        itemsStr.includes(q)
-      );
-    });
-  }, [orders, search, filterType]);
-
-  // Totales
-  const totalAmount = useMemo(
-    () => orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0),
-    [orders]
-  );
-  const totalWinners = useMemo(() => orders.filter((o) => o.isWinner).length, [orders]);
-
-  // Copiar lista prolija al portapapeles
-  const handleCopyList = () => {
-    if (orders.length === 0) {
-      showToast('No hay participantes registrados todavía.');
-      return;
-    }
-    const lines = [];
-    lines.push(`🎁 *LISTA OFICIAL DE PARTICIPANTES - SORTEO TRICO'S* 🎁`);
-    lines.push(`📅 Sortea: ${giveaway?.drawDate || 'Fin de mes'}`);
-    lines.push(`👥 Total participantes: ${orders.length}`);
-    lines.push(`────────────────────────────────────────`);
-    lines.push(`🏆 *PREMIOS OFICIALES:*`);
-    officialPrizes.forEach((p) => {
-      lines.push(`${p.badge}: ${p.emoji} ${p.title}`);
-    });
-    lines.push(`────────────────────────────────────────`);
-    orders.forEach((o, i) => {
-      const ticket = o.ticketNumber ? `#TRICO-${o.ticketNumber}` : `#${i + 1}`;
-      const winnerBadge = o.isWinner ? ` 🏆 [GANADOR: ${o.winnerPrize || 'Premio'}]` : '';
-      const cel = o.phone ? ` - Cel: ${o.phone}` : '';
-      lines.push(`${i + 1}. Ticket ${ticket}: ${o.customerName}${cel} (${o.deliveryType === 'delivery' ? 'Delivery' : 'Retiro'})${winnerBadge}`);
-    });
-    lines.push(`────────────────────────────────────────`);
-    lines.push(`¡Muchos éxitos a todos! 🍔 Trico's Burgers & Chicken`);
-
-    try {
-      navigator.clipboard.writeText(lines.join('\n'));
-      showToast('¡Lista completa copiada al portapapeles! 📋');
-    } catch {
-      showToast('No se pudo copiar automáticamente.');
-    }
-  };
-
-  // Girar Ruleta de Sorteo (Iniciar o Volver a Sortear)
-  const handleStartSpin = () => {
-    if (orders.length === 0) {
-      alert('No hay participantes registrados para sortear.');
-      return;
-    }
-    if (isSpinning) return;
-
-    setIsSpinning(true);
-    setChosenWinner(null);
-
-    // Filtramos participantes que aún no hayan ganado este u otro premio
-    const eligibleOrders = orders.filter((o) => !o.isWinner);
-    const pool = eligibleOrders.length > 0 ? eligibleOrders : orders;
-
-    let counter = 0;
-    const totalIterations = 35 + Math.floor(Math.random() * 10);
-
-    spinIntervalRef.current = setInterval(() => {
-      counter++;
-      const randomCandidate = pool[Math.floor(Math.random() * pool.length)];
-      setDisplayCandidate(randomCandidate);
-
-      if (counter >= totalIterations) {
-        clearInterval(spinIntervalRef.current);
-        spinIntervalRef.current = null;
-        setIsSpinning(false);
-        setChosenWinner(randomCandidate);
-
-        // Festejo con confeti animado
-        try {
-          confetti({
-            particleCount: 120,
-            spread: 90,
-            origin: { y: 0.55 },
-            colors: ['#FFC93C', '#FF4757', '#2ED573', '#1E90FF'],
-          });
-        } catch {}
-      }
-    }, 65);
-  };
-
-  // Reiniciar Sorteo (Limpia la ruleta por si ocurrió algún inconveniente)
-  const handleResetSpin = () => {
-    if (spinIntervalRef.current) {
-      clearInterval(spinIntervalRef.current);
-      spinIntervalRef.current = null;
-    }
-    setIsSpinning(false);
-    setDisplayCandidate(null);
-    setChosenWinner(null);
-    showToast('Ruleta reiniciada. Podés volver a girar.');
-  };
+  const spinTimeoutRef = useRef(null);
 
   useEffect(() => {
     return () => {
-      if (spinIntervalRef.current) clearInterval(spinIntervalRef.current);
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
     };
   }, []);
 
-  // Confirmar y guardar ganador oficial para el premio seleccionado
-  const handleConfirmWinner = () => {
-    if (!chosenWinner) return;
-    const prizeLabel = `${selectedPrize?.badge || 'Premio'}: ${selectedPrize?.title || 'Oficial'}`;
-    if (typeof onToggleWinner === 'function') {
-      onToggleWinner(chosenWinner.id, prizeLabel);
+  // Formulario participante manual
+  const [manualForm, setManualForm] = useState({
+    name: '',
+    phone: '',
+    concept: 'Pedido en mostrador',
+    total: '',
+  });
+
+  // Contadores por estado para los filtros
+  const statusCounts = useMemo(() => {
+    const counts = { all: orders.length, pendiente: 0, preparacion: 0, enviado: 0, winners: 0 };
+    orders.forEach((o) => {
+      const st = normalizeStatus(o.status);
+      counts[st] = (counts[st] || 0) + 1;
+      if (o.isWinner) counts.winners += 1;
+    });
+    return counts;
+  }, [orders]);
+
+  // Filtrado de pedidos
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      const st = normalizeStatus(o.status);
+      if (statusFilter === 'pendiente' && st !== 'pendiente') return false;
+      if (statusFilter === 'preparacion' && st !== 'preparacion') return false;
+      if (statusFilter === 'enviado' && st !== 'enviado') return false;
+      if (statusFilter === 'winners' && !o.isWinner) return false;
+
+      if (!search.trim()) return true;
+      const q = search.toLowerCase().trim();
+      const matchName = (o.customerName || '').toLowerCase().includes(q);
+      const matchPhone = (o.phone || '').toLowerCase().includes(q);
+      const matchTicket = String(o.ticketNumber || '').includes(q);
+      return matchName || matchPhone || matchTicket;
+    });
+  }, [orders, search, statusFilter]);
+
+  // Segmentos de la ruleta (máximo 12 visibles en la rueda para legibilidad, aunque el sorteo elige entre todos los elegibles)
+  const wheelCandidates = useMemo(() => {
+    const pool = orders.filter((o) => !o.isWinner);
+    const source = pool.length > 0 ? pool : orders;
+    return source.slice(0, 12);
+  }, [orders]);
+
+  const handleStartSpin = () => {
+    if (orders.length === 0 || isSpinning) return;
+
+    const eligiblePool = orders.filter((o) => !o.isWinner);
+    const pool = eligiblePool.length > 0 ? eligiblePool : orders;
+    const winnerIndex = Math.floor(Math.random() * pool.length);
+    const finalWinner = pool[winnerIndex];
+
+    // Calcular ángulo hacia el segmento visual correspondiente
+    const segCount = Math.max(1, wheelCandidates.length);
+    const visualIdx = wheelCandidates.findIndex((c) => c.id === finalWinner.id);
+    const targetIdx = visualIdx >= 0 ? visualIdx : winnerIndex % segCount;
+    const segAngle = 360 / segCount;
+    const segmentCenterAngle = targetIdx * segAngle + segAngle / 2;
+
+    // Girar al menos 6 vueltas completas (2160°) + posición exacta en el puntero superior (0°)
+    const extraSpins = 360 * 6;
+    const currentBase = wheelRotation - (wheelRotation % 360);
+    const nextRotation = currentBase + extraSpins + (360 - segmentCenterAngle);
+
+    setChosenWinner(null);
+    setIsSpinning(true);
+    setWheelRotation(nextRotation);
+
+    if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    spinTimeoutRef.current = setTimeout(() => {
+      setIsSpinning(false);
+      setChosenWinner(finalWinner);
+    }, 4200);
+  };
+
+  const handleResetSpin = () => {
+    if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    setIsSpinning(false);
+    setChosenWinner(null);
+    setWheelRotation(0);
+  };
+
+  const handleConfirmWinner = (order) => {
+    if (!order || !onToggleWinner) return;
+    const prizeLabel = selectedPrize
+      ? `${selectedPrize.badge}: ${selectedPrize.title}`
+      : giveaway?.prizeName || 'Premio Oficial';
+    onToggleWinner(order.id, prizeLabel);
+    showToast(`${order.customerName} registrado como ganador de ${prizeLabel}`);
+  };
+
+  const handleStatusChange = async (orderId, nextStatus) => {
+    await updateOrderStatus(orderId, nextStatus);
+    if (selectedOrderDetails && selectedOrderDetails.id === orderId) {
+      setSelectedOrderDetails((prev) => ({ ...prev, status: nextStatus }));
     }
-    showToast(`¡${chosenWinner.customerName} registrado como ganador de "${prizeLabel}"! 🏆`);
-    setIsLotteryModalOpen(false);
+    const label = ORDER_STATUSES.find((s) => s.id === nextStatus)?.label || nextStatus;
+    showToast(`Estado actualizado a: ${label}`);
   };
 
-  // Abrir WhatsApp para avisar al ganador con mensaje del premio exacto
-  const handleNotifyWinnerByWhatsApp = (winnerOrder) => {
-    if (!winnerOrder) return;
-    const prizeLabel = `${selectedPrize?.badge || 'Premio'}: ${selectedPrize?.title || 'Oficial'}`;
-    const rawPhone = winnerOrder.phone ? winnerOrder.phone.replace(/\D/g, '') : '';
-    const cleanPhone = rawPhone ? (rawPhone.startsWith('549') ? rawPhone : `549${rawPhone}`) : '5493804379754';
-    const msg = `¡Hola ${winnerOrder.customerName}! 🥳🎉 Te escribimos desde *TRICO'S* para darte una gran noticia:\n\n¡Sos GANADOR/A de nuestro Gran Sorteo Oficial con tu ticket *#TRICO-${winnerOrder.ticketNumber}*!\n\n🏆 *Premio obtenido:* ${prizeLabel}\n\nPor favor respondé a este mensaje para coordinar la entrega de tu premio. ¡Felicitaciones de todo el equipo de Trico's! 🍔🍗`;
-    const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  // Agregar participante manual
   const handleManualSubmit = (e) => {
     e.preventDefault();
-    if (!manualForm.name.trim()) return;
+    if (!manualForm.name.trim() || !manualForm.phone.trim()) return;
 
-    if (typeof onAddManualOrder === 'function') {
+    if (onAddManualOrder) {
       onAddManualOrder({
         customerName: manualForm.name.trim(),
         phone: manualForm.phone.trim(),
         deliveryType: 'takeaway',
-        address: 'Participación Manual / Redes',
-        addressNotes: manualForm.concept.trim(),
+        address: 'Registro manual en local',
         total: Number(manualForm.total) || 0,
-        paymentMethod: 'Manual / Mostrador',
+        paymentMethod: 'Mostrador',
+        status: 'pendiente',
         items: [
           {
-            name: manualForm.concept.trim() || 'Participación Sorteo',
+            name: manualForm.concept.trim() || 'Pedido en mostrador',
             quantity: 1,
             price: Number(manualForm.total) || 0,
             subtotal: Number(manualForm.total) || 0,
@@ -245,404 +232,307 @@ export const LotteryOrdersSection = ({
       });
     }
 
-    setManualForm({ name: '', phone: '', concept: 'Participación Sorteo (Instagram / Local)', total: '' });
+    setManualForm({ name: '', phone: '', concept: 'Pedido en mostrador', total: '' });
     setIsManualModalOpen(false);
-    showToast('¡Participante agregado con éxito al sorteo! 🎁');
+    showToast('Pedido / participante registrado');
+  };
+
+  // Generador de sectores SVG para la ruleta circular
+  const renderWheelSectors = () => {
+    const count = wheelCandidates.length;
+    if (count === 0) return null;
+
+    if (count === 1) {
+      const only = wheelCandidates[0];
+      return (
+        <g>
+          <circle cx="160" cy="160" r="150" fill="#0F172A" />
+          <text
+            x="160"
+            y="90"
+            fill="#FFFFFF"
+            fontSize="12"
+            fontWeight="700"
+            textAnchor="middle"
+          >
+            {only.customerName}
+          </text>
+        </g>
+      );
+    }
+
+    const radius = 150;
+    const center = 160;
+    const anglePerSlice = 360 / count;
+
+    return wheelCandidates.map((cand, i) => {
+      const startAngle = i * anglePerSlice - 90;
+      const endAngle = (i + 1) * anglePerSlice - 90;
+      const startRad = (startAngle * Math.PI) / 180;
+      const endRad = (endAngle * Math.PI) / 180;
+
+      const x1 = center + radius * Math.cos(startRad);
+      const y1 = center + radius * Math.sin(startRad);
+      const x2 = center + radius * Math.cos(endRad);
+      const y2 = center + radius * Math.sin(endRad);
+
+      const largeArcFlag = anglePerSlice > 180 ? 1 : 0;
+      const d = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+
+      const midAngle = startAngle + anglePerSlice / 2;
+      const textRadius = radius * 0.62;
+      const tx = center + textRadius * Math.cos((midAngle * Math.PI) / 180);
+      const ty = center + textRadius * Math.sin((midAngle * Math.PI) / 180);
+      const shortName =
+        (cand.customerName || 'Cliente').length > 13
+          ? `${cand.customerName.slice(0, 12)}…`
+          : cand.customerName || 'Cliente';
+
+      return (
+        <g key={cand.id || i}>
+          <path
+            d={d}
+            fill={WHEEL_COLORS[i % WHEEL_COLORS.length]}
+            stroke="#FFFFFF"
+            strokeWidth="1.5"
+          />
+          <text
+            x={tx}
+            y={ty}
+            fill="#FFFFFF"
+            fontSize="10"
+            fontWeight="600"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            transform={`rotate(${midAngle}, ${tx}, ${ty})`}
+          >
+            {shortName}
+          </text>
+        </g>
+      );
+    });
   };
 
   return (
     <div className="space-y-6 animate-fadeIn select-none">
-      
-      {/* Toast de notificación temporal */}
       {toastMessage && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500 text-white font-sub font-bold text-sm shadow-cartoon-xs flex items-center gap-2 animate-bounce">
-          <Icon name="check_circle" size={20} />
+        <div className="p-3 rounded-xl bg-slate-900 text-white font-sub font-medium text-xs shadow-md flex items-center gap-2">
+          <Icon name="check_circle" size={16} className="text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Cabecera Principal y Acciones */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Cabecera Simple y Directa */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink flex items-center gap-2">
-            <span>🎁</span>
-            <span>Clientes & Participantes del Sorteo</span>
+          <h3 className="font-display text-lg sm:text-xl text-slate-900">
+            Pedidos, Estados y Sorteo
           </h3>
-          <p className="font-sub text-xs sm:text-sm text-gray-500 mt-0.5">
-            Participan automáticamente todos los clientes con su pedido web y celular. Sorteo oficial por los 4 premios.
+          <p className="font-sub text-xs text-slate-500 mt-0.5">
+            Gestioná el estado de despacho de cada pedido y realizá el sorteo oficial.
           </p>
         </div>
 
-        {/* Botones de Acción */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
-              setDisplayCandidate(null);
-              setChosenWinner(null);
+              handleResetSpin();
               setIsLotteryModalOpen(true);
             }}
-            className="btn-cartoon-primary text-xs sm:text-sm py-2 px-4 flex items-center gap-2 shadow-cartoon-xs cursor-pointer font-display"
+            className="btn-cartoon-primary text-xs py-2 px-4"
           >
-            <span className="text-lg">🎰</span>
-            <span>Ruleta de Sorteo</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCopyList}
-            className="px-3.5 py-2 rounded-xl bg-white hover:bg-gray-100 text-cartoon-ink border-2 border-cartoon-ink font-sub font-bold text-xs flex items-center gap-1.5 shadow-cartoon-xs cursor-pointer transition-colors"
-          >
-            <Icon name="content_copy" size={16} />
-            <span>Copiar Lista</span>
+            <Icon name="casino" size={16} />
+            <span>Abrir Ruleta de Sorteo</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsManualModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-cartoon-cream hover:bg-cartoon-cream-dark text-cartoon-ink border-2 border-cartoon-ink font-sub font-bold text-xs flex items-center gap-1.5 shadow-cartoon-xs cursor-pointer transition-colors"
+            className="btn-cartoon-white text-xs py-2 px-3.5"
           >
-            <Icon name="person_add" size={16} />
-            <span>+ Manual</span>
+            <Icon name="add" size={16} />
+            <span>Cargar Manual</span>
           </button>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* TARJETAS DE LOS 4 PREMIOS OFICIALES DEL SORTEO */}
+      {/* BARRA DE BÚSQUEDA Y FILTROS VISUALES DE ESTADO */}
       {/* ============================================================== */}
-      <div className="bg-white rounded-3xl border-2 sm:border-3 border-gray-200 p-4 sm:p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="font-display text-xs sm:text-sm text-cartoon-ink uppercase tracking-wider flex items-center gap-1.5">
-            <span>🏆</span>
-            <span>Los 4 Premios Oficiales del Sorteo Trico's</span>
-          </span>
-          <span className="font-sub text-xs text-gray-500">
-            Fecha: <strong>{giveaway?.drawDate || 'Fin de mes'}</strong>
-          </span>
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="relative flex-1">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
+            <Icon name="search" size={16} />
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar por cliente, teléfono o N° de ticket..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-sub text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-slate-900"
+          />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {officialPrizes.map((p) => {
-            // Buscar si ya hay un ganador para este premio
-            const winnerOfThis = orders.find(
-              (o) => o.isWinner && (o.winnerPrize || '').includes(p.badge || p.title)
-            );
-
+        {/* Filtros de Estado con Colores Sobrios */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {[
+            { id: 'all', label: `Todos (${statusCounts.all})`, dot: null },
+            { id: 'pendiente', label: `Pendientes (${statusCounts.pendiente})`, dot: 'bg-amber-500' },
+            { id: 'preparacion', label: `En preparación (${statusCounts.preparacion})`, dot: 'bg-blue-500' },
+            { id: 'enviado', label: `Enviados (${statusCounts.enviado})`, dot: 'bg-emerald-500' },
+            { id: 'winners', label: `Ganadores (${statusCounts.winners})`, dot: 'bg-rose-500' },
+          ].map((tab) => {
+            const active = statusFilter === tab.id;
             return (
-              <div
-                key={p.id}
-                onClick={() => {
-                  setSelectedPrizeId(p.id);
-                  setDisplayCandidate(null);
-                  setChosenWinner(null);
-                  setIsLotteryModalOpen(true);
-                }}
-                className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-2 hover:scale-[1.02] shadow-2xs ${
-                  winnerOfThis
-                    ? 'bg-amber-50 border-amber-300'
-                    : selectedPrizeId === p.id
-                    ? 'bg-yellow-50/70 border-cartoon-yellow ring-2 ring-cartoon-yellow/40'
-                    : 'bg-gray-50 border-gray-200 hover:border-cartoon-ink'
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setStatusFilter(tab.id)}
+                className={`px-3 py-2 rounded-xl font-sub font-semibold text-xs whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-colors border ${
+                  active
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <div className="flex items-start gap-2.5">
-                  <span className="text-2xl flex-shrink-0">{p.emoji || '🎁'}</span>
-                  <div className="min-w-0">
-                    <span className="font-display text-[10px] text-cartoon-red font-bold uppercase block">
-                      {p.badge}
-                    </span>
-                    <h5 className="font-display text-xs sm:text-sm text-cartoon-ink leading-tight line-clamp-2">
-                      {p.title}
-                    </h5>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px] font-sub">
-                  {winnerOfThis ? (
-                    <span className="text-amber-800 font-bold flex items-center gap-1 truncate">
-                      <span>🏆</span>
-                      <span>Ganador: {winnerOfThis.customerName}</span>
-                    </span>
-                  ) : (
-                    <span className="text-emerald-700 font-bold">
-                      🎲 Sortear este premio ➔
-                    </span>
-                  )}
-                </div>
-              </div>
+                {tab.dot && <span className={`w-2 h-2 rounded-full ${tab.dot}`} />}
+                <span>{tab.label}</span>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* Métricas Resumen */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
-          <span className="font-sub font-bold text-xs text-gray-400 uppercase tracking-wider block">
-            👥 Total Clientes
-          </span>
-          <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block mt-0.5">
-            {orders.length}
-          </span>
-          <span className="font-sub text-[11px] text-emerald-600 font-bold block mt-0.5">
-            Participando en el sorteo
-          </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs">
-          <span className="font-sub font-bold text-xs text-amber-700 uppercase tracking-wider block">
-            🏆 Premios en Juego
-          </span>
-          <span className="font-display text-2xl sm:text-3xl text-amber-600 block mt-0.5">
-            4 Premios
-          </span>
-          <span className="font-sub text-[11px] text-amber-700 font-bold block mt-0.5">
-            Web, Combo, Redes, Pollo
-          </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
-          <span className="font-sub font-bold text-xs text-gray-400 uppercase tracking-wider block">
-            ⭐ Ganadores Asignados
-          </span>
-          <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block mt-0.5">
-            {totalWinners}
-          </span>
-          <span className="font-sub text-[11px] text-gray-500 block mt-0.5">
-            De 4 premios disponibles
-          </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
-          <span className="font-sub font-bold text-xs text-gray-400 uppercase tracking-wider block">
-            💰 Ventas Totales
-          </span>
-          <span className="font-display text-2xl sm:text-3xl text-cartoon-ink block mt-0.5">
-            {money(totalAmount)}
-          </span>
-          <span className="font-sub text-[11px] text-gray-400 block mt-0.5">
-            Acumulado de pedidos web
-          </span>
-        </div>
-      </div>
-
-      {/* Buscador y Píldoras de Filtro */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        <div className="relative flex-1">
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-            <Icon name="search" size={18} />
-          </div>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por cliente, celular, ticket #..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border-2 border-gray-200 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-yellow shadow-xs"
-          />
-        </div>
-
-        {/* Píldoras de Filtro */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-          <button
-            type="button"
-            onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border ${
-              filterType === 'all'
-                ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black'
-                : 'bg-white text-gray-600 border-gray-200 hover:text-cartoon-ink'
-            }`}
-          >
-            Todos ({orders.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterType('delivery')}
-            className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border ${
-              filterType === 'delivery'
-                ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black'
-                : 'bg-white text-gray-600 border-gray-200 hover:text-cartoon-ink'
-            }`}
-          >
-            🛵 Delivery
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterType('takeaway')}
-            className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border ${
-              filterType === 'takeaway'
-                ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black'
-                : 'bg-white text-gray-600 border-gray-200 hover:text-cartoon-ink'
-            }`}
-          >
-            🏪 Retiro
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterType('winners')}
-            className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border ${
-              filterType === 'winners'
-                ? 'bg-amber-400 text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-black'
-                : 'bg-white text-gray-600 border-gray-200 hover:text-cartoon-ink'
-            }`}
-          >
-            🏆 Ganadores ({totalWinners})
-          </button>
-        </div>
-      </div>
-
-      {/* Lista de Tarjetas de Clientes Participantes */}
+      {/* ============================================================== */}
+      {/* LISTADO LIMPIO DE PEDIDOS Y CLIENTES */}
+      {/* ============================================================== */}
       {filteredOrders.length === 0 ? (
-        <div className="p-10 bg-white rounded-3xl border-2 border-dashed border-gray-200 text-center space-y-2">
-          <span className="text-4xl block">🔍</span>
-          <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
-            No se encontraron clientes con esos filtros
-          </h4>
-          <p className="font-sub text-xs text-gray-400">
-            Probá limpiando el buscador o cambiando la categoría.
+        <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+          <p className="font-display text-sm text-slate-900 mb-1">No hay pedidos en esta vista</p>
+          <p className="font-sub text-xs text-slate-500">
+            Cambiá el filtro de estado o realizá otra búsqueda.
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredOrders.map((order, idx) => {
-            const ticketDisplay = order.ticketNumber ? `#TRICO-${order.ticketNumber}` : `#${idx + 1}`;
-            const isWinner = !!order.isWinner;
+        <div className="space-y-2.5">
+          {filteredOrders.map((order) => {
+            const currentStId = normalizeStatus(order.status);
+            const stConfig =
+              ORDER_STATUSES.find((s) => s.id === currentStId) || ORDER_STATUSES[0];
 
             return (
               <div
                 key={order.id}
-                className={`bg-white rounded-2xl border-2 p-3.5 sm:p-4.5 transition-all shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-                  isWinner
-                    ? 'border-amber-400 bg-amber-50/30 ring-2 ring-amber-300/60'
-                    : 'border-gray-200 hover:border-cartoon-ink'
-                }`}
+                className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:border-slate-300 transition-colors"
               >
-                {/* Columna Izquierda: Información del Cliente y Celular destacado */}
-                <div className="space-y-1.5 flex-1 min-w-0">
+                {/* Columna Izquierda: Datos del Cliente y Pedido */}
+                <div className="space-y-1 min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="badge-cartoon bg-cartoon-yellow text-cartoon-ink border-cartoon-ink font-display text-xs">
-                      {ticketDisplay}
+                    <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      #{order.ticketNumber || '1001'}
                     </span>
 
-                    {isWinner && (
-                      <span className="badge-cartoon bg-amber-400 text-cartoon-ink border-cartoon-ink font-display text-xs flex items-center gap-1">
-                        <span>🏆</span>
-                        <span>{order.winnerPrize || 'Ganador'}</span>
-                      </span>
-                    )}
-
-                    <span className="badge-cartoon bg-emerald-50 text-emerald-800 border-emerald-300 text-[10px]">
-                      Participando 🎁
-                    </span>
-
-                    <span className="font-sub text-[11px] text-gray-400">
-                      {formatOrderDate(order.createdAt)}
-                    </span>
-                  </div>
-
-                  {/* Nombre y Número de Celular / WhatsApp */}
-                  <div className="flex flex-wrap items-center gap-3 pt-0.5">
-                    <h4
-                      onClick={() => setSelectedOrderDetails(order)}
-                      className="font-display text-base sm:text-lg text-cartoon-ink hover:text-cartoon-red cursor-pointer transition-colors"
-                      title="Ver Ficha del Cliente"
-                    >
+                    <h4 className="font-display text-sm sm:text-base text-slate-900 truncate">
                       {order.customerName}
                     </h4>
 
-                    {/* Celular Prominente con Botón de WhatsApp y Copiar */}
-                    <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl">
-                      <Icon name="call" size={14} className="text-emerald-700" />
-                      <span className="font-sub font-black text-xs text-emerald-900">
-                        {order.phone || 'Sin celular'}
+                    {order.phone && (
+                      <a
+                        href={buildWhatsAppUrl(order.phone, `Hola ${order.customerName}, te escribimos de Trico's sobre tu pedido.`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-sub font-semibold text-xs transition-colors"
+                      >
+                        <Icon name="call" size={13} />
+                        <span>{order.phone}</span>
+                      </a>
+                    )}
+
+                    {order.isWinner && (
+                      <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 font-sub font-bold text-[11px]">
+                        Ganador: {order.winnerPrize || 'Sorteo'}
                       </span>
-                      {order.phone && (
-                        <a
-                          href={`https://wa.me/${order.phone.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-1 text-[10px] font-sub font-bold text-emerald-700 hover:underline flex items-center gap-0.5"
-                          title="Abrir WhatsApp"
-                        >
-                          <Icon name="chat" size={12} />
-                          <span>WhatsApp</span>
-                        </a>
-                      )}
-                    </div>
+                    )}
+
+                    <span className="font-sub text-xs text-slate-400">
+                      {formatDate(order.createdAt)}
+                    </span>
                   </div>
 
-                  {/* Modalidad y Dirección */}
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-sub text-gray-600">
-                    <span className="font-bold text-cartoon-ink">
-                      {order.deliveryType === 'delivery' ? '🛵 Delivery:' : '🏪 Retiro en Local'}
+                  {/* Resumen conciso de productos y dirección */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-sub text-slate-500">
+                    <span className="font-medium text-slate-700">
+                      {order.deliveryType === 'delivery' ? 'Envío a domicilio' : 'Retiro en local'}
                     </span>
-                    <span className="truncate max-w-xs">{order.address || 'Santa Cruz 524'}</span>
-
+                    {order.address && (
+                      <span className="truncate max-w-xs">• {order.address}</span>
+                    )}
                     {order.mapUrl && (
                       <a
                         href={order.mapUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-cartoon-red hover:underline bg-rose-50 px-2 py-0.5 rounded-lg border border-cartoon-red/30"
-                        title="Ver en Google Maps"
+                        className="text-slate-900 font-semibold hover:underline inline-flex items-center gap-0.5"
                       >
-                        <Icon name="location_on" size={13} />
-                        <span>Google Maps ↗</span>
+                        <Icon name="location_on" size={13} className="text-rose-600" />
+                        <span>Mapa</span>
                       </a>
                     )}
                   </div>
+
+                  {Array.isArray(order.items) && order.items.length > 0 && (
+                    <p className="font-sub text-xs text-slate-600 truncate pt-0.5">
+                      {order.items.map((it) => `${it.quantity}x ${it.name}`).join(' | ')}
+                    </p>
+                  )}
                 </div>
 
-                {/* Columna Derecha: Total, Ver Ficha y Acciones */}
-                <div className="flex md:flex-col items-end justify-between md:justify-center gap-2 flex-shrink-0 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-gray-100">
-                  <div className="text-left md:text-right">
-                    <span className="font-sub text-[10px] text-gray-400 block">Total pedido:</span>
-                    <span className="font-display text-base sm:text-lg text-cartoon-ink">
+                {/* Columna Derecha: Selector Sobrio de Estado, Total y Acciones */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between lg:justify-end gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                  {/* Selector directo de Estado (Pendiente / En preparación / Enviado) */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    {ORDER_STATUSES.map((st) => {
+                      const active = currentStId === st.id;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => handleStatusChange(order.id, st.id)}
+                          className={`px-2.5 py-1 rounded-lg font-sub font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all ${
+                            active
+                              ? `${st.badgeClass} border shadow-2xs`
+                              : 'text-slate-500 hover:text-slate-800 border border-transparent'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${st.dotClass}`} />
+                          <span>{st.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="text-right min-w-[80px]">
+                    <span className="font-display text-sm sm:text-base text-slate-900 block">
                       {money(order.total)}
+                    </span>
+                    <span className="font-sub text-[10px] text-slate-400">
+                      {order.paymentMethod || 'Efectivo'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    {/* Botón Ver Ficha del Cliente */}
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setSelectedOrderDetails(order)}
-                      className="px-2.5 py-1 rounded-xl bg-gray-100 hover:bg-cartoon-yellow hover:text-cartoon-ink text-gray-700 font-sub font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors border border-gray-200"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-sub font-semibold text-xs cursor-pointer transition-colors"
                     >
-                      <Icon name="badge" size={14} />
-                      <span>Ficha</span>
+                      Ficha
                     </button>
-
-                    {/* Botón Marcar / Desmarcar Ganador */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (order.isWinner) {
-                          onToggleWinner(order.id, null);
-                          showToast(`Se quitó la marca de ganador a ${order.customerName}`);
-                        } else {
-                          const prizeLabel = `${selectedPrize?.badge || 'Premio'}: ${selectedPrize?.title || 'Oficial'}`;
-                          onToggleWinner(order.id, prizeLabel);
-                          showToast(`¡${order.customerName} registrado como ganador! 🏆`);
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-xl font-sub font-bold text-xs flex items-center gap-1 cursor-pointer transition-all border ${
-                        isWinner
-                          ? 'bg-amber-100 text-amber-900 border-amber-300'
-                          : 'bg-white hover:bg-amber-50 text-gray-700 border-gray-300'
-                      }`}
-                      title={isWinner ? 'Quitar condición de ganador' : 'Asignar como ganador'}
-                    >
-                      <span>🏆</span>
-                      <span>{isWinner ? 'Quitar' : 'Ganador'}</span>
-                    </button>
-
-                    {/* Botón Borrar */}
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmId(order.id)}
-                      className="w-8 h-8 rounded-xl bg-white hover:bg-rose-50 text-gray-400 hover:text-cartoon-red border border-gray-200 flex items-center justify-center cursor-pointer transition-colors"
-                      title="Eliminar pedido"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                      title="Eliminar"
                     >
                       <Icon name="delete" size={16} />
                     </button>
@@ -655,446 +545,376 @@ export const LotteryOrdersSection = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: RULETA Y SORTEADOR INTERACTIVO (PERFECTAMENTE CENTRADO) */}
+      {/* MODAL 1: RULETA VISUAL MODERNA Y PROFESIONAL */}
       {/* ============================================================== */}
       {isLotteryModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-3.5 sm:p-5 select-none">
-          <div className="relative w-full max-w-lg bg-cartoon-cream rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-xl overflow-hidden p-4 sm:p-6 text-center space-y-4 my-auto animate-modalIn max-h-[92vh] overflow-y-auto">
-            
-            {/* Cabecera del Sorteador */}
-            <div className="flex items-center justify-between pb-3 border-b-2 border-cartoon-ink/15">
-              <div className="flex items-center gap-2 text-left">
-                <span className="text-3xl">🎰</span>
-                <div>
-                  <h3 className="font-display text-lg sm:text-xl text-cartoon-ink leading-tight">
-                    Ruleta Oficial del Sorteo
-                  </h3>
-                  <span className="font-sub text-xs text-cartoon-ink/70">
-                    {orders.length} clientes participando con sus pedidos
-                  </span>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden my-auto animate-modalIn">
+            {/* Cabecera del Modal */}
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-base sm:text-lg">Ruleta Oficial de Sorteo</h3>
+                <p className="font-sub text-xs text-slate-400">
+                  {orders.length} participantes registrados
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  handleResetSpin();
+                  setIsLotteryModalOpen(false);
+                }}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+              >
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Selector de Premio a Sortear */}
+              <div>
+                <label className="block font-sub font-semibold text-xs text-slate-500 uppercase tracking-wider mb-2">
+                  Premio en juego:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {officialPrizes.map((p) => {
+                    const active = selectedPrize?.id === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={isSpinning}
+                        onClick={() => setSelectedPrizeId(p.id)}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          active
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className={`font-sub font-bold text-[10px] block ${active ? 'text-amber-400' : 'text-slate-400'}`}>
+                          {p.badge}
+                        </span>
+                        <span className="font-display text-xs line-clamp-1 mt-0.5">
+                          {p.title}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
+              {/* Contenedor Central de la Ruleta Circular y Resultado */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                {/* Rueda SVG */}
+                <div className="md:col-span-7 flex flex-col items-center justify-center relative">
+                  {/* Puntero Superior */}
+                  <div className="z-20 -mb-3">
+                    <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-rose-600 filter drop-shadow-sm" />
+                  </div>
+
+                  <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full p-2 bg-slate-900 shadow-xl border-4 border-slate-800 flex items-center justify-center">
+                    <svg
+                      viewBox="0 0 320 320"
+                      className="w-full h-full rounded-full overflow-hidden"
+                      style={{
+                        transform: `rotate(${wheelRotation}deg)`,
+                        transition: isSpinning
+                          ? 'transform 4.2s cubic-bezier(0.15, 0.85, 0.15, 1)'
+                          : 'none',
+                      }}
+                    >
+                      {renderWheelSectors()}
+                    </svg>
+
+                    {/* Centro de la Ruleta */}
+                    <div className="absolute w-14 h-14 rounded-full bg-white border-4 border-slate-900 shadow-md flex items-center justify-center">
+                      <img
+                        src="/assets/logo.svg"
+                        alt="Trico's"
+                        className="w-9 h-9 object-contain"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Panel de Control y Ganador */}
+                <div className="md:col-span-5 flex flex-col justify-between space-y-4">
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center min-h-[150px] flex flex-col items-center justify-center">
+                    {isSpinning ? (
+                      <div className="space-y-2">
+                        <span className="inline-block w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
+                        <p className="font-display text-sm text-slate-900">Girando ruleta...</p>
+                        <p className="font-sub text-xs text-slate-500">Seleccionando ganador al azar</p>
+                      </div>
+                    ) : chosenWinner ? (
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-sub font-bold text-[10px] uppercase">
+                          Ganador Seleccionado
+                        </span>
+                        <h4 className="font-display text-lg text-slate-900">
+                          {chosenWinner.customerName}
+                        </h4>
+                        <p className="font-sub text-xs text-slate-600">
+                          Ticket #{chosenWinner.ticketNumber} • {chosenWinner.phone || 'Sin teléfono'}
+                        </p>
+                        <p className="font-sub font-semibold text-xs text-amber-700 pt-1">
+                          {selectedPrize?.title}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="font-display text-sm text-slate-700">Listo para sortear</p>
+                        <p className="font-sub text-xs text-slate-400">
+                          Presioná el botón para girar la ruleta
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Acciones de la Ruleta */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      disabled={isSpinning || orders.length === 0}
+                      onClick={handleStartSpin}
+                      className="w-full btn-cartoon-red py-3 text-xs sm:text-sm disabled:opacity-40"
+                    >
+                      <span>{chosenWinner ? 'Volver a Girar' : 'Girar Ruleta'}</span>
+                    </button>
+
+                    {chosenWinner && !isSpinning && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleConfirmWinner(chosenWinner)}
+                          className="btn-cartoon-primary py-2 text-xs"
+                        >
+                          Guardar Ganador
+                        </button>
+
+                        {chosenWinner.phone && (
+                          <a
+                            href={buildWhatsAppUrl(
+                              chosenWinner.phone,
+                              `Hola ${chosenWinner.customerName}, te contactamos de Trico's para avisarte que ganaste el sorteo (${selectedPrize?.title}) con tu ticket #${chosenWinner.ticketNumber}.`
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-cartoon-green py-2 text-xs no-underline"
+                          >
+                            WhatsApp
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {(chosenWinner || wheelRotation > 0) && !isSpinning && (
+                      <button
+                        type="button"
+                        onClick={handleResetSpin}
+                        className="w-full btn-cartoon-white py-2 text-xs"
+                      >
+                        Reiniciar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL 2: FICHA SIMPLIFICADA DEL CLIENTE Y PEDIDO */}
+      {/* ============================================================== */}
+      {selectedOrderDetails && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 my-auto animate-modalIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="font-mono text-xs text-slate-400">
+                  Ticket #{selectedOrderDetails.ticketNumber}
+                </span>
+                <h3 className="font-display text-base text-slate-900">
+                  {selectedOrderDetails.customerName}
+                </h3>
+              </div>
               <button
                 type="button"
-                onClick={() => setIsLotteryModalOpen(false)}
-                className="w-8 h-8 rounded-xl bg-white border-2 border-cartoon-ink flex items-center justify-center text-cartoon-ink hover:bg-cartoon-cream-dark cursor-pointer"
+                onClick={() => setSelectedOrderDetails(null)}
+                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
               >
                 <Icon name="close" size={16} />
               </button>
             </div>
 
-            {/* Selector de los 4 Premios Oficiales */}
-            <div className="text-left space-y-1.5">
-              <label className="font-sub font-bold text-xs text-cartoon-ink/80 block">
-                Seleccioná qué premio vas a sortear ahora:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {officialPrizes.map((p) => {
-                  const isSelected = selectedPrizeId === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      disabled={isSpinning}
-                      onClick={() => {
-                        setSelectedPrizeId(p.id);
-                        setChosenWinner(null);
-                      }}
-                      className={`p-2 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-bold'
-                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-lg">{p.emoji || '🎁'}</span>
-                        <div className="min-w-0">
-                          <span className="font-display text-[9px] text-cartoon-red uppercase block">
-                            {p.badge}
-                          </span>
-                          <span className="font-display text-xs truncate block">
-                            {p.title}
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
+            <div className="space-y-2.5 text-xs font-sub">
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">Teléfono</span>
+                <span className="font-semibold text-slate-900">
+                  {selectedOrderDetails.phone || 'No especificado'}
+                </span>
               </div>
-            </div>
-
-            {/* Pantalla Arcade de la Ruleta */}
-            <div className="relative rounded-2xl bg-white border-3 border-cartoon-ink p-5 sm:p-6 shadow-cartoon-sm flex flex-col items-center justify-center min-h-[190px] overflow-hidden">
-              {isSpinning ? (
-                <div className="space-y-2 animate-pulse">
-                  <span className="text-4xl animate-spin inline-block">🎲</span>
-                  <div className="space-y-0.5">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-cartoon-yellow border border-cartoon-ink font-display text-xs text-cartoon-ink">
-                      #{displayCandidate?.ticketNumber ? `TRICO-${displayCandidate.ticketNumber}` : 'GIRANDO'}
-                    </span>
-                    <h4 className="font-display text-xl sm:text-2xl text-cartoon-red truncate max-w-xs">
-                      {displayCandidate?.customerName || 'Buscando ganador...'}
-                    </h4>
-                  </div>
-                  <p className="font-sub text-xs text-gray-500 font-bold">¡Girando ruleta de participantes...!</p>
-                </div>
-              ) : chosenWinner ? (
-                <div className="space-y-3 w-full animate-bounce">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 border-2 border-cartoon-ink shadow-cartoon-xs">
-                    <span className="text-base">🏆</span>
-                    <span className="font-display text-xs text-cartoon-ink uppercase">
-                      ¡TENEMOS GANADOR DEL {selectedPrize?.badge}!
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="font-display text-xs text-gray-500 block">
-                      Ticket #TRICO-{chosenWinner.ticketNumber}
-                    </span>
-                    <h3 className="font-display text-2xl sm:text-3xl text-cartoon-ink">
-                      {chosenWinner.customerName}
-                    </h3>
-                    {chosenWinner.phone && (
-                      <p className="font-sub font-bold text-xs text-emerald-700 mt-0.5">
-                        📱 WhatsApp: {chosenWinner.phone}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-amber-50 border-2 border-amber-300 font-sub text-xs text-amber-900 font-bold">
-                    Premio: {selectedPrize?.emoji} {selectedPrize?.badge} - {selectedPrize?.title}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1.5 text-center">
-                  <span className="text-4xl block">{selectedPrize?.emoji || '🎁'}</span>
-                  <h4 className="font-display text-base sm:text-lg text-cartoon-ink">
-                    ¿Quién se lleva el {selectedPrize?.badge}?
-                  </h4>
-                  <p className="font-sub text-xs text-gray-500 max-w-xs">
-                    Tocá el botón abajo para iniciar el sorteo aleatorio entre todos los clientes.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Botones de Control de la Ruleta (Iniciar, Reiniciar, Volver a Sortear) */}
-            <div className="space-y-2 pt-1">
-              {!chosenWinner ? (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    type="button"
-                    onClick={handleStartSpin}
-                    disabled={isSpinning || orders.length === 0}
-                    className="flex-1 btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer disabled:opacity-50"
-                  >
-                    <span className="text-xl">🎲</span>
-                    <span>{isSpinning ? 'GIRANDO...' : `¡Sortear ${selectedPrize?.badge}!`}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleResetSpin}
-                    disabled={isSpinning}
-                    className="px-3.5 py-3 rounded-xl bg-white hover:bg-gray-100 border-2 border-cartoon-ink font-sub font-bold text-xs text-cartoon-ink cursor-pointer"
-                  >
-                    🔄 Reiniciar
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      type="button"
-                      onClick={handleConfirmWinner}
-                      className="flex-1 btn-cartoon-primary text-xs sm:text-sm py-2.5 flex items-center justify-center gap-1.5 shadow-cartoon-xs cursor-pointer"
-                    >
-                      <Icon name="check_circle" size={18} />
-                      <span>Guardar como Ganador</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleNotifyWinnerByWhatsApp(chosenWinner)}
-                      className="flex-1 btn-cartoon-green text-xs sm:text-sm py-2.5 flex items-center justify-center gap-1.5 shadow-cartoon-xs cursor-pointer"
-                    >
-                      <Icon name="chat" size={18} />
-                      <span>Avisar por WhatsApp</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleStartSpin}
-                      className="px-3 py-2 rounded-xl bg-white hover:bg-gray-100 border-2 border-cartoon-ink font-sub font-bold text-xs text-cartoon-ink cursor-pointer flex items-center gap-1"
-                    >
-                      <span>🔁</span>
-                      <span>Volver a Sortear</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleResetSpin}
-                      className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 font-sub font-bold text-xs text-gray-700 cursor-pointer"
-                    >
-                      🔄 Reiniciar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* MODAL: FICHA COMPLETA DEL CLIENTE (PERFECTAMENTE CENTRADO) */}
-      {/* ============================================================== */}
-      {selectedOrderDetails && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4 my-auto animate-modalIn max-h-[90vh] overflow-y-auto">
-            
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center text-xl">
-                  👤
-                </div>
-                <div>
-                  <h3 className="font-display text-lg text-cartoon-ink">
-                    Ficha del Cliente
-                  </h3>
-                  <span className="font-sub font-bold text-xs text-gray-500">
-                    Ticket #TRICO-{selectedOrderDetails.ticketNumber || '0000'}
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">Modalidad</span>
+                <span className="font-semibold text-slate-900">
+                  {selectedOrderDetails.deliveryType === 'delivery' ? 'Envío a domicilio' : 'Retiro en local'}
+                </span>
+              </div>
+              {selectedOrderDetails.address && (
+                <div className="flex justify-between py-1 border-b border-slate-100 gap-4">
+                  <span className="text-slate-500 flex-shrink-0">Dirección</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    {selectedOrderDetails.address}
                   </span>
                 </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedOrderDetails(null)}
-                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 cursor-pointer"
-              >
-                <Icon name="close" size={18} />
-              </button>
-            </div>
-
-            {/* Datos Personales y Celular */}
-            <div className="p-4 bg-gray-50 rounded-2xl border-2 border-gray-200 space-y-2.5">
-              <div>
-                <span className="font-sub font-bold text-[10px] text-gray-400 uppercase tracking-wider block">
-                  Nombre del Cliente
-                </span>
-                <span className="font-display text-lg text-cartoon-ink block">
-                  {selectedOrderDetails.customerName}
-                </span>
-              </div>
-
-              <div>
-                <span className="font-sub font-bold text-[10px] text-gray-400 uppercase tracking-wider block">
-                  Número de Celular / WhatsApp
-                </span>
-                <div className="flex items-center justify-between gap-2 mt-1">
-                  <span className="font-sub font-black text-sm text-emerald-800">
-                    📱 {selectedOrderDetails.phone || 'No registrado'}
-                  </span>
-
-                  {selectedOrderDetails.phone && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedOrderDetails.phone);
-                          showToast('Número copiado al portapapeles');
-                        }}
-                        className="px-2 py-1 rounded-lg bg-white border border-gray-300 font-sub text-xs text-gray-700 hover:bg-gray-100 cursor-pointer"
-                      >
-                        Copiar
-                      </button>
-                      <a
-                        href={`https://wa.me/${selectedOrderDetails.phone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-cartoon-green py-1 px-3 text-xs flex items-center gap-1 shadow-xs"
-                      >
-                        <Icon name="chat" size={14} />
-                        <span>Abrir WhatsApp</span>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Modalidad y Ubicación con Google Maps */}
-            <div className="p-4 bg-gray-50 rounded-2xl border-2 border-gray-200 space-y-2">
-              <span className="font-sub font-bold text-[10px] text-gray-400 uppercase tracking-wider block">
-                Modalidad de Entrega & Ubicación
-              </span>
-              <p className="font-sub text-xs text-cartoon-ink font-bold">
-                {selectedOrderDetails.deliveryType === 'delivery' ? '🛵 Pedido a Domicilio' : '🏪 Retiro en el Local'}
-              </p>
-              <p className="font-sub text-xs text-gray-600">
-                {selectedOrderDetails.address || 'Santa Cruz 524'}
-              </p>
-              {selectedOrderDetails.addressNotes && (
-                <p className="font-sub text-xs text-gray-500 italic">
-                  Referencia: {selectedOrderDetails.addressNotes}
-                </p>
               )}
-
               {selectedOrderDetails.mapUrl && (
-                <div className="pt-2">
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Ubicación</span>
                   <a
                     href={selectedOrderDetails.mapUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-cartoon-primary py-2 px-3 text-xs flex items-center justify-center gap-1.5 shadow-cartoon-xs"
+                    className="font-semibold text-rose-600 hover:underline"
                   >
-                    <Icon name="location_on" size={16} />
-                    <span>Abrir Ubicación en Google Maps ↗</span>
+                    Abrir en Google Maps
                   </a>
                 </div>
               )}
             </div>
 
-            {/* Platos Solicitados */}
-            <div>
-              <span className="font-sub font-bold text-xs text-cartoon-ink block mb-1.5">
-                Platos del Pedido:
-              </span>
-              <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                {(selectedOrderDetails.items || []).map((it, i) => (
-                  <div
-                    key={i}
-                    className="p-2 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between text-xs font-sub"
-                  >
-                    <span>
-                      <strong>{it.quantity}x</strong> {it.name}
-                    </span>
-                    <span className="font-bold text-cartoon-ink">
-                      {money(it.price * it.quantity)}
-                    </span>
-                  </div>
-                ))}
+            {/* Items */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs font-sub">
+              {(selectedOrderDetails.items || []).map((it, i) => (
+                <div key={i} className="flex justify-between text-slate-700">
+                  <span>
+                    <strong>{it.quantity}x</strong> {it.name}
+                  </span>
+                  <span className="font-semibold text-slate-900">
+                    {money(it.subtotal || it.price * it.quantity)}
+                  </span>
+                </div>
+              ))}
+              <div className="pt-2 border-t border-slate-200 flex justify-between font-display text-sm text-slate-900">
+                <span>Total</span>
+                <span>{money(selectedOrderDetails.total)}</span>
               </div>
             </div>
 
-            {/* Total y Estado del Sorteo */}
-            <div className="p-3 bg-amber-50 rounded-2xl border-2 border-amber-200 flex items-center justify-between">
-              <div>
-                <span className="font-sub text-[10px] text-amber-800 uppercase block">Total Abonado</span>
-                <span className="font-display text-lg text-cartoon-ink">
-                  {money(selectedOrderDetails.total)}
-                </span>
-              </div>
-
-              <div>
-                {selectedOrderDetails.isWinner ? (
-                  <span className="badge-cartoon bg-amber-400 text-cartoon-ink font-display text-xs">
-                    🏆 Ganador: {selectedOrderDetails.winnerPrize}
-                  </span>
-                ) : (
-                  <span className="badge-cartoon bg-emerald-100 text-emerald-800 text-xs">
-                    🎁 Participando
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-1 flex justify-end">
+            <div className="flex gap-2 pt-1">
+              {selectedOrderDetails.phone && (
+                <a
+                  href={buildWhatsAppUrl(
+                    selectedOrderDetails.phone,
+                    `Hola ${selectedOrderDetails.customerName}, nos comunicamos de Trico's por tu pedido #${selectedOrderDetails.ticketNumber}.`
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 btn-cartoon-green py-2 text-xs no-underline"
+                >
+                  Contactar por WhatsApp
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="btn-cartoon-primary py-2 px-5 text-xs font-display shadow-cartoon-xs cursor-pointer"
+                className="btn-cartoon-white py-2 px-4 text-xs"
               >
-                Cerrar Ficha
+                Cerrar
               </button>
             </div>
-
           </div>
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: AGREGAR PARTICIPANTE MANUAL (PERFECTAMENTE CENTRADO) */}
+      {/* MODAL 3: CARGAR PEDIDO / PARTICIPANTE MANUAL */}
       {/* ============================================================== */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-md bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 sm:p-6 space-y-4 my-auto animate-modalIn max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">➕</span>
-                <h3 className="font-display text-base sm:text-lg text-cartoon-ink">
-                  Agregar Participante Manual
-                </h3>
-              </div>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 my-auto animate-modalIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-display text-base text-slate-900">Cargar Pedido Manual</h3>
               <button
                 type="button"
                 onClick={() => setIsManualModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
               >
-                <Icon name="close" size={18} />
+                <Icon name="close" size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleManualSubmit} className="space-y-3">
+            <form onSubmit={handleManualSubmit} className="space-y-3.5">
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                  Nombre Completo:
+                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                  Nombre del Cliente *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej: Marcos Albarracín"
                   value={manualForm.name}
                   onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                  placeholder="Nombre y apellido"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                  Número de Celular / WhatsApp:
+                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                  Teléfono Celular *
                 </label>
                 <input
                   type="tel"
-                  placeholder="Ej: 3804-987654"
+                  required
                   value={manualForm.phone}
                   onChange={(e) => setManualForm({ ...manualForm, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                  placeholder="Ej: 3804123456"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                 />
               </div>
 
-              <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                  Concepto / Origen:
-                </label>
-                <input
-                  type="text"
-                  value={manualForm.concept}
-                  onChange={(e) => setManualForm({ ...manualForm, concept: e.target.value })}
-                  placeholder="Ej: Sorteo Instagram, Pedido en Mostrador"
-                  className="w-full px-3 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                    Detalle
+                  </label>
+                  <input
+                    type="text"
+                    value={manualForm.concept}
+                    onChange={(e) => setManualForm({ ...manualForm, concept: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                    Total ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manualForm.total}
+                    onChange={(e) => setManualForm({ ...manualForm, total: e.target.value })}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                  />
+                </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsManualModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-sub text-xs cursor-pointer"
+                  className="btn-cartoon-white py-2 px-4 text-xs"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="btn-cartoon-primary text-xs py-2 px-4 flex items-center gap-1.5 shadow-cartoon-xs cursor-pointer"
+                  className="btn-cartoon-primary py-2 px-5 text-xs"
                 >
-                  <Icon name="check" size={16} />
-                  <span>Agregar al Sorteo</span>
+                  Guardar
                 </button>
               </div>
             </form>
@@ -1103,31 +923,31 @@ export const LotteryOrdersSection = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: CONFIRMACIÓN DE BORRADO DE PEDIDO */}
+      {/* MODAL 4: CONFIRMAR ELIMINACIÓN */}
       {/* ============================================================== */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon-lg p-5 text-center space-y-4 my-auto animate-modalIn">
-            <h3 className="font-display text-base text-cartoon-ink">¿Eliminar este pedido?</h3>
-            <p className="font-sub text-xs text-gray-600">
-              Se quitará el registro del cliente y su participación del sorteo.
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-5 text-center space-y-4 my-auto animate-modalIn">
+            <h3 className="font-display text-sm text-slate-900">Eliminar registro</h3>
+            <p className="font-sub text-xs text-slate-500">
+              ¿Confirmás eliminar este pedido del listado?
             </p>
-            <div className="flex gap-2 justify-center pt-2">
+            <div className="flex gap-2 justify-center">
               <button
                 type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-sub text-xs cursor-pointer"
+                className="btn-cartoon-white py-2 px-4 text-xs"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (typeof onDeleteOrder === 'function') onDeleteOrder(deleteConfirmId);
+                  if (onDeleteOrder) onDeleteOrder(deleteConfirmId);
                   setDeleteConfirmId(null);
-                  showToast('Pedido eliminado del sorteo.');
+                  showToast('Registro eliminado');
                 }}
-                className="px-4 py-2 rounded-xl bg-cartoon-red text-white font-sub font-bold text-xs cursor-pointer shadow-sm hover:bg-cartoon-red-dark"
+                className="btn-cartoon-red py-2 px-4 text-xs"
               >
                 Eliminar
               </button>
@@ -1135,7 +955,6 @@ export const LotteryOrdersSection = ({
           </div>
         </div>
       )}
-
     </div>
   );
 };

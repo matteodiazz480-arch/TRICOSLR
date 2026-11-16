@@ -5,9 +5,10 @@ import { isProductOutOfStock } from '../lib/firebase';
 export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
   const isOutOfStock = isProductOutOfStock(product);
 
-  const basePrice = product.variants && product.variants.length > 0
-    ? product.variants[0].price
-    : product.price;
+  const basePrice =
+    product.variants && product.variants.length > 0
+      ? product.variants[0].price
+      : product.price;
 
   const hasVariants = product.variants && product.variants.length > 1;
 
@@ -21,7 +22,6 @@ export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
         name: product.name,
         baseName: product.name,
         price: basePrice,
-        emoji: product.emoji || '🍔',
         badge: product.badge,
         description: product.description,
         variant: product.variants?.[0]?.label || 'Simple',
@@ -35,76 +35,72 @@ export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
   return (
     <div
       onClick={handleCardClick}
-      className={`card-cartoon flex flex-col justify-between select-none relative bg-white p-2.5 sm:p-3.5 border-2 sm:border-3 border-cartoon-ink rounded-2xl sm:rounded-3xl shadow-cartoon-sm hover:shadow-cartoon transition-all duration-200 group cursor-pointer ${
-        isOutOfStock
-          ? 'opacity-65 grayscale-[30%] hover:translate-y-0'
-          : 'hover:-translate-y-1'
+      className={`card-cartoon flex flex-col justify-between select-none relative bg-white p-3 sm:p-4 rounded-2xl transition-all duration-200 group cursor-pointer ${
+        isOutOfStock ? 'opacity-60 grayscale-[40%]' : 'hover:-translate-y-0.5'
       }`}
     >
-      
-      {/* 1. Imagen Grande y Destacada de la Hamburguesa / Plato */}
-      <div className="w-full h-32 sm:h-44 md:h-48 rounded-xl sm:rounded-2xl bg-cartoon-cream border-2 sm:border-3 border-cartoon-ink overflow-hidden relative mb-2 sm:mb-2.5 shadow-cartoon-xs group-hover:scale-[1.02] transition-transform">
+      {/* Imagen del Producto */}
+      <div className="w-full h-36 sm:h-44 rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden relative mb-3">
         {product.image ? (
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover object-center block"
+            className="w-full h-full object-cover object-center block group-hover:scale-103 transition-transform duration-300"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl sm:text-5xl bg-cartoon-cream">
-            <span>{product.emoji || '🍔'}</span>
+          <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
+            <Icon name="restaurant" size={36} />
           </div>
         )}
 
-        {/* Badges Flotantes sobre la Foto */}
-        {product.badge && (
-          <span className="absolute top-2 left-2 bg-cartoon-yellow text-cartoon-ink font-sub font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg border border-cartoon-ink shadow-xs uppercase tracking-wider">
+        {product.badge && !isOutOfStock && (
+          <span className="absolute top-2.5 left-2.5 bg-slate-900/90 backdrop-blur-xs text-white font-sub font-semibold text-[10px] px-2.5 py-0.5 rounded-md uppercase tracking-wider">
             {product.badge}
           </span>
         )}
+
         {isOutOfStock && (
-          <span className="absolute top-2 right-2 bg-cartoon-red text-white font-sub font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-lg border border-cartoon-ink shadow-xs uppercase tracking-wider">
-            PAUSADO
+          <span className="absolute top-2.5 right-2.5 bg-rose-600 text-white font-sub font-bold text-[10px] px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs">
+            Agotado
           </span>
         )}
       </div>
 
-      {/* 2. Información del Plato: Nombre y Descripción */}
-      <div className="flex-1 flex flex-col justify-between mb-2">
+      {/* Información del Plato */}
+      <div className="flex-1 flex flex-col justify-between mb-3">
         <div>
-          <h4 className="font-display text-sm sm:text-base md:text-lg text-cartoon-ink leading-tight line-clamp-1 group-hover:text-cartoon-red transition-colors mb-1">
+          <h4 className="font-display text-sm sm:text-base text-slate-900 leading-snug line-clamp-1 group-hover:text-rose-600 transition-colors mb-1">
             {product.name}
           </h4>
-          <p className="font-sans text-[11px] sm:text-xs text-cartoon-ink/75 leading-snug line-clamp-2 mb-1.5">
+          <p className="font-sub text-xs text-slate-500 leading-relaxed line-clamp-2">
             {product.description}
           </p>
         </div>
 
-        {/* Etiqueta de Opciones si tiene proteínas o variantes */}
         {(product.hasProteinChoice || hasVariants) && (
-          <div className="flex items-center gap-1 text-[10px] font-sub font-bold text-cartoon-ink/60">
-            <span>⚙️</span>
+          <div className="flex items-center gap-1.5 text-[11px] font-sub font-medium text-slate-400 mt-2">
+            <Icon name="tune" size={13} />
             <span>
               {product.hasProteinChoice && hasVariants
-                ? 'Carne o Pollo • Simple/Doble'
+                ? 'Carne o Pollo • Simple / Doble'
                 : product.hasProteinChoice
-                ? 'Elegí Carne o Pollo'
-                : 'Simple o Doble'}
+                ? 'Opción Carne o Pollo'
+                : 'Simple / Doble'}
             </span>
           </div>
         )}
       </div>
 
-      {/* 3. Pie de Tarjeta: Precio y Botón "Pedir" */}
-      <div className="pt-2 border-t-2 border-dashed border-cartoon-ink/15 flex items-center justify-between gap-1.5 mt-auto">
+      {/* Pie: Precio y Acción */}
+      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
         <div className="flex flex-col min-w-0">
           {hasVariants && (
-            <span className="font-sub text-[9px] sm:text-[10px] text-cartoon-ink/60 leading-none -mb-0.5">
+            <span className="font-sub text-[10px] text-slate-400 leading-none mb-0.5">
               Desde
             </span>
           )}
-          <span className="font-display text-sm sm:text-base md:text-lg text-cartoon-ink tracking-tight truncate">
+          <span className="font-display text-sm sm:text-base text-slate-900 tracking-tight truncate">
             ${basePrice.toLocaleString('es-AR')}
           </span>
         </div>
@@ -116,24 +112,22 @@ export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
             e.stopPropagation();
             if (!isOutOfStock) handleCardClick();
           }}
-          aria-label={isOutOfStock ? `${product.name} agotado` : `Pedir ${product.name}`}
-          className={`flex items-center justify-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 font-display text-xs sm:text-sm transition-all flex-shrink-0 ${
+          className={`flex items-center justify-center gap-1 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-sub font-semibold text-xs transition-all flex-shrink-0 ${
             isOutOfStock
-              ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed shadow-none opacity-80'
-              : 'bg-cartoon-yellow hover:bg-cartoon-yellow-dark text-cartoon-ink border-cartoon-ink shadow-cartoon-xs sm:shadow-cartoon-sm cursor-pointer active:translate-x-[1px] active:translate-y-[1px]'
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              : 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer active:scale-95'
           }`}
         >
           {isOutOfStock ? (
             <span>Agotado</span>
           ) : (
             <>
-              <Icon name="add" size={15} className="font-bold" />
-              <span>Pedir</span>
+              <Icon name="add" size={15} />
+              <span>Agregar</span>
             </>
           )}
         </button>
       </div>
-
     </div>
   );
 };

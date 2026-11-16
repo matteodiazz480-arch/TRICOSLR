@@ -9,41 +9,41 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
     name: '',
     category: 'burgers',
     price: 12000,
-    emoji: '🍔',
+    priceDouble: 14000,
+    hasVariants: true,
     image: '',
     description: '',
-    badge: '',
     hasProteinChoice: false,
     active: true,
   });
   const [error, setError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (product) {
+      const hasVar = Array.isArray(product.variants) && product.variants.length > 1;
       setFormData({
         name: product.name || '',
         category: product.category || 'burgers',
-        price: product.price || (product.variants ? product.variants[0]?.price : 12000),
-        emoji: product.emoji || '🍔',
+        price: product.variants?.[0]?.price || product.price || 12000,
+        priceDouble: product.variants?.[1]?.price || (Number(product.price || 12000) + 2000),
+        hasVariants: hasVar,
         image: product.image || '',
         description: product.description || '',
-        badge: product.badge || '',
         hasProteinChoice: !!product.hasProteinChoice,
-        active: product.active !== undefined ? product.active : true,
+        active: product.active !== false,
       });
     } else {
       setFormData({
         name: '',
         category: 'burgers',
         price: 12000,
-        emoji: '🍔',
+        priceDouble: 14000,
+        hasVariants: true,
         image: '',
         description: '',
-        badge: '',
-        hasProteinChoice: false,
+        hasProteinChoice: true,
         active: true,
       });
     }
@@ -66,31 +66,33 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
     }
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer?.files?.[0];
-    if (file) handleImageFile(file);
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const cleanName = sanitizeText(formData.name);
     if (!cleanName) {
-      setError('El nombre del plato es obligatorio');
+      setError('El nombre del producto es obligatorio');
       return;
     }
 
     const cleanPrice = sanitizeNumber(formData.price, 0);
+    const cleanPriceDouble = sanitizeNumber(formData.priceDouble, cleanPrice);
 
     const payload = {
-      ...formData,
+      ...product,
       id: product?.id || `prod-${Date.now()}`,
       name: cleanName,
+      category: formData.category,
       description: sanitizeText(formData.description),
-      badge: sanitizeText(formData.badge),
       price: cleanPrice,
+      variants: formData.hasVariants
+        ? [
+            { id: 'simple', label: 'Simple', price: cleanPrice },
+            { id: 'doble', label: 'Doble', price: cleanPriceDouble },
+          ]
+        : null,
       image: formData.image || '',
+      hasProteinChoice: formData.hasProteinChoice,
+      active: formData.active,
     };
 
     onSave(payload);
@@ -98,47 +100,30 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-3.5 sm:p-5 select-none">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-lg overflow-hidden flex flex-col max-h-[92vh] my-auto animate-modalIn">
-        
-        {/* Cabecera Limpia y Espaciosa */}
-        <div className="p-4 sm:p-5 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-2xl flex-shrink-0">
-              🍔
-            </div>
-            <div>
-              <h3 className="font-display text-lg sm:text-xl text-cartoon-ink leading-tight">
-                {product ? 'EDITAR PLATO' : 'NUEVO PLATO EN CARTA'}
-              </h3>
-              <p className="font-sub font-bold text-xs text-cartoon-ink/75">
-                {product ? `Modificando: ${product.name}` : 'Agregá un nuevo ítem a la carta digital'}
-              </p>
-            </div>
-          </div>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+      <div className="relative w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden flex flex-col max-h-[90vh] my-auto animate-modalIn">
+        <div className="px-5 py-4 bg-white border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+          <h3 className="font-display text-base text-slate-900">
+            {product ? 'Editar Producto' : 'Nuevo Producto'}
+          </h3>
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-white hover:bg-cartoon-cream-dark border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink active:scale-95 cursor-pointer transition-colors"
+            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
           >
             <Icon name="close" size={18} />
           </button>
         </div>
 
-        {/* Formulario Limpio, Organizado y sin saturar */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 bg-cartoon-red text-white rounded-xl font-sub font-bold text-xs border-2 border-cartoon-ink flex items-center gap-2">
-              <Icon name="error" size={16} />
-              <span>{error}</span>
+            <div className="p-3 bg-rose-50 text-rose-700 rounded-xl font-sub font-semibold text-xs border border-rose-200">
+              {error}
             </div>
           )}
 
-          {/* Subir / Cambiar Foto del Plato */}
+          {/* Imagen */}
           <div>
-            <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1.5">
-              Foto del Plato:
-            </label>
             <input
               type="file"
               ref={fileInputRef}
@@ -151,87 +136,69 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
             />
 
             {formData.image ? (
-              <div className="relative w-full h-36 sm:h-44 rounded-2xl border-2 sm:border-3 border-cartoon-ink overflow-hidden bg-cartoon-cream shadow-cartoon-xs group">
+              <div className="relative w-full h-36 rounded-xl border border-slate-200 overflow-hidden bg-slate-100 group">
                 <img
                   src={formData.image}
                   alt={formData.name || 'Vista previa'}
                   className="w-full h-full object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
+                <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="btn-cartoon-primary py-2 px-3 text-xs flex items-center gap-1.5 cursor-pointer"
+                    className="btn-cartoon-white py-1.5 px-3 text-xs"
                   >
-                    <Icon name="photo_camera" size={16} />
-                    <span>Cambiar</span>
+                    Cambiar
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, image: '' }))}
-                    className="px-3 py-2 rounded-xl bg-cartoon-red text-white font-sub font-bold text-xs border-2 border-cartoon-ink shadow-cartoon-xs flex items-center gap-1.5 cursor-pointer hover:bg-cartoon-red-dark transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-sub font-semibold text-xs cursor-pointer"
                   >
-                    <Icon name="delete" size={16} />
-                    <span>Quitar</span>
+                    Quitar
                   </button>
-                </div>
-                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg bg-emerald-500 text-white font-sub font-bold text-[10px] shadow-xs pointer-events-none">
-                  ✓ Foto Cargada
                 </div>
               </div>
             ) : (
               <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`w-full py-5 px-4 rounded-2xl border-2 sm:border-3 border-dashed flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 ${
-                  isDragging
-                    ? 'border-cartoon-red bg-cartoon-yellow/20 scale-[1.01]'
-                    : 'border-cartoon-ink/30 bg-cartoon-cream/30 hover:bg-cartoon-cream/60 hover:border-cartoon-ink'
-                }`}
+                className="w-full py-5 px-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center text-center cursor-pointer transition-colors"
               >
-                <div className="w-10 h-10 rounded-xl bg-white border-2 border-cartoon-ink flex items-center justify-center text-cartoon-ink mb-1.5 shadow-cartoon-xs">
-                  <Icon name={isProcessingImage ? 'sync' : 'add_photo_alternate'} size={22} className={isProcessingImage ? 'animate-spin' : ''} />
-                </div>
-                <p className="font-display text-xs sm:text-sm text-cartoon-ink">
-                  {isProcessingImage ? 'Optimizando foto...' : 'Arrastrá una foto o hacé clic para subirla'}
-                </p>
-                <span className="font-sub text-[11px] text-gray-500 mt-0.5">
-                  JPG, PNG o WEBP (se adapta automáticamente)
+                <Icon
+                  name={isProcessingImage ? 'sync' : 'add_photo_alternate'}
+                  size={22}
+                  className={`text-slate-400 mb-1 ${isProcessingImage ? 'animate-spin' : ''}`}
+                />
+                <span className="font-sub font-semibold text-xs text-slate-700">
+                  {isProcessingImage ? 'Procesando imagen...' : 'Subir imagen del producto'}
                 </span>
               </div>
             )}
           </div>
 
-          {/* Nombre del Producto */}
-          <div>
-            <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-              Nombre del Producto:
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ej: Triple Cheddar Bacon"
-              className="w-full px-3.5 py-2.5 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:bg-yellow-50 shadow-cartoon-xs"
-            />
-          </div>
-
-          {/* Fila: Categoría y Precio (Bien distribuidos) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                Categoría en Carta:
+              <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                Nombre
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Ej: London Cheese"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                Categoría
               </label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink bg-white focus:outline-none shadow-cartoon-xs"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 bg-white focus:outline-none focus:border-slate-900"
               >
                 {CATEGORIES.filter((c) => c.id !== 'todos').map((c) => (
                   <option key={c.id} value={c.id}>
@@ -240,101 +207,109 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
                 ))}
               </select>
             </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                Precio ($ ARS):
+              <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                {formData.hasVariants ? 'Precio Simple ($)' : 'Precio ($)'}
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-display text-xs text-gray-500">$</span>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                required
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub font-semibold text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+              />
+            </div>
+
+            {formData.hasVariants && (
+              <div>
+                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                  Precio Doble ($)
+                </label>
                 <input
                   type="number"
                   min="0"
                   step="100"
                   required
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="12000"
-                  className="w-full pl-7 pr-3 py-2.5 rounded-xl border-2 border-cartoon-ink font-sub font-bold text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs"
+                  value={formData.priceDouble}
+                  onChange={(e) => setFormData({ ...formData, priceDouble: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub font-semibold text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                 />
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Descripción e Ingredientes para el cliente */}
           <div>
-            <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-              Descripción del Plato (visible para el cliente):
+            <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+              Descripción
             </label>
             <textarea
               rows={2}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Ej: Pan brioche artesanal, doble carne premium, triple cheddar, bacon crocante y alioli."
-              className="w-full px-3.5 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-cartoon-xs resize-none"
+              placeholder="Ingredientes y preparación..."
+              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900 resize-none"
             />
           </div>
 
-          {/* Etiqueta Destacada Opcional */}
-          <div>
-            <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-              Etiqueta Destacada (opcional):
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasVariants}
+                onChange={(e) => setFormData({ ...formData, hasVariants: e.target.checked })}
+                className="w-4 h-4 rounded text-slate-900 focus:ring-0 cursor-pointer"
+              />
+              <span className="font-sub font-medium text-xs text-slate-700">
+                Tiene variantes Simple y Doble
+              </span>
             </label>
-            <input
-              type="text"
-              value={formData.badge}
-              onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
-              placeholder="Ej: MÁS PEDIDO, NUEVO, RECOMENDADO"
-              className="w-full px-3.5 py-2 rounded-xl border-2 border-cartoon-ink font-sub text-xs text-cartoon-ink focus:outline-none shadow-cartoon-xs"
-            />
-          </div>
 
-          {/* Opciones y Visibilidad con interruptores claros */}
-          <div className="p-3 bg-gray-50 rounded-2xl border-2 border-gray-200 space-y-2.5">
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <label className="flex items-center gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.hasProteinChoice}
                 onChange={(e) => setFormData({ ...formData, hasProteinChoice: e.target.checked })}
-                className="w-4 h-4 rounded text-cartoon-red focus:ring-0 cursor-pointer"
+                className="w-4 h-4 rounded text-slate-900 focus:ring-0 cursor-pointer"
               />
-              <span className="font-sub font-bold text-xs text-cartoon-ink">
-                ¿Permite al cliente elegir entre medallón de Carne o Pollo?
+              <span className="font-sub font-medium text-xs text-slate-700">
+                Permite elegir medallón de Carne o Pollo
               </span>
             </label>
 
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <label className="flex items-center gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.active}
                 onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                 className="w-4 h-4 rounded text-emerald-600 focus:ring-0 cursor-pointer"
               />
-              <span className="font-sub font-bold text-xs text-cartoon-ink">
-                Habilitado en la carta digital (visible para hacer pedidos)
+              <span className="font-sub font-medium text-xs text-slate-700">
+                Disponible para pedir en la carta
               </span>
             </label>
           </div>
 
-          {/* Botones de Acción */}
-          <div className="pt-2 flex items-center justify-end gap-3">
+          <div className="pt-2 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-sub font-bold text-xs sm:text-sm cursor-pointer transition-colors"
+              className="btn-cartoon-white py-2 px-4 text-xs"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="btn-cartoon-primary text-xs sm:text-sm py-2.5 px-6 flex items-center gap-2 shadow-cartoon-xs cursor-pointer font-display"
+              className="btn-cartoon-primary py-2 px-5 text-xs"
             >
-              <Icon name="save" size={18} />
-              <span>Guardar Plato</span>
+              Guardar
             </button>
           </div>
         </form>
-
       </div>
     </div>
   );

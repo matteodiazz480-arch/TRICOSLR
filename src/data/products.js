@@ -35,7 +35,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-ak47',
         name: 'Ak-47',
-        emoji: '🍔',
         image: '/assets/burger_ak47.jpg',
         category: 'burgers',
         description: 'Pan brioche, medallón (tapa de asado premium), cheddar x3, mermelada bacon y alioli.',
@@ -48,7 +47,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-london-cheese',
         name: 'London Cheese',
-        emoji: '🍔',
         image: '/assets/burger_london_cheese.jpg',
         category: 'burgers',
         description: 'Pan brioche, medallón (tapa de asado premium), cheddar x3, panceta ahumada y barbacoa.',
@@ -61,7 +59,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-lemon-haze',
         name: 'Lemon Haze',
-        emoji: '🍔',
         image: '/assets/burger_lemon_haze.jpg',
         category: 'burgers',
         description: 'Pan brioche, medallón (tapa de asado premium), salsa alioli, lechuga, tomate y queso tybo.',
@@ -74,7 +71,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-gorila-glue',
         name: 'Gorila Glue',
-        emoji: '🍔',
         image: '/assets/burger_gorilla_glue.jpg',
         category: 'burgers',
         description: 'Pan brioche, medallón (tapa de asado premium), alioli, queso azul, bacon y queso tybo.',
@@ -87,7 +83,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-amnesia',
         name: 'Amnesia',
-        emoji: '🍔',
         image: '/assets/burger_amnesia.jpg',
         category: 'burgers',
         description: 'Pan brioche, medallón (tapa de asado premium), alioli, huevo y guacamole.',
@@ -100,7 +95,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-acapulco-gold',
         name: 'Acapulco Gold',
-        emoji: '🍔',
         image: '/assets/burger_acapulco_gold.jpg',
         category: 'burgers',
         description: 'Pan brioche, medallón (tapa de asado premium), cheddar x3, alioli, guacamole y doritos.',
@@ -122,7 +116,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-gelato-kush',
         name: 'Gelato Kush',
-        emoji: '🍔',
         image: '/assets/burger_gelato_kush.jpg',
         category: 'kush',
         badge: 'Línea Kush',
@@ -136,7 +129,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-london-pepe-kush',
         name: 'London Pepe Kush',
-        emoji: '🍔',
         category: 'kush',
         badge: 'Línea Kush',
         description: 'Pan brioche, medallón (tapa de asado premium), cheddar, bacon, aros de cebolla y alioli.',
@@ -149,7 +141,6 @@ export const MENU_SECTIONS = [
       {
         id: 'burger-og-kush',
         name: 'OG Kush',
-        emoji: '🍔',
         category: 'kush',
         badge: 'Línea Kush',
         description: 'Pan brioche, medallón (tapa de asado premium), cheddar, bacon, cebolla caramelizada y alioli.',
@@ -171,7 +162,6 @@ export const MENU_SECTIONS = [
       {
         id: 'trico-pollo-1',
         name: 'Trico Pollo (Para 1)',
-        emoji: '🍗',
         category: 'pollo',
         badge: 'Con Papas Fritas',
         description: 'Pollo frito marinado en mostaza con capa crunch y papas fritas. Sale con topping mostaza con miel, alioli y barbacoa.',
@@ -180,7 +170,6 @@ export const MENU_SECTIONS = [
       {
         id: 'trico-pollo-2',
         name: 'Trico Pollo (Para 2)',
-        emoji: '🍗',
         category: 'pollo',
         badge: 'Para Compartir',
         description: 'Pollo frito marinado en mostaza con capa crunch para 2 personas y papas fritas. Sale con topping mostaza con miel, alioli y barbacoa.',
@@ -188,8 +177,7 @@ export const MENU_SECTIONS = [
       },
       {
         id: 'extra-trico-pollo',
-        name: 'Extra #TricoPollo',
-        emoji: '🍗',
+        name: 'Extra TricoPollo',
         category: 'pollo',
         badge: '5 Piezas + Dip',
         description: '5 piezas de pollo frito ultra crunch y un topping (alioli).',
@@ -207,7 +195,6 @@ export const MENU_SECTIONS = [
       {
         id: 'combo-420',
         name: 'Combo 420',
-        emoji: '🍔',
         image: '/assets/combo_420.jpg',
         category: 'combos',
         badge: 'Super Combo',
@@ -217,7 +204,6 @@ export const MENU_SECTIONS = [
       {
         id: 'combo-zaza',
         name: 'Combo Zaza',
-        emoji: '🍔',
         image: '/assets/combo_zaza.jpg',
         category: 'combos',
         badge: 'Super Combo',
@@ -227,7 +213,6 @@ export const MENU_SECTIONS = [
       {
         id: 'combo-carioca',
         name: 'Combo Carioca (Para 4)',
-        emoji: '🍔',
         category: 'combos',
         badge: 'Mega Juntada',
         description: '4 Lemon Haze simples, 10 piezas de pollo frito, 5 aros de cebolla, 2 toppings (alioli y mostaza con miel).',
@@ -236,7 +221,6 @@ export const MENU_SECTIONS = [
       {
         id: 'trico-jr',
         name: 'Trico Jr (Menú Kids)',
-        emoji: '🍔',
         category: 'combos',
         badge: 'Trico Kids',
         description: 'Pan brioche, medallón (tapa de asado premium o pollo frito), queso dambo, huevo frito y alioli. Sale con papas fritas.',
@@ -258,7 +242,6 @@ export const MENU_SECTIONS = [
       {
         id: 'topping-yoguie',
         name: 'Salsa Yoguie',
-        emoji: '🥣',
         category: 'toppings',
         badge: 'Especial',
         description: 'Salsa especial de la casa.',
@@ -270,7 +253,6 @@ export const MENU_SECTIONS = [
       {
         id: 'topping-mostaza-miel',
         name: 'Mostaza con Miel',
-        emoji: '🍯',
         category: 'toppings',
         description: 'Emulsión suave de mostaza y miel.',
         variants: [
@@ -281,7 +263,6 @@ export const MENU_SECTIONS = [
       {
         id: 'topping-alioli',
         name: 'Alioli Casero',
-        emoji: '🧄',
         category: 'toppings',
         description: 'Clásico alioli cremoso de la casa.',
         variants: [
@@ -292,7 +273,6 @@ export const MENU_SECTIONS = [
       {
         id: 'topping-barbacoa',
         name: 'Barbacoa',
-        emoji: '🔥',
         category: 'toppings',
         description: 'Salsa barbacoa ahumada.',
         variants: [
@@ -303,7 +283,6 @@ export const MENU_SECTIONS = [
       {
         id: 'topping-palta',
         name: 'Palta / Guacamole',
-        emoji: '🥑',
         category: 'toppings',
         description: 'Crema de palta fresca.',
         variants: [
@@ -314,7 +293,6 @@ export const MENU_SECTIONS = [
       {
         id: 'topping-spicy',
         name: 'Spicy (Morrón Ahumado)',
-        emoji: '🌶️',
         category: 'toppings',
         badge: 'Picante',
         description: 'Salsa picante casera con morrón ahumado.',
@@ -335,7 +313,6 @@ export const MENU_SECTIONS = [
       {
         id: 'porcion-papas-cheddar',
         name: 'Porción de Papas Trico',
-        emoji: '🍟',
         category: 'papas_extras',
         badge: 'Para Picar',
         description: 'Porción de papas fritas con cheddar fundido, bacon crocante y verdeo.',
@@ -344,7 +321,6 @@ export const MENU_SECTIONS = [
       {
         id: 'aros-cebolla',
         name: 'Aros de Cebolla',
-        emoji: '🧅',
         category: 'papas_extras',
         description: '5 aros de cebolla rebozados y dorados.',
         price: 3500,
@@ -352,7 +328,6 @@ export const MENU_SECTIONS = [
       {
         id: 'extra-panceta',
         name: 'Extra Panceta',
-        emoji: '🥓',
         category: 'papas_extras',
         description: 'Adicional de panceta ahumada crocante.',
         price: 2000,
@@ -360,7 +335,6 @@ export const MENU_SECTIONS = [
       {
         id: 'extra-cheddar',
         name: 'Extra Cheddar',
-        emoji: '🧀',
         category: 'papas_extras',
         description: 'Adicional de queso cheddar fundido.',
         price: 2500,
@@ -368,7 +342,6 @@ export const MENU_SECTIONS = [
       {
         id: 'extra-carne',
         name: 'Extra Medallón de Carne',
-        emoji: '🥩',
         category: 'papas_extras',
         description: 'Medallón extra de tapa de asado premium.',
         price: 3000,
@@ -376,7 +349,6 @@ export const MENU_SECTIONS = [
       {
         id: 'extra-papas',
         name: 'Extra Papas Fritas',
-        emoji: '🍟',
         category: 'papas_extras',
         description: 'Porción adicional de papas fritas clásicas.',
         price: 3000,
@@ -384,7 +356,6 @@ export const MENU_SECTIONS = [
       {
         id: 'gaseosa-pepsi',
         name: 'Pepsi (355cc)',
-        emoji: '🥤',
         category: 'papas_extras',
         description: 'Lata de Pepsi clásica 355cc bien helada.',
         price: 2800,
@@ -392,7 +363,6 @@ export const MENU_SECTIONS = [
       {
         id: 'gaseosa-pepsi-black',
         name: 'Pepsi Black (355cc)',
-        emoji: '🥤',
         category: 'papas_extras',
         description: 'Lata de Pepsi Black sin azúcar 355cc bien helada.',
         price: 2800,

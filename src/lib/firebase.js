@@ -105,10 +105,49 @@ export const getLocalProducts = () => {
   return defaults;
 };
 
-// Helper global para verificar si un plato está pausado en la carta
+// Helper global para verificar si un plato está agotado (por kill-switch directo o por ingrediente agotado)
 export const isProductOutOfStock = (product) => {
   if (!product) return true;
-  return product.active === false;
+  if (product.active === false || product.outOfStock === true) return true;
+
+  try {
+    const rawIng = localStorage.getItem('tricos_ingredients_data');
+    if (!rawIng) return false;
+    const ingList = JSON.parse(rawIng);
+    if (!Array.isArray(ingList) || ingList.length === 0) return false;
+
+    const rawRec = localStorage.getItem('tricos_recipes_data');
+    const recipesMap = rawRec ? JSON.parse(rawRec) : {};
+    const prodId = product.originalId || product.id;
+
+    let recipe =
+      recipesMap[prodId] ||
+      (Array.isArray(product.recipe) && product.recipe.length > 0 ? product.recipe : null);
+
+    if (!recipe && prodId) {
+      const prefixKey = Object.keys(recipesMap).find((k) => String(prodId).startsWith(k));
+      if (prefixKey) recipe = recipesMap[prefixKey];
+    }
+
+    if (Array.isArray(recipe) && recipe.length > 0) {
+      for (const recItem of recipe) {
+        const targetId = recItem.ingredientId || '';
+        const targetName = (recItem.ingredientName || '').trim().toLowerCase();
+        const matched =
+          ingList.find((i) => i.id === targetId) ||
+          (targetName ? ingList.find((i) => (i.name || '').trim().toLowerCase() === targetName) : null);
+
+        if (matched) {
+          const needed = Number(recItem.amountSimple ?? recItem.amount) || 1;
+          if (matched.outOfStock === true || Number(matched.stock) < needed) {
+            return true;
+          }
+        }
+      }
+    }
+  } catch {}
+
+  return false;
 };
 
 // Guardar productos en cache local y emitir evento en tiempo real

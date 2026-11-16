@@ -9,20 +9,12 @@ export const Footer = () => {
   };
 
   return (
-    <footer
-      id="contacto"
-      className="text-white pt-10 pb-8 select-none"
-      style={{ backgroundColor: '#1E1B18' }}
-    >
+    <footer id="contacto" className="bg-slate-950 text-white pt-12 pb-8 border-t border-slate-800 select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Top Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b-2 border-white/15 items-start">
-          
-          {/* Logo con fondo blanco circular para máximo contraste */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-slate-800 items-start">
           <div className="md:col-span-5 flex flex-col items-start">
             <div className="flex items-center gap-3.5 mb-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white p-1.5 border-2 border-cartoon-yellow flex items-center justify-center flex-shrink-0">
+              <div className="w-14 h-14 rounded-xl bg-white p-1.5 flex items-center justify-center flex-shrink-0">
                 <img
                   src="/assets/logo.svg"
                   alt="Logo TRICO'S"
@@ -30,39 +22,38 @@ export const Footer = () => {
                 />
               </div>
               <div>
-                <h3 className="font-display text-3xl text-cartoon-yellow tracking-wide leading-none">
+                <h3 className="font-display text-2xl text-white tracking-tight leading-none">
                   TRICO'S
                 </h3>
-                <span className="font-sub font-bold text-xs text-gray-300 uppercase tracking-wider mt-1 block">
+                <span className="font-sub font-semibold text-xs text-slate-400 uppercase tracking-wider mt-1 block">
                   Chicken Fried & Burgers
                 </span>
               </div>
             </div>
 
-            <p className="font-sub text-gray-300 text-sm max-w-sm mb-6 leading-relaxed">
-              Pollo frito extra crujiente y smash burgers preparadas en el momento con ingredientes frescos.
+            <p className="font-sub text-slate-400 text-xs sm:text-sm max-w-sm mb-5 leading-relaxed">
+              Pollo frito extra crujiente y smash burgers preparadas en el momento con ingredientes seleccionados.
             </p>
 
-            {/* Redes */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <a
-                href={buildWhatsAppUrl(RESTAURANT_INFO.phone, "¡Hola TRICO'S! Quiero hacer una consulta sobre la carta...")}
+                href={buildWhatsAppUrl(RESTAURANT_INFO.phone, "Hola TRICO'S, quiero hacer una consulta.")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-xl bg-cartoon-green text-cartoon-ink border-2 border-white flex items-center justify-center hover:scale-105 transition-transform shadow-cartoon-sm"
+                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-emerald-600 text-white flex items-center justify-center transition-colors"
                 aria-label="WhatsApp"
               >
-                <Icon name="call" size={20} />
+                <Icon name="call" size={18} />
               </a>
 
               <a
                 href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
-                className="w-10 h-10 rounded-xl bg-cartoon-red text-white border-2 border-white flex items-center justify-center hover:scale-105 transition-transform shadow-cartoon-sm"
+                className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-rose-600 text-white flex items-center justify-center transition-colors"
                 aria-label="Instagram"
               >
-                <svg className="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
@@ -71,48 +62,43 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Horarios & Ubicación */}
-          <div className="md:col-span-4 space-y-4 font-sub text-sm">
-            <h4 className="font-display text-xl text-cartoon-yellow">
-              UBICACIÓN & HORARIOS
+          <div className="md:col-span-4 space-y-3 font-sub text-xs sm:text-sm">
+            <h4 className="font-display text-sm text-white uppercase tracking-wider">
+              Ubicación y Horarios
             </h4>
-            <div className="flex items-start gap-2.5 text-gray-300">
-              <Icon name="location_on" size={20} className="text-cartoon-yellow flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 text-slate-400">
+              <Icon name="location_on" size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-white">{RESTAURANT_INFO.address}</p>
+                <p className="font-semibold text-white">{RESTAURANT_INFO.address}</p>
                 <p>{RESTAURANT_INFO.city}</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2.5 text-gray-300">
-              <Icon name="schedule" size={20} className="text-cartoon-yellow flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 text-slate-400">
+              <Icon name="schedule" size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-white">Horarios:</p>
+                <p className="font-semibold text-white">Atención</p>
                 <p>{RESTAURANT_INFO.schedule}</p>
               </div>
             </div>
           </div>
 
-          {/* Botón Volver Arriba */}
           <div className="md:col-span-3 flex flex-col items-start md:items-end justify-between self-stretch">
             <button
               onClick={scrollToTop}
-              className="btn-cartoon-white text-xs py-2.5 px-4 flex items-center gap-2 cursor-pointer self-start md:self-end mt-2 md:mt-0"
+              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-sub font-semibold text-xs flex items-center gap-1.5 cursor-pointer self-start md:self-end"
             >
               <span>Subir</span>
-              <Icon name="arrow_upward" size={18} />
+              <Icon name="arrow_upward" size={16} />
             </button>
           </div>
-
         </div>
 
-        {/* Bottom Bar: Hecho por Nexo Creative */}
-        <div className="pt-6 border-t border-white/10 flex items-center justify-center text-xs font-sub text-gray-400">
+        <div className="pt-6 flex items-center justify-center text-xs font-sub text-slate-500">
           <p>
-            Hecho por <strong className="text-cartoon-yellow font-display text-sm tracking-wide">Nexo Creative</strong>
+            Desarrollado por <strong className="text-slate-300 font-semibold">Nexo Creative</strong>
           </p>
         </div>
-
       </div>
     </footer>
   );
