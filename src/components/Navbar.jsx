@@ -3,63 +3,70 @@ import { Icon } from './Icon';
 
 export const Navbar = ({ cartCount, cartTotal, onOpenCart }) => {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[70px] flex items-center justify-between">
-        <a href="#" className="flex items-center gap-3 select-none group">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-103">
+    <header
+      className="sticky top-0 z-40 border-b-3 border-cartoon-ink"
+      style={{ backgroundColor: '#FFC93C' }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[72px] flex items-center justify-between">
+        
+        {/* Logo Proporcionado, Completo y sin Recortes en un Navbar Compacto */}
+        <a href="#" className="flex items-center gap-2.5 sm:gap-3 select-none group">
+          <div className="w-11 h-11 sm:w-[52px] sm:h-[52px] rounded-full bg-white border-2 border-cartoon-ink shadow-cartoon-sm p-1 flex items-center justify-center flex-shrink-0 transition-transform duration-200 ease-[var(--ease-out)] group-hover:scale-105">
             <img
               src="/assets/logo.svg?v=3"
-              alt="Logo TRICO'S"
+              alt="Logo TRICO'S Chicken Fried & Burgers"
               className="w-full h-full object-contain block"
             />
           </div>
           <div className="flex flex-col">
-            <span className="font-display text-lg sm:text-xl text-slate-900 leading-none tracking-tight">
+            <span className="font-display text-xl sm:text-2xl text-cartoon-ink leading-none tracking-wide">
               TRICO'S
             </span>
-            <span className="font-sub font-semibold text-[10px] sm:text-xs text-slate-500 tracking-wider uppercase mt-0.5">
+            <span className="font-sub font-bold text-[10px] sm:text-xs text-cartoon-ink/80 tracking-wider uppercase mt-0.5">
               Chicken Fried & Burgers
             </span>
           </div>
         </a>
 
-        <nav className="hidden lg:flex items-center gap-7">
+        {/* Navegación Principal */}
+        <nav className="hidden lg:flex items-center gap-6">
           <a
             href="#menu"
-            className="font-sub font-semibold text-slate-600 hover:text-slate-900 transition-colors text-sm"
+            className="font-sub font-bold text-cartoon-ink hover:text-cartoon-red transition-colors text-sm xl:text-base"
           >
             La Carta
           </a>
           <a
             href="#promos"
-            className="font-sub font-semibold text-slate-600 hover:text-slate-900 transition-colors text-sm"
+            className="font-sub font-bold text-cartoon-ink hover:text-cartoon-red transition-colors text-sm xl:text-base"
           >
-            Sorteo y Beneficios
+            Combos & Cupones
           </a>
           <a
             href="#personaje"
-            className="font-sub font-semibold text-slate-600 hover:text-slate-900 transition-colors text-sm"
+            className="font-sub font-bold text-cartoon-ink hover:text-cartoon-red transition-colors text-sm xl:text-base"
           >
-            Nosotros
+            Nuestro Sello
           </a>
           <a
             href="#contacto"
-            className="font-sub font-semibold text-slate-600 hover:text-slate-900 transition-colors text-sm"
+            className="font-sub font-bold text-cartoon-ink hover:text-cartoon-red transition-colors text-sm xl:text-base"
           >
             Contacto
           </a>
         </nav>
 
+        {/* Botón Carrito */}
         <div className="flex items-center">
           <button
             onClick={onOpenCart}
             aria-label="Abrir carrito de compras"
-            className="btn-cartoon-primary px-4 py-2 text-xs sm:text-sm"
+            className="btn-cartoon-red px-3.5 py-2 sm:px-4 sm:py-2 text-sm sm:text-base group"
           >
             <div className="relative flex items-center justify-center">
-              <Icon name="shopping_bag" size={18} className="text-white" />
+              <Icon name="shopping_bag" size={20} className="text-white" />
               {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2.5 w-4 h-4 rounded-full bg-rose-600 text-white font-display text-[10px] flex items-center justify-center">
+                <span className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-cartoon-yellow text-cartoon-ink font-display text-[11px] border-2 border-cartoon-ink flex items-center justify-center animate-bounce-subtle shadow-cartoon-sm">
                   {cartCount}
                 </span>
               )}
@@ -68,12 +75,13 @@ export const Navbar = ({ cartCount, cartTotal, onOpenCart }) => {
             <span className="hidden sm:inline">Mi Pedido</span>
 
             {cartTotal > 0 && (
-              <span className="hidden md:inline-block bg-white/15 text-white px-2 py-0.5 rounded-md text-xs font-sub font-semibold">
+              <span className="hidden md:inline-block bg-cartoon-ink/20 text-white px-2 py-0.5 rounded-lg text-xs font-sub font-bold">
                 ${cartTotal.toLocaleString('es-AR')}
               </span>
             )}
           </button>
         </div>
+
       </div>
     </header>
   );

@@ -8,12 +8,13 @@ import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { BrandRibbon } from './components/BrandRibbon';
+import { ScallopedMountainDivider } from './components/SectionDividers';
 import { ProductDetailSection } from './components/ProductDetailSection';
 import { Icon } from './components/Icon';
 import { ProductsProvider, useProducts } from './context/ProductsContext';
 import { getSession } from './lib/security';
 import { addEarning } from './lib/financesStore';
-import { isProductOutOfStock } from './lib/firebase';
+import { recordOrderInFirestore, isProductOutOfStock } from './lib/firebase';
 import { addOrder } from './lib/ordersStore';
 import {
   deductIngredientsForOrder,
@@ -250,7 +251,9 @@ function StoreApp() {
 
   // Vista de Tienda para Clientes
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+    <div className="min-h-screen flex flex-col bg-cartoon-cream selection:bg-cartoon-yellow selection:text-cartoon-ink">
+      
+      {/* 1. Header Compacto con Logo Completo y Proporcionado */}
       <Navbar
         cartCount={totalItemsCount}
         cartTotal={cartSubtotal}
@@ -259,6 +262,7 @@ function StoreApp() {
 
       <main className="flex-1">
         {selectedProduct ? (
+          /* Apartado individual del plato con stock reactivo en tiempo real */
           <ProductDetailSection
             product={
               products.find((p) => p.id === selectedProduct.id) || selectedProduct
@@ -268,18 +272,47 @@ function StoreApp() {
             onOpenCart={() => setIsCartOpen(true)}
           />
         ) : (
+          /* Vista principal de la tienda */
           <>
+            {/* 2. Hero Section (#FFC93C) con Título + Personaje al lado en Móvil y PC */}
             <Hero onOpenCart={() => setIsCartOpen(true)} />
+
+            {/* Transición 1: Hero (#FFC93C) -> Carta (#FFFDF6) */}
+            <ScallopedMountainDivider
+              topColor="#FFC93C"
+              bottomColor="#FFFDF6"
+              strokeColor="#1E1B18"
+            />
+
+            {/* Cinta con Sello y Puntos Fuertes de la Marca */}
             <BrandRibbon />
+
+            {/* 3. Carta de Comidas (#FFFDF6) con Stock en Tiempo Real */}
             <MenuSection
               onAddToCart={handleAddToCart}
               onSelectProduct={handleSelectProduct}
             />
+
+            {/* Transición 2: Carta (#FFFDF6) -> Combos & Cupones (#FFF5D6) */}
+            <ScallopedMountainDivider
+              topColor="#FFFDF6"
+              bottomColor="#FFF5D6"
+              strokeColor="#1E1B18"
+            />
+
+            {/* 4. Combos y Cupones (#FFF5D6) */}
             <PromosSection />
-            <MascotSection />
+
+            {/* 5. Sección "El Sello del Verdadero Crunch" con Carrusel Infinito recortado por las líneas negras onduladas */}
+            <MascotSection
+              topNeighborColor="#FFF5D6"
+              bottomNeighborColor="#1E1B18"
+              strokeColor="#1E1B18"
+            />
           </>
         )}
 
+        {/* 6. Footer (#1E1B18) con transición fluida desde la ola inferior */}
         <Footer />
       </main>
 
@@ -291,11 +324,11 @@ function StoreApp() {
         >
           <button
             onClick={() => setIsCartOpen(true)}
-            className="flex items-center gap-2.5 px-4 py-3 bg-slate-900 text-white font-display text-sm rounded-full border border-slate-700 shadow-lg active:scale-95 cursor-pointer"
+            className="flex items-center gap-2.5 px-4 py-3 bg-cartoon-red text-white font-display text-base rounded-full border-3 border-cartoon-ink shadow-cartoon-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer"
           >
             <div className="relative flex items-center justify-center">
-              <Icon name="shopping_bag" size={20} />
-              <span className="absolute -top-2 -right-2.5 w-4 h-4 rounded-full bg-rose-600 text-white font-display text-[10px] flex items-center justify-center">
+              <Icon name="shopping_bag" size={22} />
+              <span className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-cartoon-yellow text-cartoon-ink font-display text-[11px] border-2 border-cartoon-ink flex items-center justify-center">
                 {totalItemsCount}
               </span>
             </div>
