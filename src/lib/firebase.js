@@ -8,25 +8,73 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
+  waitForPendingWrites,
 } from 'firebase/firestore';
 import { PRODUCTS } from '../data/products';
 import { logSecurityEvent } from './security';
 
-// Configuración de Firebase leída de variables de entorno o guardada por el administrador
+const OFFICIAL_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyAC1rEWztNCcLO7Tu3wzXShdJh5C3t65FE',
+  authDomain: 'tricos-burguers.firebaseapp.com',
+  projectId: 'tricos-burguers',
+  storageBucket: 'tricos-burguers.firebasestorage.app',
+  messagingSenderId: '267701557169',
+  appId: '1:267701557169:web:01db58322eb98f971ecf90',
+};
+
+// Configuración de Firebase leída de variables de entorno válidas o configuración oficial
 export const getFirebaseConfig = () => {
   try {
     const saved = localStorage.getItem('tricos_firebase_custom_config');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (
+        parsed?.apiKey &&
+        parsed.apiKey !== 'tu_api_key_aqui' &&
+        parsed?.projectId &&
+        parsed.projectId !== 'tricos-burgers'
+      ) {
+        return parsed;
+      }
+    }
   } catch {}
 
+  const envKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  const envProj = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  const isValidEnv =
+    envKey &&
+    envKey !== 'tu_api_key_aqui' &&
+    envProj &&
+    envProj !== 'tricos-burgers';
+
+  if (!isValidEnv) {
+    return OFFICIAL_FIREBASE_CONFIG;
+  }
+
   return {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAC1rEWztNCcLO7Tu3wzXShdJh5C3t65FE',
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'tricos-burguers.firebaseapp.com',
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tricos-burguers',
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'tricos-burguers.firebasestorage.app',
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '267701557169',
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:267701557169:web:01db58322eb98f971ecf90',
+    apiKey: envKey,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || OFFICIAL_FIREBASE_CONFIG.authDomain,
+    projectId: envProj,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || OFFICIAL_FIREBASE_CONFIG.storageBucket,
+    messagingSenderId:
+      import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || OFFICIAL_FIREBASE_CONFIG.messagingSenderId,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || OFFICIAL_FIREBASE_CONFIG.appId,
   };
+};
+
+/**
+ * Garantiza que todas las escrituras en cola hayan sido confirmadas por el servidor de Firestore
+ * antes de que el navegador móvil redirija a WhatsApp.
+ */
+export const flushFirestoreWrites = async (timeoutMs = 1800) => {
+  try {
+    const { isConfigured, db } = initFirebase();
+    if (!isConfigured || !db) return;
+    await Promise.race([
+      waitForPendingWrites(db),
+      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
+  } catch {}
 };
 
 let firebaseApp = null;

@@ -14,9 +14,9 @@ import { CircularTransition } from './components/CircularTransition';
 import { Icon } from './components/Icon';
 import { ProductsProvider, useProducts } from './context/ProductsContext';
 import { getSession } from './lib/security';
-import { addEarning } from './lib/financesStore';
-import { recordOrderInFirestore, isProductOutOfStock } from './lib/firebase';
-import { addOrder } from './lib/ordersStore';
+import { addEarning, subscribeToFinances } from './lib/financesStore';
+import { recordOrderInFirestore, isProductOutOfStock, flushFirestoreWrites } from './lib/firebase';
+import { addOrder, subscribeToOrders } from './lib/ordersStore';
 import {
   deductIngredientsForOrder,
   subscribeToIngredients,
@@ -105,13 +105,17 @@ function StoreApp() {
     }
   }, [cartItems]);
 
-  // Sincronización en tiempo real multiplataforma de ingredientes y recetas
+  // Sincronización en tiempo real multiplataforma de ingredientes, recetas, pedidos y finanzas
   useEffect(() => {
     const unsubIng = subscribeToIngredients(() => {});
     const unsubRec = subscribeToRecipes(() => {});
+    const unsubOrd = subscribeToOrders(() => {});
+    const unsubFin = subscribeToFinances(() => {});
     return () => {
       if (typeof unsubIng === 'function') unsubIng();
       if (typeof unsubRec === 'function') unsubRec();
+      if (typeof unsubOrd === 'function') unsubOrd();
+      if (typeof unsubFin === 'function') unsubFin();
     };
   }, []);
 
@@ -207,6 +211,9 @@ function StoreApp() {
         console.warn('Error guardando pedido en ordersStore:', err);
       }),
     ]);
+
+    // Esperar a que el servidor de Firestore confirme todas las escrituras antes de abrir WhatsApp en móvil
+    await flushFirestoreWrites(1800);
 
     setIsCartOpen(false);
     setCompletedOrder(orderDetails);

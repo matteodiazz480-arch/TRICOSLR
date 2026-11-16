@@ -2,7 +2,7 @@
  * Módulo de Gestión Financiera (Gastos y Ganancias) para Trico's.
  * Sincronización en tiempo real multi-dispositivo y persistencia garantizada en Firestore y localStorage.
  */
-import { initFirebase } from './firebase';
+import { initFirebase, flushFirestoreWrites } from './firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 const FINANCES_KEY = 'tricos_finances_data';
@@ -65,11 +65,11 @@ export const subscribeToFinances = (callback) => {
 
   // 5. Firestore en la nube (Sincronización multi-dispositivo en tiempo real)
   const { isConfigured, db } = initFirebase();
-  let unsubscribeFirestore = null;
+  const unsubs = [];
   if (isConfigured && db) {
     try {
       const colRef = collection(db, 'finances');
-      unsubscribeFirestore = onSnapshot(
+      const unsubCol = onSnapshot(
         colRef,
         (snapshot) => {
           const list = [];
@@ -79,7 +79,7 @@ export const subscribeToFinances = (callback) => {
           });
           // Ordenar cronológicamente descendente (lo más nuevo arriba)
           list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-          
+
           callback(list);
           saveFinances(list);
         },
@@ -87,16 +87,41 @@ export const subscribeToFinances = (callback) => {
           console.warn('Firestore finances onSnapshot:', err);
         }
       );
+      unsubs.push(unsubCol);
     } catch (err) {
       console.warn('Error iniciando onSnapshot de finanzas:', err);
     }
+
+    try {
+      const unsubSync = onSnapshot(
+        doc(db, 'promotions', 'finances_sync'),
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const latest = snapshot.data()?.latestItem;
+            if (latest && latest.id) {
+              const current = getFinances();
+              if (!current.some((x) => x.id === latest.id)) {
+                const merged = [latest, ...current];
+                merged.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                callback(merged);
+                saveFinances(merged);
+              }
+            }
+          }
+        },
+        () => {}
+      );
+      unsubs.push(unsubSync);
+    } catch {}
   }
 
   return () => {
     window.removeEventListener('tricos_finances_sync', syncHandler);
     window.removeEventListener('storage', storageHandler);
     if (channel) channel.close();
-    if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    unsubs.forEach((fn) => {
+      if (typeof fn === 'function') fn();
+    });
   };
 };
 
@@ -118,7 +143,15 @@ export const addEarning = async (earningData) => {
   const { isConfigured, db } = initFirebase();
   if (isConfigured && db) {
     try {
-      await setDoc(doc(db, 'finances', id), item, { merge: true });
+      await Promise.allSettled([
+        setDoc(doc(db, 'finances', id), item, { merge: true }),
+        setDoc(
+          doc(db, 'promotions', 'finances_sync'),
+          { latestItem: item, updatedAt: new Date().toISOString() },
+          { merge: true }
+        ),
+      ]);
+      await flushFirestoreWrites(1500);
     } catch (err) {
       console.warn('Error guardando ganancia en Firestore:', err);
     }

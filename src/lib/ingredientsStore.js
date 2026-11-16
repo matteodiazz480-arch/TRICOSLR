@@ -8,7 +8,7 @@
  * - Colección 'promotions': documentos 'inventory' y 'recipes' como canal directo de sincronización
  * - Colección 'products': cada producto sincroniza su propiedad 'recipe'
  */
-import { initFirebase, sanitizeForFirestore } from './firebase.js';
+import { initFirebase, sanitizeForFirestore, flushFirestoreWrites } from './firebase.js';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export const INGREDIENTS_KEY = 'tricos_ingredients_data';
@@ -414,14 +414,8 @@ export const saveIngredients = async (items, shouldSyncCloud = true) => {
         setDoc(doc(db, 'promotions', 'inventory'), payload, { merge: true }),
         setDoc(doc(db, 'ingredients', 'main'), payload, { merge: true }),
         setDoc(doc(db, 'inventory', 'ingredients_data'), payload, { merge: true }),
-        ...(Array.isArray(cleanItems)
-          ? cleanItems
-              .filter((ing) => ing && ing.id)
-              .map((ing) =>
-                setDoc(doc(db, 'ingredients', ing.id), { ...ing, updatedAt: now }, { merge: true })
-              )
-          : []),
       ]);
+      await flushFirestoreWrites(1500);
     }
   }
 };

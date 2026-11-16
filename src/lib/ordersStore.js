@@ -2,7 +2,7 @@
  * Módulo de Gestión de Pedidos y Participantes del Sorteo para Trico's.
  * Sincronización multi-dispositivo en tiempo real con Firestore, localStorage y BroadcastChannel.
  */
-import { initFirebase, sanitizeForFirestore } from './firebase';
+import { initFirebase, sanitizeForFirestore, flushFirestoreWrites } from './firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 const ORDERS_KEY = 'tricos_orders_data';
@@ -184,14 +184,22 @@ export const addOrder = async (orderData) => {
     winnerPrize: null,
   });
 
-  const updated = [newOrder, ...current];
+  const updated = [newOrder, ...current.filter((o) => o.id !== orderId)];
   saveOrders(updated, false);
 
-  // Guardar directamente el nuevo pedido en Firestore y esperar confirmación
+  // Guardar directamente el nuevo pedido en Firestore (orders + canal rápido promotions/orders_sync) y esperar confirmación
   const { isConfigured, db } = initFirebase();
   if (isConfigured && db) {
     try {
-      await setDoc(doc(db, 'orders', orderId), newOrder, { merge: true });
+      await Promise.allSettled([
+        setDoc(doc(db, 'orders', orderId), newOrder, { merge: true }),
+        setDoc(
+          doc(db, 'promotions', 'orders_sync'),
+          { latestOrder: newOrder, updatedAt: newOrder.createdAt },
+          { merge: true }
+        ),
+      ]);
+      await flushFirestoreWrites(1500);
     } catch (err) {
       console.warn('Error en Firestore addOrder:', err);
     }
@@ -301,11 +309,11 @@ export const subscribeToOrders = (callback) => {
   } catch {}
 
   const { isConfigured, db } = initFirebase();
-  let unsubscribeFirestore = null;
+  const unsubs = [];
   if (isConfigured && db) {
     try {
       const colRef = collection(db, 'orders');
-      unsubscribeFirestore = onSnapshot(
+      const unsubCol = onSnapshot(
         colRef,
         (snapshot) => {
           if (snapshot.empty) return;
@@ -322,15 +330,41 @@ export const subscribeToOrders = (callback) => {
           console.warn('Firestore orders onSnapshot:', err);
         }
       );
+      unsubs.push(unsubCol);
     } catch (err) {
       console.warn('Error iniciando onSnapshot de pedidos:', err);
     }
+
+    try {
+      const unsubSync = onSnapshot(
+        doc(db, 'promotions', 'orders_sync'),
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            const latest = data?.latestOrder;
+            if (latest && latest.id) {
+              const current = getOrders();
+              if (!current.some((o) => o.id === latest.id)) {
+                const merged = [latest, ...current];
+                merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                callback(merged);
+                saveOrders(merged, false);
+              }
+            }
+          }
+        },
+        () => {}
+      );
+      unsubs.push(unsubSync);
+    } catch {}
   }
 
   return () => {
     window.removeEventListener('tricos_orders_sync', syncHandler);
     window.removeEventListener('storage', storageHandler);
     if (channel) channel.close();
-    if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    unsubs.forEach((fn) => {
+      if (typeof fn === 'function') fn();
+    });
   };
 };
