@@ -7,6 +7,7 @@ import {
   adjustIngredientStock,
   getProductRecipe,
   setProductRecipe,
+  getRecipeItemDeduction,
 } from '../../lib/ingredientsStore';
 
 const UNITS = [
@@ -60,11 +61,37 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     setCurrentRecipe(getProductRecipe(prodId, prod));
   };
 
-  // Formulario para agregar ingrediente a la receta del plato
+  // Formulario para agregar ingrediente a la receta del plato con variantes Simple vs Doble
   const [recipeNewItem, setRecipeNewItem] = useState({
-    ingredientId: ingredients[0]?.id || '',
-    amount: 1,
+    ingredientId: ingredients[0]?.id || 'ing-carne-medallon',
+    amountSimple: 150,
+    doubleRule: 'duplicate', // 'duplicate' (x2) | 'fixed' (x1, ej: huevo o pan) | 'custom'
+    amountDouble: 300,
   });
+
+  // Cambio inteligente al seleccionar un ingrediente en el formulario
+  const handleIngredientSelectChange = (ingId) => {
+    const isSingle =
+      ingId.includes('pan') ||
+      ingId.includes('huevo') ||
+      ingId.includes('salsa') ||
+      ingId.includes('alioli') ||
+      ingId.includes('barbacoa') ||
+      ingId.includes('lechuga') ||
+      ingId.includes('tomate') ||
+      ingId.includes('guacamole') ||
+      ingId.includes('doritos') ||
+      ingId.includes('papas');
+
+    const defaultRule = isSingle ? 'fixed' : 'duplicate';
+    const simple = Number(recipeNewItem.amountSimple) || 1;
+    setRecipeNewItem((prev) => ({
+      ...prev,
+      ingredientId: ingId,
+      doubleRule: defaultRule,
+      amountDouble: defaultRule === 'duplicate' ? simple * 2 : simple,
+    }));
+  };
 
   // Mensaje temporal toast
   const [toast, setToast] = useState('');
@@ -155,16 +182,33 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     setDeleteCandidate(null);
   };
 
-  // Agregar ingrediente a la receta del plato
+  // Agregar o actualizar ingrediente en la receta del plato con variantes Simple vs Doble
   const handleAddIngredientToRecipe = (e) => {
     e.preventDefault();
     if (!recipeNewItem.ingredientId) return;
 
-    const amount = Number(recipeNewItem.amount);
-    if (isNaN(amount) || amount <= 0) {
-      alert('Ingresá una cantidad válida mayor a 0');
+    const amountSimple = Number(recipeNewItem.amountSimple);
+    if (isNaN(amountSimple) || amountSimple <= 0) {
+      alert('Ingresá una cantidad válida mayor a 0 para hamburguesa simple.');
       return;
     }
+
+    let amountDouble = amountSimple;
+    if (recipeNewItem.doubleRule === 'duplicate') {
+      amountDouble = amountSimple * 2;
+    } else if (recipeNewItem.doubleRule === 'custom') {
+      amountDouble = Number(recipeNewItem.amountDouble) || amountSimple;
+    } else {
+      amountDouble = amountSimple; // fixed
+    }
+
+    const newRecEntry = {
+      ingredientId: recipeNewItem.ingredientId,
+      amount: amountSimple,
+      amountSimple,
+      amountDouble,
+      doubleRule: recipeNewItem.doubleRule,
+    };
 
     // Verificar si ya existe en la receta
     const existingIndex = currentRecipe.findIndex(
@@ -174,23 +218,39 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     let updatedRecipe;
     if (existingIndex !== -1) {
       updatedRecipe = [...currentRecipe];
-      updatedRecipe[existingIndex] = {
-        ...updatedRecipe[existingIndex],
-        amount: Number(updatedRecipe[existingIndex].amount) + amount,
-      };
+      updatedRecipe[existingIndex] = newRecEntry;
     } else {
-      updatedRecipe = [
-        ...currentRecipe,
-        {
-          ingredientId: recipeNewItem.ingredientId,
-          amount,
-        },
-      ];
+      updatedRecipe = [...currentRecipe, newRecEntry];
     }
 
     setCurrentRecipe(updatedRecipe);
     setProductRecipe(selectedProductId, updatedRecipe);
-    showToast(`Receta de "${selectedProduct?.name}" actualizada con éxito.`);
+    showToast(`Receta de "${selectedProduct?.name}" configurada con éxito.`);
+  };
+
+  // Alternar rápidamente entre Duplicar y Fijo (ej: caso huevo o pan) directamente desde la tarjeta
+  const handleToggleRecipeDoubleRule = (ingredientId) => {
+    const updatedRecipe = currentRecipe.map((item) => {
+      if (item.ingredientId !== ingredientId) return item;
+      const simple = Number(item.amountSimple ?? item.amount) || 1;
+      const currentRule = item.doubleRule || (
+        (item.ingredientId.includes('pan') || item.ingredientId.includes('huevo') || item.ingredientId.includes('salsa') || item.ingredientId.includes('alioli') || item.ingredientId.includes('barbacoa') || item.ingredientId.includes('papas')) ? 'fixed' : 'duplicate'
+      );
+      const nextRule = currentRule === 'duplicate' ? 'fixed' : 'duplicate';
+      const nextDouble = nextRule === 'duplicate' ? simple * 2 : simple;
+
+      return {
+        ...item,
+        amount: simple,
+        amountSimple: simple,
+        doubleRule: nextRule,
+        amountDouble: nextDouble,
+      };
+    });
+
+    setCurrentRecipe(updatedRecipe);
+    setProductRecipe(selectedProductId, updatedRecipe);
+    showToast('Regla de variante Doble actualizada.');
   };
 
   // Quitar ingrediente de la receta del plato
@@ -550,7 +610,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
               </span>
             </div>
 
-            {/* Listado de Ingredientes Asignados */}
+            {/* Listado de Ingredientes Asignados con Variante Simple vs Doble */}
             {currentRecipe.length === 0 ? (
               <div className="p-6 text-center text-gray-400 font-sub text-xs bg-gray-50 rounded-xl border border-dashed border-gray-300">
                 Este plato todavía no tiene ingredientes asignados a su receta. Agregá el primero abajo.
@@ -562,27 +622,82 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   const ingName = ingInfo ? ingInfo.name : recItem.ingredientId;
                   const unit = ingInfo ? ingInfo.unit : '';
 
+                  const simpleVal = Number(recItem.amountSimple ?? recItem.amount) || 0;
+                  const isFixed =
+                    recItem.doubleRule === 'fixed' ||
+                    (recItem.amountDouble !== undefined && Number(recItem.amountDouble) === simpleVal) ||
+                    (!recItem.doubleRule && (
+                      recItem.ingredientId.includes('pan') ||
+                      recItem.ingredientId.includes('huevo') ||
+                      recItem.ingredientId.includes('salsa') ||
+                      recItem.ingredientId.includes('alioli') ||
+                      recItem.ingredientId.includes('barbacoa') ||
+                      recItem.ingredientId.includes('papas')
+                    ));
+
+                  const doubleVal = isFixed
+                    ? simpleVal
+                    : recItem.amountDouble !== undefined
+                    ? Number(recItem.amountDouble)
+                    : simpleVal * 2;
+
                   return (
                     <div
                       key={recItem.ingredientId}
-                      className="p-3.5 rounded-xl bg-gray-50 border-2 border-gray-200 flex items-center justify-between gap-3 shadow-2xs"
+                      className="p-3.5 rounded-2xl bg-gray-50 border-2 border-gray-200 flex flex-col justify-between gap-3 shadow-2xs hover:border-cartoon-ink transition-colors"
                     >
-                      <div className="min-w-0">
-                        <span className="font-display text-xs sm:text-sm text-cartoon-ink block truncate">
-                          {ingName}
-                        </span>
-                        <span className="font-sub font-bold text-xs text-amber-700 block mt-0.5">
-                          {recItem.amount} {unit} por plato
-                        </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="font-display text-xs sm:text-sm text-cartoon-ink block truncate">
+                            {ingName}
+                          </span>
+                          <span className="font-sub text-[10px] text-gray-500 block">
+                            Unidad: <strong>{unit}</strong>
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFromRecipe(recItem.ingredientId)}
+                          className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-cartoon-red text-cartoon-red hover:text-white flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
+                          title="Quitar de la receta"
+                        >
+                          <Icon name="close" size={16} />
+                        </button>
                       </div>
 
+                      {/* Descuentos por Variante Simple vs Doble */}
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-200 text-[11px]">
+                        <div className="bg-white p-2 rounded-xl border border-gray-200">
+                          <span className="font-sub text-[10px] text-gray-500 block">🍔 Simple</span>
+                          <span className="font-display text-xs text-cartoon-ink">
+                            {simpleVal} {unit}
+                          </span>
+                        </div>
+                        <div className="bg-amber-50/70 p-2 rounded-xl border border-amber-200">
+                          <span className="font-sub text-[10px] text-amber-800 block">🍔🍔 Doble</span>
+                          <span className="font-display text-xs text-amber-900 font-bold">
+                            {doubleVal} {unit}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Botón interactivo para alternar regla de duplicación o excepción fija */}
                       <button
                         type="button"
-                        onClick={() => handleRemoveFromRecipe(recItem.ingredientId)}
-                        className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-cartoon-red text-cartoon-red hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                        title="Quitar de la receta"
+                        onClick={() => handleToggleRecipeDoubleRule(recItem.ingredientId)}
+                        className={`py-1.5 px-2.5 rounded-xl font-sub font-bold text-[10px] flex items-center justify-between cursor-pointer transition-colors border ${
+                          isFixed
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                            : 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
+                        }`}
+                        title="Hacé clic para cambiar la regla de variante"
                       >
-                        <Icon name="close" size={16} />
+                        <span className="flex items-center gap-1">
+                          <span>{isFixed ? '🔒' : '🔄'}</span>
+                          <span>{isFixed ? 'Fijo (No duplica en Doble)' : 'Se duplica en Doble (x2)'}</span>
+                        </span>
+                        <span className="text-[9px] underline">Cambiar</span>
                       </button>
                     </div>
                   );
@@ -590,55 +705,132 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
               </div>
             )}
 
-            {/* Formulario para Asignar Nuevo Ingrediente a este Plato */}
+            {/* Formulario para Asignar Nuevo Ingrediente a este Plato con regla de variante */}
             <form
               onSubmit={handleAddIngredientToRecipe}
-              className="p-4 rounded-xl bg-cartoon-cream/40 border-2 border-cartoon-ink/20 flex flex-col sm:flex-row items-stretch sm:items-end gap-3"
+              className="p-4 sm:p-5 rounded-2xl bg-cartoon-cream/50 border-2 border-cartoon-ink/30 space-y-3.5 shadow-cartoon-xs"
             >
-              <div className="flex-1">
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                  Ingrediente a utilizar:
-                </label>
-                <select
-                  value={recipeNewItem.ingredientId}
-                  onChange={(e) =>
-                    setRecipeNewItem({ ...recipeNewItem, ingredientId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none"
+              <div className="flex items-center justify-between pb-2 border-b border-cartoon-ink/15">
+                <span className="font-display text-xs sm:text-sm text-cartoon-ink flex items-center gap-1.5">
+                  <span>➕</span>
+                  <span>Asignar Ingrediente y Regla de Doble para {selectedProduct?.name}</span>
+                </span>
+                <span className="font-sub text-[11px] text-gray-500">
+                  Control granular de Simple vs Doble
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                {/* Ingrediente */}
+                <div className="sm:col-span-5">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                    Ingrediente a utilizar:
+                  </label>
+                  <select
+                    value={recipeNewItem.ingredientId}
+                    onChange={(e) => handleIngredientSelectChange(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-xs"
+                  >
+                    {ingredients.map((ing) => (
+                      <option key={ing.id} value={ing.id}>
+                        {ing.name} ({ing.unit})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Cantidad en Simple */}
+                <div className="sm:col-span-3">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                    Cantidad Simple (1x):
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="any"
+                    required
+                    value={recipeNewItem.amountSimple}
+                    onChange={(e) => {
+                      const simple = Number(e.target.value);
+                      setRecipeNewItem((prev) => ({
+                        ...prev,
+                        amountSimple: e.target.value,
+                        amountDouble: prev.doubleRule === 'duplicate' ? simple * 2 : simple,
+                      }));
+                    }}
+                    placeholder="Ej: 150 (g) ó 1 (u.)"
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub font-bold text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-xs"
+                  />
+                </div>
+
+                {/* Comportamiento en Variante Doble */}
+                <div className="sm:col-span-4">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                    En Variante Doble:
+                  </label>
+                  <select
+                    value={recipeNewItem.doubleRule}
+                    onChange={(e) => {
+                      const rule = e.target.value;
+                      const simple = Number(recipeNewItem.amountSimple) || 1;
+                      setRecipeNewItem((prev) => ({
+                        ...prev,
+                        doubleRule: rule,
+                        amountDouble: rule === 'duplicate' ? simple * 2 : simple,
+                      }));
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none shadow-xs"
+                  >
+                    <option value="duplicate">🔄 Duplicar en Doble (x2) [Carne, Cheddar, Bacon]</option>
+                    <option value="fixed">🔒 Fijo / No Duplicar (x1) [Excepción: Huevo frito, Pan, Salsas]</option>
+                    <option value="custom">⚙️ Cantidad Personalizada en Doble</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Si es personalizado, mostrar campo numérico de Doble */}
+              {recipeNewItem.doubleRule === 'custom' && (
+                <div className="p-3 bg-white rounded-xl border-2 border-cartoon-yellow flex items-center gap-3">
+                  <label className="font-sub font-bold text-xs text-cartoon-ink whitespace-nowrap">
+                    Cantidad exacta a descontar en Doble:
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="any"
+                    required
+                    value={recipeNewItem.amountDouble}
+                    onChange={(e) =>
+                      setRecipeNewItem((prev) => ({ ...prev, amountDouble: e.target.value }))
+                    }
+                    className="w-36 px-3 py-1.5 rounded-lg border-2 border-cartoon-ink font-sub font-bold text-xs text-cartoon-ink"
+                  />
+                </div>
+              )}
+
+              {/* Resumen y Botón de Asignar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-cartoon-ink/15">
+                <div className="font-sub text-xs text-gray-600 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span>
+                    Descuento: <strong>{recipeNewItem.amountSimple}</strong> en Simple |{' '}
+                    <strong>
+                      {recipeNewItem.doubleRule === 'duplicate'
+                        ? Number(recipeNewItem.amountSimple) * 2
+                        : recipeNewItem.amountDouble}
+                    </strong>{' '}
+                    en Doble.
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-cartoon-primary text-xs sm:text-sm py-2 px-5 flex items-center justify-center gap-2 cursor-pointer shadow-cartoon-xs font-display flex-shrink-0"
                 >
-                  {ingredients.map((ing) => (
-                    <option key={ing.id} value={ing.id}>
-                      {ing.name} ({ing.unit})
-                    </option>
-                  ))}
-                </select>
+                  <Icon name="add" size={16} />
+                  <span>Guardar en la Receta</span>
+                </button>
               </div>
-
-              <div className="w-full sm:w-44">
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                  Cantidad por plato:
-                </label>
-                <input
-                  type="number"
-                  min="0.1"
-                  step="any"
-                  required
-                  value={recipeNewItem.amount}
-                  onChange={(e) =>
-                    setRecipeNewItem({ ...recipeNewItem, amount: e.target.value })
-                  }
-                  placeholder="Ej: 150 (g) ó 2 (u.)"
-                  className="w-full px-3 py-2 rounded-xl bg-white border-2 border-cartoon-ink font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="btn-cartoon-primary text-xs sm:text-sm py-2 px-4 flex items-center justify-center gap-1.5 cursor-pointer shadow-cartoon-xs flex-shrink-0"
-              >
-                <Icon name="add" size={16} />
-                <span>Asignar a la Receta</span>
-              </button>
             </form>
 
           </div>

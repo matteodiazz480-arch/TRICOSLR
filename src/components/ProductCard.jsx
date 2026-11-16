@@ -24,6 +24,8 @@ export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
         emoji: product.emoji || '🍔',
         badge: product.badge,
         description: product.description,
+        variant: product.variants?.[0]?.label || 'Simple',
+        variantId: product.variants?.[0]?.id || 'simple',
         stock: product.stock,
         image: product.image,
       });

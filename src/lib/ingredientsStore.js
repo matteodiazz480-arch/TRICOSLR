@@ -1,14 +1,22 @@
 /**
  * Módulo de Gestión de Inventario de Ingredientes y Recetas (Escandallo) para Trico's.
- * Sincronización en tiempo real con localStorage, BroadcastChannel y Firestore.
+ * Sincronización en tiempo real multiplataforma con Firestore, BroadcastChannel y localStorage.
+ * 
+ * ESTRUCTURA DE BASE DE DATOS (FIREBASE FIRESTORE):
+ * - Colección 'ingredients': documentos individuales por ingrediente y documento 'main'
+ * - Colección 'recipes': recetas por plato y documento 'main'
+ * - Colección 'promotions': documentos 'inventory' y 'recipes' como canal directo de sincronización
+ * - Colección 'inventory': respaldos generales 'ingredients_data' y 'recipes_data'
  */
-import { initFirebase } from './firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from 'firebase/firestore';
+import { initFirebase } from './firebase.js';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDoc } from 'firebase/firestore';
 
-const INGREDIENTS_KEY = 'tricos_ingredients_data';
-const RECIPES_KEY = 'tricos_recipes_data';
+export const INGREDIENTS_KEY = 'tricos_ingredients_data';
+export const RECIPES_KEY = 'tricos_recipes_data';
 
-// Ingredientes iniciales realistas para una hamburguesería artesanal
+// ============================================================================
+// 1. INGREDIENTES INICIALES REALISTAS
+// ============================================================================
 export const DEFAULT_INGREDIENTS = [
   {
     id: 'ing-carne-medallon',
@@ -60,6 +68,13 @@ export const DEFAULT_INGREDIENTS = [
     minStock: 600,
   },
   {
+    id: 'ing-huevo-frito',
+    name: 'Huevo de Campo / Frito',
+    unit: 'unidades',
+    stock: 150,
+    minStock: 30,
+  },
+  {
     id: 'ing-papas-rusticas',
     name: 'Papas Rústicas para Freír',
     unit: 'g',
@@ -94,58 +109,152 @@ export const DEFAULT_INGREDIENTS = [
     stock: 80,
     minStock: 15,
   },
+  {
+    id: 'ing-guacamole',
+    name: 'Guacamole Artesanal',
+    unit: 'g',
+    stock: 3000,
+    minStock: 500,
+  },
+  {
+    id: 'ing-doritos',
+    name: 'Doritos Crocantes',
+    unit: 'g',
+    stock: 2000,
+    minStock: 300,
+  },
 ];
 
-// Recetas por defecto por plato (ingredientes necesarios por unidad de hamburguesa/plato)
+// ============================================================================
+// 2. RECETAS POR DEFECTO CON REGLAS DE VARIANTES (SIMPLE VS DOBLE)
+// doubleRule: 'duplicate' (x2 en doble) | 'fixed' (mismo valor, ej: pan o huevo) | 'custom'
+// ============================================================================
 export const DEFAULT_RECIPES = {
+  // AK-47
   'burger-ak47': [
-    { ingredientId: 'ing-carne-medallon', amount: 150 }, // 150g carne
-    { ingredientId: 'ing-pan-brioche', amount: 1 },      // 1 pan
-    { ingredientId: 'ing-queso-cheddar', amount: 3 },     // 3 fetas cheddar
-    { ingredientId: 'ing-bacon-ahumado', amount: 30 },    // 30g bacon
-    { ingredientId: 'ing-alioli', amount: 20 },           // 20ml alioli
-    { ingredientId: 'ing-papas-rusticas', amount: 200 },  // 200g papas guarnición
+    { ingredientId: 'ing-carne-medallon', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-pan-brioche', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-queso-cheddar', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-bacon-ahumado', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-alioli', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
   ],
+  // London Cheese
   'burger-london-cheese': [
-    { ingredientId: 'ing-carne-medallon', amount: 150 },
-    { ingredientId: 'ing-pan-brioche', amount: 1 },
-    { ingredientId: 'ing-queso-cheddar', amount: 3 },
-    { ingredientId: 'ing-bacon-ahumado', amount: 30 },
-    { ingredientId: 'ing-barbacoa', amount: 25 },
-    { ingredientId: 'ing-papas-rusticas', amount: 200 },
+    { ingredientId: 'ing-carne-medallon', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-pan-brioche', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-queso-cheddar', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-bacon-ahumado', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-barbacoa', amount: 25, amountSimple: 25, amountDouble: 25, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
   ],
+  // Lemon Haze
   'burger-lemon-haze': [
-    { ingredientId: 'ing-carne-medallon', amount: 150 },
-    { ingredientId: 'ing-pan-brioche', amount: 1 },
-    { ingredientId: 'ing-queso-tybo', amount: 2 },
-    { ingredientId: 'ing-lechuga-tomate', amount: 1 },
-    { ingredientId: 'ing-alioli', amount: 20 },
-    { ingredientId: 'ing-papas-rusticas', amount: 200 },
+    { ingredientId: 'ing-carne-medallon', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-pan-brioche', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-queso-tybo', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-lechuga-tomate', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-alioli', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
   ],
+  // Gorila Glue (Ejemplo exacto del usuario: carne y queso duplican, pero huevo y pan se mantienen fijos en 1)
   'burger-gorila-glue': [
-    { ingredientId: 'ing-carne-medallon', amount: 150 },
-    { ingredientId: 'ing-pan-brioche', amount: 1 },
-    { ingredientId: 'ing-queso-azul', amount: 40 },
-    { ingredientId: 'ing-bacon-ahumado', amount: 30 },
-    { ingredientId: 'ing-queso-tybo', amount: 2 },
-    { ingredientId: 'ing-alioli', amount: 20 },
-    { ingredientId: 'ing-papas-rusticas', amount: 200 },
+    { ingredientId: 'ing-carne-medallon', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-pan-brioche', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-queso-azul', amount: 40, amountSimple: 40, amountDouble: 80, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-bacon-ahumado', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-queso-tybo', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-huevo-frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' }, // 🔒 EXCEPCIÓN: 1 solo huevo frito en simple y en doble
+    { ingredientId: 'ing-alioli', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
   ],
+  // Amnesia (lleva huevo frito también como excepción fija)
+  'burger-amnesia': [
+    { ingredientId: 'ing-carne-medallon', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-pan-brioche', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-huevo-frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-guacamole', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed' },
+    { ingredientId: 'ing-alioli', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+  ],
+  // Acapulco Gold
+  'burger-acapulco-gold': [
+    { ingredientId: 'ing-carne-medallon', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-pan-brioche', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
+    { ingredientId: 'ing-queso-cheddar', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate' },
+    { ingredientId: 'ing-guacamole', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed' },
+    { ingredientId: 'ing-doritos', amount: 25, amountSimple: 25, amountDouble: 25, doubleRule: 'fixed' },
+    { ingredientId: 'ing-alioli', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+  ],
+  // Pollo Tiras
   'pollo-tiras-x6': [
-    { ingredientId: 'ing-pollo-crujiente', amount: 300 }, // 300g pollo
-    { ingredientId: 'ing-alioli', amount: 40 },
-    { ingredientId: 'ing-papas-rusticas', amount: 200 },
+    { ingredientId: 'ing-pollo-crujiente', amount: 300, amountSimple: 300, amountDouble: 300, doubleRule: 'fixed' },
+    { ingredientId: 'ing-alioli', amount: 40, amountSimple: 40, amountDouble: 40, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
   ],
+  // Papas Cheddar & Bacon
   'papas-cheddar-bacon': [
-    { ingredientId: 'ing-papas-rusticas', amount: 400 },
-    { ingredientId: 'ing-queso-cheddar', amount: 4 },
-    { ingredientId: 'ing-bacon-ahumado', amount: 40 },
+    { ingredientId: 'ing-papas-rusticas', amount: 400, amountSimple: 400, amountDouble: 400, doubleRule: 'fixed' },
+    { ingredientId: 'ing-queso-cheddar', amount: 4, amountSimple: 4, amountDouble: 4, doubleRule: 'fixed' },
+    { ingredientId: 'ing-bacon-ahumado', amount: 40, amountSimple: 40, amountDouble: 40, doubleRule: 'fixed' },
   ],
 };
 
-// -------------------------------------------------------------
-// OBTENER Y GUARDAR INGREDIENTES
-// -------------------------------------------------------------
+// ============================================================================
+// 3. CÁLCULO DE CANTIDAD A DESCONTAR SEGÚN VARIANTE Y REGLAS
+// ============================================================================
+/**
+ * Determina con precisión la cantidad a descontar de un insumo de la receta
+ * según la variante (Simple vs Doble) y respetando las excepciones de duplicación.
+ */
+export const getRecipeItemDeduction = (recItem, isDouble = false) => {
+  const simpleAmount = Number(recItem.amountSimple ?? recItem.amount) || 0;
+  if (!isDouble) {
+    return simpleAmount;
+  }
+
+  // 1. Si la regla es explícitamente fija: se mantiene igual que en Simple
+  if (recItem.doubleRule === 'fixed') {
+    return simpleAmount;
+  }
+
+  // 2. Si la regla es duplicar: exactamente el doble
+  if (recItem.doubleRule === 'duplicate') {
+    return simpleAmount * 2;
+  }
+
+  // 3. Si la regla es personalizada y tiene un monto numérico configurado
+  if (recItem.doubleRule === 'custom' && recItem.amountDouble !== undefined && recItem.amountDouble !== null && recItem.amountDouble !== '') {
+    return Number(recItem.amountDouble) || simpleAmount;
+  }
+
+  // 4. Si tiene amountDouble explícito sin importar la regla
+  if (recItem.amountDouble !== undefined && recItem.amountDouble !== null && recItem.amountDouble !== '') {
+    return Number(recItem.amountDouble);
+  }
+
+  // 5. Fallback inteligente de seguridad para insumos sin regla asignada:
+  // Panes, huevos, salsas, verduras y papas NO se duplican por defecto.
+  const ingId = (recItem.ingredientId || '').toLowerCase();
+  const isFixedByDefault =
+    ingId.includes('pan') ||
+    ingId.includes('huevo') ||
+    ingId.includes('salsa') ||
+    ingId.includes('alioli') ||
+    ingId.includes('barbacoa') ||
+    ingId.includes('lechuga') ||
+    ingId.includes('tomate') ||
+    ingId.includes('guacamole') ||
+    ingId.includes('doritos') ||
+    ingId.includes('papas');
+
+  return isFixedByDefault ? simpleAmount : simpleAmount * 2;
+};
+
+// ============================================================================
+// 4. OBTENER Y GUARDAR INGREDIENTES (PERSISTENCIA Y NUBE)
+// ============================================================================
 export const getIngredients = () => {
   try {
     const raw = localStorage.getItem(INGREDIENTS_KEY);
@@ -159,7 +268,7 @@ export const getIngredients = () => {
   return DEFAULT_INGREDIENTS;
 };
 
-export const saveIngredients = (items, shouldSyncCloud = true) => {
+export const saveIngredients = async (items, shouldSyncCloud = true) => {
   try {
     localStorage.setItem(INGREDIENTS_KEY, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent('tricos_ingredients_sync', { detail: items }));
@@ -175,20 +284,45 @@ export const saveIngredients = (items, shouldSyncCloud = true) => {
   if (shouldSyncCloud) {
     const { isConfigured, db } = initFirebase();
     if (isConfigured && db) {
+      const now = new Date().toISOString();
+      const payload = { items, updatedAt: now };
+
+      // 1. Canal primario directo de sincronización inmediata
       try {
-        setDoc(doc(db, 'inventory', 'ingredients_data'), {
-          items,
-          updatedAt: new Date().toISOString(),
-        }).catch(() => {});
+        await setDoc(doc(db, 'promotions', 'inventory'), payload, { merge: true });
+      } catch (err) {
+        console.warn('Sync promotions/inventory:', err.message);
+      }
+
+      // 2. Tabla / Colección 'ingredients' (documento maestro y documentos individuales)
+      try {
+        await setDoc(doc(db, 'ingredients', 'main'), payload, { merge: true });
+        if (Array.isArray(items)) {
+          for (const ing of items) {
+            if (ing && ing.id) {
+              setDoc(doc(db, 'ingredients', ing.id), { ...ing, updatedAt: now }, { merge: true }).catch(() => {});
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Sync tabla ingredients:', err.message);
+      }
+
+      // 3. Tabla / Colección 'inventory' (respaldo histórico)
+      try {
+        setDoc(doc(db, 'inventory', 'ingredients_data'), payload, { merge: true }).catch(() => {});
       } catch {}
     }
   }
 };
 
-// -------------------------------------------------------------
-// SUSCRIPCIÓN EN TIEMPO REAL
-// -------------------------------------------------------------
+// ============================================================================
+// 5. SUSCRIPCIÓN EN TIEMPO REAL A INGREDIENTES
+// ============================================================================
 export const subscribeToIngredients = (callback) => {
+  // Entregar inmediatamente la versión en memoria o local para respuesta instantánea
+  callback(getIngredients());
+
   const syncHandler = (e) => {
     if (Array.isArray(e.detail)) callback(e.detail);
   };
@@ -212,17 +346,19 @@ export const subscribeToIngredients = (callback) => {
     };
   } catch {}
 
-  // Firestore sync
+  // Sincronización en tiempo real con Firestore
   const { isConfigured, db } = initFirebase();
-  let unsubscribeFirestore = null;
+  const unsubs = [];
+
   if (isConfigured && db) {
+    // Escuchar documento 'promotions/inventory' (disponible sin fricción)
     try {
-      unsubscribeFirestore = onSnapshot(
-        doc(db, 'inventory', 'ingredients_data'),
+      const un1 = onSnapshot(
+        doc(db, 'promotions', 'inventory'),
         (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
-            if (Array.isArray(data.items)) {
+            if (Array.isArray(data.items) && data.items.length > 0) {
               callback(data.items);
               saveIngredients(data.items, false);
             }
@@ -230,6 +366,25 @@ export const subscribeToIngredients = (callback) => {
         },
         () => {}
       );
+      unsubs.push(un1);
+    } catch {}
+
+    // Escuchar colección / documento 'ingredients/main'
+    try {
+      const un2 = onSnapshot(
+        doc(db, 'ingredients', 'main'),
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (Array.isArray(data.items) && data.items.length > 0) {
+              callback(data.items);
+              saveIngredients(data.items, false);
+            }
+          }
+        },
+        () => {}
+      );
+      unsubs.push(un2);
     } catch {}
   }
 
@@ -237,13 +392,15 @@ export const subscribeToIngredients = (callback) => {
     window.removeEventListener('tricos_ingredients_sync', syncHandler);
     window.removeEventListener('storage', storageHandler);
     if (channel) channel.close();
-    if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    unsubs.forEach((fn) => {
+      if (typeof fn === 'function') fn();
+    });
   };
 };
 
-// -------------------------------------------------------------
-// OPERACIONES CRUD DE INGREDIENTES
-// -------------------------------------------------------------
+// ============================================================================
+// 6. OPERACIONES CRUD DE INGREDIENTES
+// ============================================================================
 export const addIngredient = (ingredientData) => {
   const list = getIngredients();
   const cleanName = (ingredientData.name || '').trim();
@@ -299,9 +456,9 @@ export const adjustIngredientStock = (id, delta) => {
   return next;
 };
 
-// -------------------------------------------------------------
-// GESTIÓN DE RECETAS POR PRODUCTO
-// -------------------------------------------------------------
+// ============================================================================
+// 7. GESTIÓN Y PERSISTENCIA DE RECETAS POR PRODUCTO
+// ============================================================================
 export const getRecipes = () => {
   try {
     const raw = localStorage.getItem(RECIPES_KEY);
@@ -317,7 +474,7 @@ export const getRecipes = () => {
   return DEFAULT_RECIPES;
 };
 
-export const saveRecipes = (recipes, shouldSyncCloud = true) => {
+export const saveRecipes = async (recipes, shouldSyncCloud = true) => {
   try {
     localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes));
     window.dispatchEvent(new CustomEvent('tricos_recipes_sync', { detail: recipes }));
@@ -328,14 +485,98 @@ export const saveRecipes = (recipes, shouldSyncCloud = true) => {
   if (shouldSyncCloud) {
     const { isConfigured, db } = initFirebase();
     if (isConfigured && db) {
+      const now = new Date().toISOString();
+      const payload = { recipes, updatedAt: now };
+
+      // 1. Canal primario directo
       try {
-        setDoc(doc(db, 'inventory', 'recipes_data'), {
-          recipes,
-          updatedAt: new Date().toISOString(),
-        }).catch(() => {});
+        await setDoc(doc(db, 'promotions', 'recipes'), payload, { merge: true });
+      } catch (err) {
+        console.warn('Sync promotions/recipes:', err.message);
+      }
+
+      // 2. Tabla / Colección 'recipes'
+      try {
+        await setDoc(doc(db, 'recipes', 'main'), payload, { merge: true });
+        for (const [prodId, items] of Object.entries(recipes)) {
+          setDoc(doc(db, 'recipes', prodId), { productId: prodId, items, updatedAt: now }, { merge: true }).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('Sync tabla recipes:', err.message);
+      }
+
+      // 3. Tabla / Colección 'inventory' (respaldo)
+      try {
+        setDoc(doc(db, 'inventory', 'recipes_data'), payload, { merge: true }).catch(() => {});
       } catch {}
     }
   }
+};
+
+export const subscribeToRecipes = (callback) => {
+  callback(getRecipes());
+
+  const syncHandler = (e) => {
+    if (e.detail && typeof e.detail === 'object') callback(e.detail);
+  };
+  window.addEventListener('tricos_recipes_sync', syncHandler);
+
+  const storageHandler = (e) => {
+    if (e.key === RECIPES_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed && typeof parsed === 'object') callback(parsed);
+      } catch {}
+    }
+  };
+  window.addEventListener('storage', storageHandler);
+
+  const { isConfigured, db } = initFirebase();
+  const unsubs = [];
+
+  if (isConfigured && db) {
+    try {
+      const u1 = onSnapshot(
+        doc(db, 'promotions', 'recipes'),
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data.recipes && typeof data.recipes === 'object') {
+              callback(data.recipes);
+              saveRecipes(data.recipes, false);
+            }
+          }
+        },
+        () => {}
+      );
+      unsubs.push(u1);
+    } catch {}
+
+    try {
+      const u2 = onSnapshot(
+        doc(db, 'recipes', 'main'),
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data.recipes && typeof data.recipes === 'object') {
+              callback(data.recipes);
+              saveRecipes(data.recipes, false);
+            }
+          }
+        },
+        () => {}
+      );
+      unsubs.push(u2);
+    } catch {}
+  }
+
+  return () => {
+    window.removeEventListener('tricos_recipes_sync', syncHandler);
+    window.removeEventListener('storage', storageHandler);
+    unsubs.forEach((fn) => {
+      if (typeof fn === 'function') fn();
+    });
+  };
 };
 
 export const getProductRecipe = (productId, product = null) => {
@@ -356,17 +597,18 @@ export const setProductRecipe = (productId, recipeItems) => {
   return next;
 };
 
-// -------------------------------------------------------------
-// DESCUENTO AUTOMÁTICO DE INGREDIENTES AL CONFIRMAR UN PEDIDO
-// -------------------------------------------------------------
+// ============================================================================
+// 8. DESCUENTO AUTOMÁTICO DE INGREDIENTES AL CONFIRMAR UN PEDIDO
+// Descuenta en tiempo real del stock de ingredientes según variante y receta
+// ============================================================================
 /**
  * Descuenta del stock de ingredientes las cantidades correspondientes
- * a los productos solicitados en el pedido.
- * @param {Array} orderItems - Platos solicitados en el pedido [{ id, quantity, productId, ... }]
+ * a los productos solicitados en el pedido, con control granular de variantes (Simple vs Doble).
+ * @param {Array} orderItems - Platos solicitados en el pedido
  * @param {Array} products - Lista de platos actual de la carta
- * @returns {Array} Lista actualizada de ingredientes
+ * @returns {Promise<Array>} Lista actualizada de ingredientes sincronizada con la nube
  */
-export const deductIngredientsForOrder = (orderItems = [], products = []) => {
+export const deductIngredientsForOrder = async (orderItems = [], products = []) => {
   if (!orderItems || orderItems.length === 0) return getIngredients();
 
   const ingredientsList = [...getIngredients()];
@@ -389,50 +631,70 @@ export const deductIngredientsForOrder = (orderItems = [], products = []) => {
     // Si aún no se encontró, buscar en la lista de productos por ID o coincidencia de prefijo
     if (!recipe && Array.isArray(products)) {
       const foundProd = products.find(
-        (p) => p.id === prodId || (p.id && prodId && prodId.startsWith(p.id))
+        (p) => p.id === prodId || (p.id && prodId && String(prodId).startsWith(p.id))
       );
       if (foundProd) {
         recipe = foundProd.recipe || allRecipes[foundProd.id] || DEFAULT_RECIPES[foundProd.id];
       }
     }
 
-    // Si la hamburguesa es variante Doble, multiplicar proporcionalmente la carne
+    // Detectar si la hamburguesa es variante Doble
     const isDouble =
-      (item.variant?.label || '').toLowerCase().includes('doble') ||
+      (item.variant || '').toLowerCase().includes('doble') ||
+      (item.variantId || '').toLowerCase().includes('doble') ||
       (item.name || '').toLowerCase().includes('doble');
+
+    // Detectar si el cliente eligió medallón de pollo en lugar de carne
+    const isChicken =
+      (item.protein || '').toLowerCase().includes('pollo') ||
+      (item.name || '').toLowerCase().includes('[pollo]') ||
+      (item.name || '').toLowerCase().includes('pollo crunch');
 
     if (Array.isArray(recipe) && recipe.length > 0) {
       recipe.forEach((recItem) => {
-        const targetIng = ingMap.get(recItem.ingredientId);
+        let targetId = recItem.ingredientId;
+        // Si el plato permite elegir carne o pollo y eligió pollo:
+        if (targetId === 'ing-carne-medallon' && isChicken) {
+          targetId = 'ing-pollo-crujiente';
+        }
+
+        const targetIng = ingMap.get(targetId);
         if (targetIng) {
-          let unitAmount = Number(recItem.amount) || 0;
-          // Si es doble y el ingrediente es carne, se duplica el medallón
-          if (isDouble && recItem.ingredientId === 'ing-carne-medallon') {
-            unitAmount *= 2;
-          }
+          // Obtener cantidad según variante Simple o Doble con sus excepciones
+          const unitAmount = getRecipeItemDeduction(recItem, isDouble);
           const totalDeduction = unitAmount * qty;
           targetIng.stock = Math.max(0, targetIng.stock - totalDeduction);
           anyDeducted = true;
         }
       });
     } else {
-      // Receta genérica de respaldo si es hamburguesa sin receta explícita
+      // Receta genérica de respaldo si es hamburguesa sin receta explícita asignada
       const isBurger =
         (item.category || '').includes('burger') ||
         (item.name || '').toLowerCase().includes('burger') ||
-        (item.name || '').toLowerCase().includes('kush');
+        (item.name || '').toLowerCase().includes('kush') ||
+        (item.name || '').toLowerCase().includes('cheese');
 
       if (isBurger) {
-        const carne = ingMap.get('ing-carne-medallon');
+        const meatId = isChicken ? 'ing-pollo-crujiente' : 'ing-carne-medallon';
+        const meat = ingMap.get(meatId);
         const pan = ingMap.get('ing-pan-brioche');
         const cheddar = ingMap.get('ing-queso-cheddar');
         const papas = ingMap.get('ing-papas-rusticas');
 
-        const carneGrams = (isDouble ? 300 : 150) * qty;
-        if (carne) carne.stock = Math.max(0, carne.stock - carneGrams);
-        if (pan) pan.stock = Math.max(0, pan.stock - 1 * qty);
-        if (cheddar) cheddar.stock = Math.max(0, cheddar.stock - 2 * qty);
-        if (papas) papas.stock = Math.max(0, papas.stock - 200 * qty);
+        // Carne se duplica en doble (150g -> 300g)
+        const meatGrams = (isDouble ? 300 : 150) * qty;
+        // Pan es 1 siempre (fijo)
+        const panUnits = 1 * qty;
+        // Cheddar se duplica en doble (2 -> 4 fetas)
+        const cheddarFetas = (isDouble ? 4 : 2) * qty;
+        // Papas de guarnición fijas (200g)
+        const papasGrams = 200 * qty;
+
+        if (meat) meat.stock = Math.max(0, meat.stock - meatGrams);
+        if (pan) pan.stock = Math.max(0, pan.stock - panUnits);
+        if (cheddar) cheddar.stock = Math.max(0, cheddar.stock - cheddarFetas);
+        if (papas) papas.stock = Math.max(0, papas.stock - papasGrams);
         anyDeducted = true;
       }
     }
@@ -440,7 +702,7 @@ export const deductIngredientsForOrder = (orderItems = [], products = []) => {
 
   if (anyDeducted) {
     const updatedList = Array.from(ingMap.values());
-    saveIngredients(updatedList, true);
+    await saveIngredients(updatedList, true);
     console.log('✅ Stock de ingredientes descontado automáticamente por pedido:', orderItems);
     return updatedList;
   }

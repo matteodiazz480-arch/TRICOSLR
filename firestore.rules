@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Catálogo de Productos y Carta Digital
+    match /products/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 2. Pedidos y Clientes Participantes del Sorteo
+    match /orders/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 3. Finanzas (Balance, Ganancias y Gastos)
+    match /finances/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 4. Promociones, Sorteos y Sincronización
+    match /promotions/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 5. Inventario de Ingredientes (NUEVA TABLA OBLIGATORIA)
+    match /ingredients/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 6. Recetas por Producto y Variantes (NUEVA TABLA OBLIGATORIA)
+    match /recipes/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 7. Inventario General / Respaldos
+    match /inventory/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

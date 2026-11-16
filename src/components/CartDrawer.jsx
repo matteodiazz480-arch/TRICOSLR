@@ -279,7 +279,7 @@ export const CartDrawer = ({
   };
 
   // Enviar pedido final con listado organizado completo y enlace de ubicación en Google Maps
-  const handleSubmitOrder = (ev) => {
+  const handleSubmitOrder = async (ev) => {
     if (ev && ev.preventDefault) ev.preventDefault();
 
     const e = {};
@@ -388,15 +388,12 @@ export const CartDrawer = ({
     const messageText = L.join('\n');
     const whatsappUrl = buildWhatsAppUrl(RESTAURANT_INFO.phone, messageText);
 
-    // 1. Abrir WhatsApp inmediatamente en el hilo de interacción del usuario
-    openWhatsApp(RESTAURANT_INFO.phone, messageText);
-
-    // 2. Notificar al sistema de la orden completada (Firestore, ganancias, modal)
+    // 1. Notificar primero al sistema (descontar ingredientes por variante, registrar ganancia y pedido en Firestore)
     if (typeof onOrderSuccess === 'function') {
       try {
-        onOrderSuccess({
+        await onOrderSuccess({
           customerName: formData.name.trim(),
-          phone: (formData.phone || '').trim(),
+          phone: cleanPhone,
           deliveryType: formData.deliveryType,
           address: displayAddress,
           addressNotes: formData.addressNotes.trim(),
@@ -411,19 +408,29 @@ export const CartDrawer = ({
           isFreeDelivery: isFreeDeliveryQualified,
           whatsappUrl,
           whatsappMessage: messageText,
-          items: items.map((item) => ({
-            productId: item.product.originalId || item.product.id,
-            originalId: item.product.originalId || item.product.id,
-            name: item.product.name,
-            quantity: item.quantity,
-            price: item.product.price,
-            subtotal: item.product.price * item.quantity,
-          })),
+          items: items.map((item) => {
+            const prod = item.product || {};
+            const isDobleName = (prod.name || '').toLowerCase().includes('doble');
+            return {
+              productId: prod.originalId || prod.id,
+              originalId: prod.originalId || prod.id,
+              name: prod.name,
+              quantity: item.quantity,
+              price: prod.price,
+              subtotal: prod.price * item.quantity,
+              variant: prod.variant || (isDobleName ? 'Doble' : 'Simple'),
+              variantId: prod.variantId || (isDobleName ? 'doble' : 'simple'),
+              protein: prod.protein || null,
+            };
+          }),
         });
       } catch (err) {
         console.warn('Error en onOrderSuccess:', err);
       }
     }
+
+    // 2. Abrir WhatsApp ahora que el pedido y el stock ya están descontados y persistidos
+    openWhatsApp(RESTAURANT_INFO.phone, messageText);
 
     setStep('cart');
   };

@@ -16,7 +16,11 @@ import { getSession } from './lib/security';
 import { addEarning } from './lib/financesStore';
 import { recordOrderInFirestore } from './lib/firebase';
 import { addOrder } from './lib/ordersStore';
-import { deductIngredientsForOrder } from './lib/ingredientsStore';
+import {
+  deductIngredientsForOrder,
+  subscribeToIngredients,
+  subscribeToRecipes,
+} from './lib/ingredientsStore';
 
 // Carga perezosa (lazy-load) para máxima velocidad de la tienda pública
 const AdminLogin = React.lazy(() =>
@@ -100,6 +104,16 @@ function StoreApp() {
     }
   }, [cartItems]);
 
+  // Sincronización en tiempo real multiplataforma de ingredientes y recetas
+  useEffect(() => {
+    const unsubIng = subscribeToIngredients(() => {});
+    const unsubRec = subscribeToRecipes(() => {});
+    return () => {
+      if (typeof unsubIng === 'function') unsubIng();
+      if (typeof unsubRec === 'function') unsubRec();
+    };
+  }, []);
+
   const totalItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartSubtotal = cartItems.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
@@ -165,10 +179,13 @@ function StoreApp() {
               originalId: item.product.originalId || item.product.id,
               name: item.product.name,
               quantity: item.quantity,
+              variant: item.product.variant || (item.product.name.toLowerCase().includes('doble') ? 'Doble' : 'Simple'),
+              variantId: item.product.variantId || (item.product.name.toLowerCase().includes('doble') ? 'doble' : 'simple'),
+              protein: item.product.protein || null,
             }));
 
-      // Descuento automático del stock de INGREDIENTES que componen los platos pedidos
-      deductIngredientsForOrder(orderItems, products);
+      // Descuento automático del stock de INGREDIENTES que componen los platos pedidos (esperando confirmación en la nube)
+      await deductIngredientsForOrder(orderItems, products);
     } catch (err) {
       console.warn('Error descontando stock de ingredientes tras pedido:', err);
     }
