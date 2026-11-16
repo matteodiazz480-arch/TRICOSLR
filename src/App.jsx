@@ -364,8 +364,8 @@ function StoreApp() {
 export function App() {
   return (
     <ProductsProvider>
-      <CircularTransition />
       <StoreApp />
+      <CircularTransition />
     </ProductsProvider>
   );
 }
