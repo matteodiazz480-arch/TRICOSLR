@@ -269,6 +269,9 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
   const earningsList = finances.filter((f) => f.type === 'earning');
   const expensesList = finances.filter((f) => f.type === 'expense');
+  const pendingOrdersCount = orders.filter(
+    (o) => !o.status || String(o.status).toLowerCase() === 'pendiente'
+  ).length;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-cartoon-ink flex flex-col md:flex-row select-none">
@@ -294,14 +297,21 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-sub font-bold text-xs transition-all cursor-pointer border-2 ${
+                  className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl font-sub font-bold text-xs transition-all cursor-pointer border-2 ${
                     active
                       ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display text-sm'
                       : 'text-cartoon-ink/75 hover:bg-cartoon-cream hover:text-cartoon-ink border-transparent'
                   }`}
                 >
-                  <Icon name={item.icon} size={19} />
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon name={item.icon} size={19} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.id === 'sorteo' && pendingOrdersCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-cartoon-red text-white font-display text-[10px] border border-cartoon-ink">
+                      {pendingOrdersCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -1096,13 +1106,18 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             }`}
           >
             <div
-              className={`p-1 rounded-xl transition-all ${
+              className={`relative p-1 rounded-xl transition-all ${
                 activeTab === 'sorteo'
                   ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink'
                   : ''
               }`}
             >
               <Icon name="receipt_long" size={20} />
+              {pendingOrdersCount > 0 && (
+                <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-cartoon-red text-white font-display text-[9px] flex items-center justify-center border border-cartoon-ink">
+                  {pendingOrdersCount}
+                </span>
+              )}
             </div>
             <span
               className={`text-[10px] mt-1 whitespace-nowrap leading-none ${

@@ -65,10 +65,35 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     setCurrentRecipe(getProductRecipe(selectedProductId, prod));
   }, [selectedProductId, products, allRecipesMap]);
 
+  const [proteinFilter, setProteinFilter] = useState('all'); // 'all' | 'carne' | 'pollo'
+
   const handleSelectProduct = (prodId) => {
     setSelectedProductId(prodId);
+    setProteinFilter('all');
     const prod = products.find((p) => p.id === prodId);
     setCurrentRecipe(getProductRecipe(prodId, prod));
+  };
+
+  const detectProteinScopeForIngredient = (ingId, ingName = '', activeFilter = 'all') => {
+    const refText = `${ingId} ${ingName}`.toLowerCase();
+    if (
+      refText.includes('pollo') ||
+      refText.includes('pechuga') ||
+      refText.includes('chicken') ||
+      refText.includes('suprema')
+    ) {
+      return 'pollo';
+    }
+    if (
+      refText.includes('carne') ||
+      refText.includes('vacuna') ||
+      refText.includes('asado') ||
+      refText.includes('medallon') ||
+      refText.includes('medallón')
+    ) {
+      return 'carne';
+    }
+    return activeFilter !== 'all' ? activeFilter : 'all';
   };
 
   const [recipeNewItem, setRecipeNewItem] = useState({
@@ -76,6 +101,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     amountSimple: 1,
     doubleRule: 'duplicate',
     amountDouble: 2,
+    proteinScope: 'all',
   });
 
   // Garantizar que el selector de ingrediente siempre apunte a un ID válido existente
@@ -99,6 +125,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
           amountSimple: defaultAmt,
           doubleRule: rule,
           amountDouble: rule === 'duplicate' ? defaultAmt * 2 : defaultAmt,
+          proteinScope: detectProteinScopeForIngredient(first.id, first.name, 'all'),
         });
       }
     }
@@ -121,11 +148,14 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
     const defaultRule = isSingle ? 'fixed' : 'duplicate';
     const simple = Number(recipeNewItem.amountSimple) || 1;
+    const defaultScope = detectProteinScopeForIngredient(ingId, ingObj?.name || '', proteinFilter);
+
     setRecipeNewItem((prev) => ({
       ...prev,
       ingredientId: ingId,
       doubleRule: defaultRule,
       amountDouble: defaultRule === 'duplicate' ? simple * 2 : simple,
+      proteinScope: defaultScope,
     }));
   };
 
@@ -227,6 +257,8 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
       amountDouble = amountSimple;
     }
 
+    const targetScope = recipeNewItem.proteinScope || 'all';
+
     const newRecEntry = {
       ingredientId: targetIngId,
       ingredientName: ingObj?.name || '',
@@ -235,10 +267,11 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
       amountSimple,
       amountDouble,
       doubleRule: recipeNewItem.doubleRule,
+      proteinScope: targetScope,
     };
 
     const existingIndex = currentRecipe.findIndex(
-      (r) => r.ingredientId === targetIngId
+      (r) => r.ingredientId === targetIngId && (r.proteinScope || 'all') === targetScope
     );
 
     let updatedRecipe;
@@ -254,9 +287,11 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     showToast(`Receta de "${selectedProduct?.name}" guardada`);
   };
 
-  const handleToggleRecipeDoubleRule = async (ingredientId) => {
+  const handleToggleRecipeDoubleRule = async (ingredientId, targetScope = 'all') => {
     const updatedRecipe = currentRecipe.map((item) => {
-      if (item.ingredientId !== ingredientId) return item;
+      if (item.ingredientId !== ingredientId || (item.proteinScope || 'all') !== targetScope) {
+        return item;
+      }
       const simple = Number(item.amountSimple ?? item.amount) || 1;
       const refText = `${item.ingredientId} ${item.ingredientName || ''}`.toLowerCase();
       const currentRule =
@@ -278,6 +313,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
         amountSimple: simple,
         doubleRule: nextRule,
         amountDouble: nextDouble,
+        proteinScope: item.proteinScope || 'all',
       };
     });
 
@@ -286,18 +322,52 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
     showToast('Regla de variante actualizada');
   };
 
-  const handleRemoveFromRecipe = async (ingredientId) => {
-    const updatedRecipe = currentRecipe.filter((r) => r.ingredientId !== ingredientId);
+  const handleCycleProteinScope = async (ingredientId, currentScope = 'all') => {
+    const order = ['all', 'carne', 'pollo'];
+    const nextScope = order[(order.indexOf(currentScope) + 1) % order.length];
+
+    const updatedRecipe = currentRecipe.map((item) => {
+      if (item.ingredientId === ingredientId && (item.proteinScope || 'all') === currentScope) {
+        return {
+          ...item,
+          proteinScope: nextScope,
+        };
+      }
+      return item;
+    });
+
+    setCurrentRecipe(updatedRecipe);
+    await setProductRecipe(selectedProductId, updatedRecipe);
+    const labelMap = {
+      all: 'Ambos (Carne y Pollo)',
+      carne: 'Solo Carne',
+      pollo: 'Solo Pollo',
+    };
+    showToast(`Aplica a: ${labelMap[nextScope]}`);
+  };
+
+  const handleRemoveFromRecipe = async (ingredientId, targetScope = 'all') => {
+    const updatedRecipe = currentRecipe.filter(
+      (r) => !(r.ingredientId === ingredientId && (r.proteinScope || 'all') === targetScope)
+    );
     setCurrentRecipe(updatedRecipe);
     await setProductRecipe(selectedProductId, updatedRecipe);
     showToast('Ingrediente quitado de la receta');
   };
 
+  const visibleRecipeItems = useMemo(() => {
+    if (proteinFilter === 'all') return currentRecipe;
+    return currentRecipe.filter((item) => {
+      const sc = item.proteinScope || 'all';
+      return sc === 'all' || sc === proteinFilter;
+    });
+  }, [currentRecipe, proteinFilter]);
+
   return (
     <div className="space-y-6 animate-fadeIn select-none">
       {toast && (
-        <div className="p-3 rounded-xl bg-slate-900 text-white font-sub font-medium text-xs shadow-md flex items-center gap-2">
-          <Icon name="check_circle" size={16} className="text-emerald-400" />
+        <div className="p-3.5 rounded-2xl bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink font-sub font-bold text-xs shadow-cartoon-xs flex items-center gap-2">
+          <Icon name="check_circle" size={18} />
           <span>{toast}</span>
         </div>
       )}
@@ -494,13 +564,13 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
       )}
 
       {/* ============================================================== */}
-      {/* SUB-PESTAÑA 2: RECETAS Y VARIANTES (SIMPLE VS DOBLE) */}
+      {/* SUB-PESTAÑA 2: RECETAS, VARIANTES (SIMPLE/DOBLE) Y CARNE/POLLO */}
       {/* ============================================================== */}
       {subTab === 'recetas' && (
         <div className="space-y-4">
           {/* Selector de Producto */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2.5">
-            <label className="block font-sub font-semibold text-xs text-slate-600">
+          <div className="bg-white p-4 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs space-y-2.5">
+            <label className="block font-sub font-bold text-xs text-cartoon-ink">
               Seleccioná el producto para configurar su receta:
             </label>
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
@@ -511,10 +581,10 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     key={prod.id}
                     type="button"
                     onClick={() => handleSelectProduct(prod.id)}
-                    className={`px-3.5 py-2 rounded-xl font-sub font-semibold text-xs whitespace-nowrap cursor-pointer transition-all border ${
+                    className={`px-3.5 py-2 rounded-2xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border-2 ${
                       isSelected
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                        ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                        : 'bg-white text-cartoon-ink/75 border-cartoon-ink/20 hover:border-cartoon-ink'
                     }`}
                   >
                     {prod.name}
@@ -525,28 +595,59 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
           </div>
 
           {/* Configuración de la Receta */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b-2 border-cartoon-ink/15">
               <div>
-                <h4 className="font-display text-base text-slate-900">
+                <h4 className="font-display text-lg text-cartoon-ink">
                   Receta de {selectedProduct?.name}
                 </h4>
-                <p className="font-sub text-xs text-slate-500">
-                  Definí cuánto se descuenta en versión Simple y cómo se comporta en versión Doble.
+                <p className="font-sub font-semibold text-xs text-gray-500">
+                  Diferenciá ingredientes para Carne o Pollo, y definí Simple vs Doble.
                 </p>
               </div>
-              <span className="badge-cartoon bg-slate-100 text-slate-700">
-                {currentRecipe.length} insumos
-              </span>
+
+              {/* Selector de vista por proteína (Carne / Pollo / Todos) */}
+              <div className="flex items-center gap-1.5 bg-cartoon-cream p-1 rounded-2xl border-2 border-cartoon-ink self-start sm:self-auto">
+                {[
+                  { id: 'all', label: `Todos (${currentRecipe.length})` },
+                  { id: 'carne', label: 'Versión Carne' },
+                  { id: 'pollo', label: 'Versión Pollo' },
+                ].map((pf) => (
+                  <button
+                    key={pf.id}
+                    type="button"
+                    onClick={() => {
+                      setProteinFilter(pf.id);
+                      if (pf.id !== 'all') {
+                        setRecipeNewItem((prev) => ({
+                          ...prev,
+                          proteinScope: detectProteinScopeForIngredient(
+                            prev.ingredientId,
+                            ingredients.find((i) => i.id === prev.ingredientId)?.name || '',
+                            pf.id
+                          ),
+                        }));
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs cursor-pointer transition-all border ${
+                      proteinFilter === pf.id
+                        ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                        : 'text-cartoon-ink/70 hover:text-cartoon-ink border-transparent'
+                    }`}
+                  >
+                    {pf.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {currentRecipe.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 font-sub text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                Sin ingredientes asignados. Utilizá el formulario inferior para agregarlos.
+            {visibleRecipeItems.length === 0 ? (
+              <div className="p-6 text-center text-gray-500 font-sub font-semibold text-xs bg-cartoon-cream/40 rounded-2xl border-2 border-dashed border-cartoon-ink/25">
+                Sin ingredientes asignados para esta vista. Utilizá el formulario inferior para agregarlos.
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {currentRecipe.map((recItem) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {visibleRecipeItems.map((recItem) => {
                   const ingInfo =
                     ingredients.find((i) => i.id === recItem.ingredientId) ||
                     ingredients.find(
@@ -576,35 +677,63 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     ? Number(recItem.amountDouble)
                     : simpleVal * 2;
 
+                  const scope = recItem.proteinScope || 'all';
+                  const scopeConfig =
+                    scope === 'carne'
+                      ? {
+                          label: 'Solo Carne',
+                          cls: 'bg-rose-100 text-rose-800 border-rose-300',
+                        }
+                      : scope === 'pollo'
+                      ? {
+                          label: 'Solo Pollo',
+                          cls: 'bg-amber-100 text-amber-900 border-amber-400',
+                        }
+                      : {
+                          label: 'Carne y Pollo (Ambos)',
+                          cls: 'bg-white text-cartoon-ink border-cartoon-ink/30',
+                        };
+
                   return (
                     <div
-                      key={recItem.ingredientId}
-                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between gap-3"
+                      key={`${recItem.ingredientId}-${scope}`}
+                      className="p-3.5 rounded-2xl bg-cartoon-cream/50 border-2 border-cartoon-ink shadow-cartoon-xs flex flex-col justify-between gap-2.5"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-display text-xs sm:text-sm text-slate-900 truncate">
+                        <span className="font-display text-sm text-cartoon-ink truncate">
                           {ingName}
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleRemoveFromRecipe(recItem.ingredientId)}
-                          className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                          onClick={() => handleRemoveFromRecipe(recItem.ingredientId, scope)}
+                          className="text-gray-400 hover:text-cartoon-red cursor-pointer"
                           title="Quitar"
                         >
                           <Icon name="close" size={16} />
                         </button>
                       </div>
 
+                      {/* Badge interactivo de Proteína (Carne / Pollo / Ambos) */}
+                      <button
+                        type="button"
+                        onClick={() => handleCycleProteinScope(recItem.ingredientId, scope)}
+                        className={`py-1 px-2.5 rounded-xl font-sub font-bold text-[11px] flex items-center justify-between cursor-pointer transition-colors border ${scopeConfig.cls}`}
+                        title="Tocá para cambiar si aplica a Carne, Pollo o Ambos"
+                      >
+                        <span>{scopeConfig.label}</span>
+                        <span className="underline text-[10px] ml-2">Cambiar</span>
+                      </button>
+
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-white p-2 rounded-lg border border-slate-200">
-                          <span className="font-sub text-[10px] text-slate-400 block">Simple</span>
-                          <span className="font-display text-xs text-slate-900">
+                        <div className="bg-white p-2 rounded-xl border border-cartoon-ink/20">
+                          <span className="font-sub font-bold text-[10px] text-gray-400 block">Simple</span>
+                          <span className="font-display text-sm text-cartoon-ink">
                             {simpleVal} {unit}
                           </span>
                         </div>
-                        <div className="bg-white p-2 rounded-lg border border-slate-200">
-                          <span className="font-sub text-[10px] text-slate-400 block">Doble</span>
-                          <span className="font-display text-xs text-slate-900">
+                        <div className="bg-white p-2 rounded-xl border border-cartoon-ink/20">
+                          <span className="font-sub font-bold text-[10px] text-gray-400 block">Doble</span>
+                          <span className="font-display text-sm text-cartoon-ink">
                             {doubleVal} {unit}
                           </span>
                         </div>
@@ -612,11 +741,11 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
                       <button
                         type="button"
-                        onClick={() => handleToggleRecipeDoubleRule(recItem.ingredientId)}
-                        className={`py-1.5 px-2.5 rounded-lg font-sub font-semibold text-[11px] flex items-center justify-between cursor-pointer transition-colors border ${
+                        onClick={() => handleToggleRecipeDoubleRule(recItem.ingredientId, scope)}
+                        className={`py-1.5 px-2.5 rounded-xl font-sub font-bold text-[11px] flex items-center justify-between cursor-pointer transition-colors border ${
                           isFixed
-                            ? 'bg-amber-50 text-amber-800 border-amber-200'
-                            : 'bg-blue-50 text-blue-800 border-blue-200'
+                            ? 'bg-amber-50 text-amber-800 border-amber-300'
+                            : 'bg-blue-50 text-blue-800 border-blue-300'
                         }`}
                       >
                         <span>{isFixed ? 'Fijo en Doble (No duplica)' : 'Se duplica en Doble (x2)'}</span>
@@ -631,17 +760,17 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
             {/* Formulario para Agregar Insumo a la Receta */}
             <form
               onSubmit={handleAddIngredientToRecipe}
-              className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3"
+              className="p-4 rounded-2xl bg-cartoon-cream/60 border-2 border-cartoon-ink space-y-3"
             >
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                <div className="sm:col-span-4">
-                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                <div className="sm:col-span-3">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                     Ingrediente
                   </label>
                   <select
                     value={recipeNewItem.ingredientId}
                     onChange={(e) => handleIngredientSelectChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-semibold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   >
                     {ingredients.map((ing) => (
                       <option key={ing.id} value={ing.id}>
@@ -652,8 +781,25 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                 </div>
 
                 <div className="sm:col-span-3">
-                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
-                    Cantidad en Simple
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                    Aplica a (Carne / Pollo)
+                  </label>
+                  <select
+                    value={recipeNewItem.proteinScope}
+                    onChange={(e) =>
+                      setRecipeNewItem((prev) => ({ ...prev, proteinScope: e.target.value }))
+                    }
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                  >
+                    <option value="all">Ambos (Carne y Pollo)</option>
+                    <option value="carne">Solo si pide Carne</option>
+                    <option value="pollo">Solo si pide Pollo</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                    Cant. Simple
                   </label>
                   <input
                     type="number"
@@ -669,13 +815,13 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                         amountDouble: prev.doubleRule === 'duplicate' ? simple * 2 : simple,
                       }));
                     }}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-sub font-semibold text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
-                <div className="sm:col-span-3">
-                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
-                    Comportamiento en Doble
+                <div className="sm:col-span-2">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                    Regla en Doble
                   </label>
                   <select
                     value={recipeNewItem.doubleRule}
@@ -688,18 +834,18 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                         amountDouble: rule === 'duplicate' ? simple * 2 : simple,
                       }));
                     }}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-semibold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   >
-                    <option value="duplicate">Duplicar (x2 - Carne, Queso)</option>
-                    <option value="fixed">Fijo (x1 - Ej: Huevo, Pan)</option>
-                    <option value="custom">Cantidad personalizada</option>
+                    <option value="duplicate">Duplicar (x2)</option>
+                    <option value="fixed">Fijo (x1)</option>
+                    <option value="custom">Personalizado</option>
                   </select>
                 </div>
 
                 <div className="sm:col-span-2">
                   <button
                     type="submit"
-                    className="w-full btn-cartoon-primary py-2 px-3 text-xs"
+                    className="w-full btn-cartoon-primary py-2.5 px-3 text-xs"
                   >
                     Guardar
                   </button>
@@ -708,7 +854,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
               {recipeNewItem.doubleRule === 'custom' && (
                 <div className="pt-2 flex items-center gap-3">
-                  <label className="font-sub font-semibold text-xs text-slate-700">
+                  <label className="font-sub font-bold text-xs text-cartoon-ink">
                     Cantidad en Doble:
                   </label>
                   <input
@@ -720,7 +866,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     onChange={(e) =>
                       setRecipeNewItem((prev) => ({ ...prev, amountDouble: e.target.value }))
                     }
-                    className="w-32 px-3 py-1.5 rounded-lg bg-white border border-slate-300 font-sub font-semibold text-xs text-slate-900"
+                    className="w-32 px-3 py-1.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink"
                   />
                 </div>
               )}
@@ -729,26 +875,26 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
         </div>
       )}
 
-      {/* MODAL CREAR / EDITAR INGREDIENTE (SIMPLIFICADO) */}
+      {/* MODAL CREAR / EDITAR INGREDIENTE (ESTILO CARTOON) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 my-auto animate-modalIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-display text-base text-slate-900">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon overflow-hidden my-auto animate-modalIn">
+            <div className="p-4 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between">
+              <h3 className="font-display text-lg text-cartoon-ink">
                 {editingIngredient ? 'Editar Insumo' : 'Nuevo Insumo'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-white hover:bg-cartoon-cream border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink cursor-pointer"
               >
                 <Icon name="close" size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveIngredient} className="space-y-3.5">
+            <form onSubmit={handleSaveIngredient} className="p-5 space-y-3.5">
               <div>
-                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                   Nombre del Insumo
                 </label>
                 <input
@@ -756,19 +902,19 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   required
                   value={formIngredient.name}
                   onChange={(e) => setFormIngredient({ ...formIngredient, name: e.target.value })}
-                  placeholder="Ej: Pan Brioche, Queso Cheddar"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                  placeholder="Ej: Pan Brioche, Pechuga de Pollo"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                 />
               </div>
 
               <div>
-                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                   Unidad de Medida
                 </label>
                 <select
                   value={formIngredient.unit}
                   onChange={(e) => setFormIngredient({ ...formIngredient, unit: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 bg-white focus:outline-none focus:border-slate-900"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink bg-white focus:outline-none focus:border-cartoon-ink"
                 >
                   {UNITS.map((u) => (
                     <option key={u.value} value={u.value}>
@@ -780,7 +926,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                     Stock Actual
                   </label>
                   <input
@@ -790,12 +936,12 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     required
                     value={formIngredient.stock}
                     onChange={(e) => setFormIngredient({ ...formIngredient, stock: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub font-semibold text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                  <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                     Alerta Mínimo
                   </label>
                   <input
@@ -805,7 +951,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                     required
                     value={formIngredient.minStock}
                     onChange={(e) => setFormIngredient({ ...formIngredient, minStock: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs text-slate-900 focus:outline-none focus:border-slate-900"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
               </div>
@@ -832,10 +978,10 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
       {/* MODAL CONFIRMAR ELIMINACIÓN */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-5 text-center space-y-4 my-auto animate-modalIn">
-            <h3 className="font-display text-sm text-slate-900">Eliminar insumo</h3>
-            <p className="font-sub text-xs text-slate-500">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-xs bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon p-6 text-center space-y-4 my-auto animate-modalIn">
+            <h3 className="font-display text-base text-cartoon-ink">Eliminar insumo</h3>
+            <p className="font-sub text-xs text-gray-600">
               ¿Confirmás eliminar <strong>{deleteCandidate.name}</strong> del inventario?
             </p>
             <div className="flex gap-2 justify-center">

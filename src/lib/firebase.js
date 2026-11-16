@@ -105,6 +105,23 @@ export const getLocalProducts = () => {
   return defaults;
 };
 
+/**
+ * Limpia recursivamente valores `undefined` para evitar rechazos de Firestore en `setDoc`.
+ */
+export const sanitizeForFirestore = (obj) => {
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj instanceof Date) return obj.toISOString();
+  if (Array.isArray(obj)) return obj.map((item) => sanitizeForFirestore(item));
+  const clean = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) {
+      clean[k] = sanitizeForFirestore(v);
+    }
+  }
+  return clean;
+};
+
 // Helper global para verificar si un plato está agotado (por kill-switch directo o por ingrediente agotado)
 export const isProductOutOfStock = (product) => {
   if (!product) return true;
@@ -130,20 +147,36 @@ export const isProductOutOfStock = (product) => {
     }
 
     if (Array.isArray(recipe) && recipe.length > 0) {
+      let hasCarne = false;
+      let carneOk = false;
+      let hasPollo = false;
+      let polloOk = false;
+
       for (const recItem of recipe) {
+        const scope = recItem.proteinScope || 'all';
         const targetId = recItem.ingredientId || '';
         const targetName = (recItem.ingredientName || '').trim().toLowerCase();
         const matched =
           ingList.find((i) => i.id === targetId) ||
           (targetName ? ingList.find((i) => (i.name || '').trim().toLowerCase() === targetName) : null);
 
-        if (matched) {
-          const needed = Number(recItem.amountSimple ?? recItem.amount) || 1;
-          if (matched.outOfStock === true || Number(matched.stock) < needed) {
-            return true;
-          }
+        const needed = Number(recItem.amountSimple ?? recItem.amount) || 1;
+        const isIngOut = matched ? (matched.outOfStock === true || Number(matched.stock) < needed) : false;
+
+        if (scope === 'all') {
+          if (isIngOut) return true;
+        } else if (scope === 'carne') {
+          hasCarne = true;
+          if (!isIngOut) carneOk = true;
+        } else if (scope === 'pollo') {
+          hasPollo = true;
+          if (!isIngOut) polloOk = true;
         }
       }
+
+      if (hasCarne && !hasPollo && !carneOk) return true;
+      if (hasPollo && !hasCarne && !polloOk) return true;
+      if (hasCarne && hasPollo && !carneOk && !polloOk) return true;
     }
   } catch {}
 

@@ -66,6 +66,7 @@ export const CartDrawer = ({
   const [couponError, setCouponError] = useState('');
   const [formData, setFormData] = useState(getInitialFormData);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Ubicación y mapa interactivo (Paso 2)
   const [selectedLocation, setSelectedLocation] = useState(getInitialLocation);
@@ -281,6 +282,7 @@ export const CartDrawer = ({
   // Enviar pedido final con listado organizado completo y enlace de ubicación en Google Maps
   const handleSubmitOrder = async (ev) => {
     if (ev && ev.preventDefault) ev.preventDefault();
+    if (isSubmitting) return;
 
     const e = {};
     if (!formData.name.trim()) e.name = 'Ingresá tu nombre para el pedido';
@@ -387,9 +389,10 @@ export const CartDrawer = ({
     const messageText = L.join('\n');
     const whatsappUrl = buildWhatsAppUrl(RESTAURANT_INFO.phone, messageText);
 
-    // 1. Notificar primero al sistema (descontar ingredientes por variante, registrar ganancia y pedido en Firestore)
-    if (typeof onOrderSuccess === 'function') {
-      try {
+    // 1. Notificar primero al sistema (descontar ingredientes por variante/proteína, registrar ganancia y pedido en Firestore)
+    setIsSubmitting(true);
+    try {
+      if (typeof onOrderSuccess === 'function') {
         await onOrderSuccess({
           customerName: formData.name.trim(),
           phone: cleanPhone,
@@ -414,6 +417,8 @@ export const CartDrawer = ({
               productId: prod.originalId || prod.id,
               originalId: prod.originalId || prod.id,
               name: prod.name,
+              baseName: prod.baseName || prod.name,
+              category: prod.category || '',
               quantity: item.quantity,
               price: prod.price,
               subtotal: prod.price * item.quantity,
@@ -423,12 +428,14 @@ export const CartDrawer = ({
             };
           }),
         });
-      } catch (err) {
-        console.warn('Error en onOrderSuccess:', err);
       }
+    } catch (err) {
+      console.warn('Error en onOrderSuccess:', err);
+    } finally {
+      setIsSubmitting(false);
     }
 
-    // 2. Abrir WhatsApp ahora que el pedido y el stock ya están descontados y persistidos
+    // 2. Abrir WhatsApp ahora que el pedido y el stock ya están descontados y persistidos en la nube
     openWhatsApp(RESTAURANT_INFO.phone, messageText);
 
     setStep('cart');
@@ -1067,10 +1074,13 @@ export const CartDrawer = ({
 
               <button
                 type="submit"
-                className="w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon cursor-pointer transition-transform active:scale-95"
+                disabled={isSubmitting}
+                className={`w-full btn-cartoon-red text-sm sm:text-base py-3 flex items-center justify-center gap-2 shadow-cartoon transition-transform ${
+                  isSubmitting ? 'opacity-70 cursor-wait' : 'cursor-pointer active:scale-95'
+                }`}
               >
-                <Icon name="chat" size={20} />
-                <span>CONFIRMAR PEDIDO Y ABRIR WHATSAPP</span>
+                <Icon name={isSubmitting ? 'sync' : 'chat'} size={20} className={isSubmitting ? 'animate-spin' : ''} />
+                <span>{isSubmitting ? 'REGISTRANDO PEDIDO...' : 'CONFIRMAR PEDIDO Y ABRIR WHATSAPP'}</span>
               </button>
             </div>
           </form>

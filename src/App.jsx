@@ -168,48 +168,45 @@ function StoreApp() {
   };
 
   const handleOrderSuccess = async (orderDetails) => {
-    // 1. Descuento automático e inmediato del stock en el panel y Firestore
-    try {
-      const orderItems =
-        orderDetails?.items && orderDetails.items.length > 0
-          ? orderDetails.items
-          : cartItems.map((item) => ({
-              productId: item.product.originalId || item.product.id,
-              originalId: item.product.originalId || item.product.id,
-              name: item.product.name,
-              quantity: item.quantity,
-              variant: item.product.variant || (item.product.name.toLowerCase().includes('doble') ? 'Doble' : 'Simple'),
-              variantId: item.product.variantId || (item.product.name.toLowerCase().includes('doble') ? 'doble' : 'simple'),
-              protein: item.product.protein || null,
-            }));
+    const orderItems =
+      orderDetails?.items && orderDetails.items.length > 0
+        ? orderDetails.items
+        : cartItems.map((item) => ({
+            productId: item.product.originalId || item.product.id,
+            originalId: item.product.originalId || item.product.id,
+            name: item.product.name,
+            baseName: item.product.baseName || item.product.name,
+            category: item.product.category || '',
+            quantity: item.quantity,
+            variant:
+              item.product.variant ||
+              (item.product.name.toLowerCase().includes('doble') ? 'Doble' : 'Simple'),
+            variantId:
+              item.product.variantId ||
+              (item.product.name.toLowerCase().includes('doble') ? 'doble' : 'simple'),
+            protein: item.product.protein || null,
+          }));
 
-      // Descuento automático del stock de INGREDIENTES que componen los platos pedidos (esperando confirmación en la nube)
-      await deductIngredientsForOrder(orderItems, products);
-    } catch (err) {
-      console.warn('Error descontando stock de ingredientes tras pedido:', err);
-    }
-
-    // 2. Registro automático de la venta en las ganancias del panel y Firestore
-    try {
-      if (orderDetails?.total) {
-        addEarning({
-          amount: orderDetails.total,
-          concept: `Venta WhatsApp: ${orderDetails.customerName || 'Cliente'} (${
-            orderDetails.deliveryType === 'delivery' ? 'Delivery' : 'Retiro'
-          })`,
-          date: new Date().toISOString().split('T')[0],
-        });
-      }
-    } catch (err) {
-      console.warn('Error registrando ganancia automática:', err);
-    }
-
-    // 3. Registro formal en el store de pedidos y Firestore para el sorteo
-    try {
-      addOrder(orderDetails);
-    } catch (err) {
-      console.warn('Error guardando pedido en ordersStore:', err);
-    }
+    // Ejecutar en paralelo y ESPERAR a que los 3 cambios persistan en Firestore antes de redirigir a WhatsApp
+    await Promise.allSettled([
+      deductIngredientsForOrder(orderItems, products).catch((err) => {
+        console.warn('Error descontando stock de ingredientes tras pedido:', err);
+      }),
+      orderDetails?.total
+        ? addEarning({
+            amount: orderDetails.total,
+            concept: `Venta WhatsApp: ${orderDetails.customerName || 'Cliente'} (${
+              orderDetails.deliveryType === 'delivery' ? 'Delivery' : 'Retiro'
+            })`,
+            date: new Date().toISOString().split('T')[0],
+          }).catch((err) => {
+            console.warn('Error registrando ganancia automática:', err);
+          })
+        : Promise.resolve(),
+      addOrder(orderDetails).catch((err) => {
+        console.warn('Error guardando pedido en ordersStore:', err);
+      }),
+    ]);
 
     setIsCartOpen(false);
     setCompletedOrder(orderDetails);

@@ -2,7 +2,7 @@
  * Módulo de Gestión de Pedidos y Participantes del Sorteo para Trico's.
  * Sincronización multi-dispositivo en tiempo real con Firestore, localStorage y BroadcastChannel.
  */
-import { initFirebase } from './firebase';
+import { initFirebase, sanitizeForFirestore } from './firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 const ORDERS_KEY = 'tricos_orders_data';
@@ -138,15 +138,15 @@ export const saveOrders = (orders, syncCloud = true) => {
 };
 
 /**
- * Registra un nuevo pedido y participante en el sorteo
+ * Registra un nuevo pedido y participante en el sorteo (espera confirmación en Firestore)
  */
-export const addOrder = (orderData) => {
+export const addOrder = async (orderData) => {
   const current = getOrders();
   const nextTicketNumber =
     current.reduce((max, o) => Math.max(max, Number(o.ticketNumber) || 1000), 1000) + 1;
 
   const orderId = orderData.id || `order-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-  const newOrder = {
+  const newOrder = sanitizeForFirestore({
     id: orderId,
     ticketNumber: orderData.ticketNumber || nextTicketNumber,
     customerName: (orderData.customerName || 'Cliente').trim(),
@@ -155,33 +155,46 @@ export const addOrder = (orderData) => {
     address: orderData.address || '',
     addressNotes: orderData.addressNotes || '',
     mapUrl: orderData.mapUrl || '',
-    location: orderData.location || null,
+    location: orderData.location
+      ? {
+          lat: Number(orderData.location.lat) || 0,
+          lng: Number(orderData.location.lng) || 0,
+          address: String(orderData.location.address || ''),
+        }
+      : null,
     total: Number(orderData.total || 0),
     paymentMethod: orderData.paymentMethod || 'Efectivo',
     changeAmount: orderData.changeAmount || '',
     notes: orderData.notes || '',
     items: (orderData.items || []).map((it) => ({
+      productId: it.productId || it.originalId || '',
+      originalId: it.originalId || it.productId || '',
       name: it.name || '',
       quantity: Number(it.quantity || 1),
       price: Number(it.price || 0),
       subtotal: Number(it.subtotal || it.price * it.quantity || 0),
+      variant: it.variant || 'Simple',
+      variantId: it.variantId || 'simple',
+      protein: it.protein || null,
     })),
     participatingGiveaway: true,
     createdAt: orderData.createdAt || new Date().toISOString(),
     status: orderData.status || 'pendiente',
     isWinner: false,
     winnerPrize: null,
-  };
+  });
 
   const updated = [newOrder, ...current];
-  saveOrders(updated, true);
+  saveOrders(updated, false);
 
-  // Guardar en Firestore de forma directa
+  // Guardar directamente el nuevo pedido en Firestore y esperar confirmación
   const { isConfigured, db } = initFirebase();
   if (isConfigured && db) {
-    setDoc(doc(db, 'orders', orderId), newOrder, { merge: true }).catch((err) =>
-      console.warn('Error en Firestore addOrder:', err)
-    );
+    try {
+      await setDoc(doc(db, 'orders', orderId), newOrder, { merge: true });
+    } catch (err) {
+      console.warn('Error en Firestore addOrder:', err);
+    }
   }
 
   return newOrder;

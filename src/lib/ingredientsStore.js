@@ -8,8 +8,8 @@
  * - Colección 'promotions': documentos 'inventory' y 'recipes' como canal directo de sincronización
  * - Colección 'products': cada producto sincroniza su propiedad 'recipe'
  */
-import { initFirebase } from './firebase.js';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { initFirebase, sanitizeForFirestore } from './firebase.js';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export const INGREDIENTS_KEY = 'tricos_ingredients_data';
 export const RECIPES_KEY = 'tricos_recipes_data';
@@ -141,106 +141,150 @@ export const DEFAULT_INGREDIENTS = [
 ];
 
 // ============================================================================
-// 2. RECETAS POR DEFECTO CON REGLAS DE VARIANTES (SIMPLE VS DOBLE)
+// 2. RECETAS POR DEFECTO CON REGLAS DE VARIANTES (SIMPLE VS DOBLE) Y PROTEÍNA (CARNE VS POLLO)
 // doubleRule: 'duplicate' (x2 en doble) | 'fixed' (mismo valor, ej: pan o huevo) | 'custom'
+// proteinScope: 'all' (ambas) | 'carne' (solo carne) | 'pollo' (solo pollo)
 // ============================================================================
 export const DEFAULT_RECIPES = {
   'burger-ak47': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-london-cheese': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-barbacoa', ingredientName: 'Salsa Barbacoa Ahumada', amount: 25, amountSimple: 25, amountDouble: 25, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-barbacoa', ingredientName: 'Salsa Barbacoa Ahumada', amount: 25, amountSimple: 25, amountDouble: 25, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-lemon-haze': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-tybo', ingredientName: 'Feta de Queso Tybo Cremoso', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-lechuga-tomate', ingredientName: 'Verduras Frescas (Lechuga y Tomate)', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-tybo', ingredientName: 'Feta de Queso Tybo Cremoso', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-lechuga-tomate', ingredientName: 'Verduras Frescas (Lechuga y Tomate)', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-gorila-glue': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-azul', ingredientName: 'Queso Azul / Roquefort', amount: 40, amountSimple: 40, amountDouble: 80, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-queso-tybo', ingredientName: 'Feta de Queso Tybo Cremoso', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-azul', ingredientName: 'Queso Azul / Roquefort', amount: 40, amountSimple: 40, amountDouble: 80, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-tybo', ingredientName: 'Feta de Queso Tybo Cremoso', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-amnesia': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-guacamole', ingredientName: 'Guacamole Artesanal', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-guacamole', ingredientName: 'Guacamole Artesanal', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-acapulco-gold': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-guacamole', ingredientName: 'Guacamole Artesanal', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed' },
-    { ingredientId: 'ing-doritos', ingredientName: 'Doritos Crocantes', amount: 25, amountSimple: 25, amountDouble: 25, doubleRule: 'fixed' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 3, amountSimple: 3, amountDouble: 6, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-guacamole', ingredientName: 'Guacamole Artesanal', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-doritos', ingredientName: 'Doritos Crocantes', amount: 25, amountSimple: 25, amountDouble: 25, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-gelato-kush': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-london-pepe-kush': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'burger-og-kush': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 300, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 2, amountSimple: 2, amountDouble: 4, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 60, doubleRule: 'duplicate', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 20, amountSimple: 20, amountDouble: 20, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'trico-jr': [
-    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 120, amountSimple: 120, amountDouble: 240, doubleRule: 'duplicate' },
-    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 150, amountSimple: 150, amountDouble: 150, doubleRule: 'fixed' },
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 120, amountSimple: 120, amountDouble: 240, doubleRule: 'duplicate', proteinScope: 'carne' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 120, amountSimple: 120, amountDouble: 240, doubleRule: 'duplicate', proteinScope: 'pollo' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-huevo-frito', ingredientName: 'Huevo de Campo / Frito', amount: 1, amountSimple: 1, amountDouble: 1, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 150, amountSimple: 150, amountDouble: 150, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'trico-pollo-1': [
-    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 300, amountSimple: 300, amountDouble: 300, doubleRule: 'fixed' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 300, amountSimple: 300, amountDouble: 300, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'trico-pollo-2': [
-    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 600, amountSimple: 600, amountDouble: 600, doubleRule: 'fixed' },
-    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 60, amountSimple: 60, amountDouble: 60, doubleRule: 'fixed' },
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 400, amountSimple: 400, amountDouble: 400, doubleRule: 'fixed' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 600, amountSimple: 600, amountDouble: 600, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-alioli', ingredientName: 'Salsa Alioli de la Casa', amount: 60, amountSimple: 60, amountDouble: 60, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 400, amountSimple: 400, amountDouble: 400, doubleRule: 'fixed', proteinScope: 'all' },
   ],
   'porcion-papas-cheddar': [
-    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 400, amountSimple: 400, amountDouble: 400, doubleRule: 'fixed' },
-    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 4, amountSimple: 4, amountDouble: 4, doubleRule: 'fixed' },
-    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 40, amountSimple: 40, amountDouble: 40, doubleRule: 'fixed' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 400, amountSimple: 400, amountDouble: 400, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 4, amountSimple: 4, amountDouble: 4, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 40, amountSimple: 40, amountDouble: 40, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'combo-420': [
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 300, amountSimple: 300, amountDouble: 300, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 2, amountSimple: 2, amountDouble: 2, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 4, amountSimple: 4, amountDouble: 4, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 400, amountSimple: 400, amountDouble: 400, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'combo-carioca': [
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 600, amountSimple: 600, amountDouble: 600, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 4, amountSimple: 4, amountDouble: 4, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 8, amountSimple: 8, amountDouble: 8, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 800, amountSimple: 800, amountDouble: 800, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'combo-zaza': [
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 300, amountSimple: 300, amountDouble: 300, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-pan-brioche', ingredientName: 'Pan Brioche Artesanal', amount: 2, amountSimple: 2, amountDouble: 2, doubleRule: 'fixed', proteinScope: 'all' },
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 400, amountSimple: 400, amountDouble: 400, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'extra-carne': [
+    { ingredientId: 'ing-carne-medallon', ingredientName: 'Carne Vacuna Premium (Tapa de Asado)', amount: 150, amountSimple: 150, amountDouble: 150, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'extra-cheddar': [
+    { ingredientId: 'ing-queso-cheddar', ingredientName: 'Feta de Queso Cheddar Americano', amount: 2, amountSimple: 2, amountDouble: 2, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'extra-panceta': [
+    { ingredientId: 'ing-bacon-ahumado', ingredientName: 'Panceta / Bacon Ahumado Crocante', amount: 30, amountSimple: 30, amountDouble: 30, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'extra-papas': [
+    { ingredientId: 'ing-papas-rusticas', ingredientName: 'Papas Rústicas para Freír', amount: 200, amountSimple: 200, amountDouble: 200, doubleRule: 'fixed', proteinScope: 'all' },
+  ],
+  'extra-trico-pollo': [
+    { ingredientId: 'ing-pollo-crujiente', ingredientName: 'Pechuga de Pollo Marinado y Rebozado', amount: 150, amountSimple: 150, amountDouble: 150, doubleRule: 'fixed', proteinScope: 'all' },
   ],
 };
 
@@ -347,12 +391,13 @@ export const getIngredients = () => {
 };
 
 export const saveIngredients = async (items, shouldSyncCloud = true) => {
+  const cleanItems = sanitizeForFirestore(items || []);
   try {
-    localStorage.setItem(INGREDIENTS_KEY, JSON.stringify(items));
-    window.dispatchEvent(new CustomEvent('tricos_ingredients_sync', { detail: items }));
+    localStorage.setItem(INGREDIENTS_KEY, JSON.stringify(cleanItems));
+    window.dispatchEvent(new CustomEvent('tricos_ingredients_sync', { detail: cleanItems }));
     try {
       const ch = new BroadcastChannel('tricos_ingredients_channel');
-      ch.postMessage(items);
+      ch.postMessage(cleanItems);
       ch.close();
     } catch {}
   } catch (e) {
@@ -363,28 +408,20 @@ export const saveIngredients = async (items, shouldSyncCloud = true) => {
     const { isConfigured, db } = initFirebase();
     if (isConfigured && db) {
       const now = new Date().toISOString();
-      const payload = { items, updatedAt: now };
+      const payload = sanitizeForFirestore({ items: cleanItems, updatedAt: now });
 
-      try {
-        await setDoc(doc(db, 'promotions', 'inventory'), payload, { merge: true });
-      } catch (err) {
-        console.warn('Sync promotions/inventory:', err.message);
-      }
-
-      try {
-        await setDoc(doc(db, 'ingredients', 'main'), payload, { merge: true });
-        if (Array.isArray(items)) {
-          for (const ing of items) {
-            if (ing && ing.id) {
-              setDoc(doc(db, 'ingredients', ing.id), { ...ing, updatedAt: now }, { merge: true }).catch(() => {});
-            }
-          }
-        }
-      } catch {}
-
-      try {
-        setDoc(doc(db, 'inventory', 'ingredients_data'), payload, { merge: true }).catch(() => {});
-      } catch {}
+      await Promise.allSettled([
+        setDoc(doc(db, 'promotions', 'inventory'), payload, { merge: true }),
+        setDoc(doc(db, 'ingredients', 'main'), payload, { merge: true }),
+        setDoc(doc(db, 'inventory', 'ingredients_data'), payload, { merge: true }),
+        ...(Array.isArray(cleanItems)
+          ? cleanItems
+              .filter((ing) => ing && ing.id)
+              .map((ing) =>
+                setDoc(doc(db, 'ingredients', ing.id), { ...ing, updatedAt: now }, { merge: true })
+              )
+          : []),
+      ]);
     }
   }
 };
@@ -534,11 +571,12 @@ export const adjustIngredientStock = (id, delta) => {
   const list = getIngredients();
   const next = list.map((item) => {
     if (item.id === id) {
-      const newStock = Math.max(0, (Number(item.stock) || 0) + Number(delta));
+      const prevStock = Number(item.stock) || 0;
+      const newStock = Math.max(0, prevStock + Number(delta));
       return {
         ...item,
         stock: newStock,
-        outOfStock: newStock <= 0 ? true : item.outOfStock,
+        outOfStock: newStock <= 0 ? true : prevStock <= 0 && newStock > 0 ? false : item.outOfStock,
       };
     }
     return item;
@@ -566,12 +604,13 @@ export const getRecipes = () => {
 };
 
 export const saveRecipes = async (recipes, shouldSyncCloud = true) => {
+  const cleanRecipes = sanitizeForFirestore(recipes || {});
   try {
-    localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes));
-    window.dispatchEvent(new CustomEvent('tricos_recipes_sync', { detail: recipes }));
+    localStorage.setItem(RECIPES_KEY, JSON.stringify(cleanRecipes));
+    window.dispatchEvent(new CustomEvent('tricos_recipes_sync', { detail: cleanRecipes }));
     try {
       const ch = new BroadcastChannel('tricos_recipes_channel');
-      ch.postMessage(recipes);
+      ch.postMessage(cleanRecipes);
       ch.close();
     } catch {}
   } catch (e) {
@@ -582,24 +621,16 @@ export const saveRecipes = async (recipes, shouldSyncCloud = true) => {
     const { isConfigured, db } = initFirebase();
     if (isConfigured && db) {
       const now = new Date().toISOString();
-      const payload = { recipes, updatedAt: now };
+      const payload = sanitizeForFirestore({ recipes: cleanRecipes, updatedAt: now });
 
-      try {
-        await setDoc(doc(db, 'promotions', 'recipes'), payload, { merge: true });
-      } catch (err) {
-        console.warn('Sync promotions/recipes:', err.message);
-      }
-
-      try {
-        await setDoc(doc(db, 'recipes', 'main'), payload, { merge: true });
-        for (const [prodId, items] of Object.entries(recipes)) {
-          setDoc(doc(db, 'recipes', prodId), { productId: prodId, items, updatedAt: now }, { merge: true }).catch(() => {});
-        }
-      } catch {}
-
-      try {
-        setDoc(doc(db, 'inventory', 'recipes_data'), payload, { merge: true }).catch(() => {});
-      } catch {}
+      await Promise.allSettled([
+        setDoc(doc(db, 'promotions', 'recipes'), payload, { merge: true }),
+        setDoc(doc(db, 'recipes', 'main'), payload, { merge: true }),
+        setDoc(doc(db, 'inventory', 'recipes_data'), payload, { merge: true }),
+        ...Object.entries(cleanRecipes).map(([prodId, items]) =>
+          setDoc(doc(db, 'recipes', prodId), { productId: prodId, items, updatedAt: now }, { merge: true })
+        ),
+      ]);
     }
   }
 };
@@ -683,13 +714,50 @@ export const subscribeToRecipes = (callback) => {
 
 export const getProductRecipe = (productId, product = null) => {
   const allRecipes = getRecipes();
+  let rawRecipe = [];
   if (productId && Array.isArray(allRecipes[productId]) && allRecipes[productId].length > 0) {
-    return allRecipes[productId];
+    rawRecipe = allRecipes[productId];
+  } else if (product && Array.isArray(product.recipe) && product.recipe.length > 0) {
+    rawRecipe = product.recipe;
+  } else {
+    rawRecipe = DEFAULT_RECIPES[productId] || [];
   }
-  if (product && Array.isArray(product.recipe) && product.recipe.length > 0) {
-    return product.recipe;
+
+  // Migración suave en lectura: si es un plato con elección Carne/Pollo y la receta heredada aún no tiene scopes
+  if (
+    product?.hasProteinChoice &&
+    Array.isArray(rawRecipe) &&
+    rawRecipe.length > 0 &&
+    !rawRecipe.some((r) => r.proteinScope !== undefined)
+  ) {
+    const carneItem = rawRecipe.find((r) => r.ingredientId === 'ing-carne-medallon');
+    const hasPollo = rawRecipe.some((r) => r.ingredientId === 'ing-pollo-crujiente');
+    if (carneItem && !hasPollo) {
+      const upgraded = [];
+      for (const r of rawRecipe) {
+        if (r.ingredientId === 'ing-carne-medallon') {
+          upgraded.push({
+            ...r,
+            proteinScope: 'carne',
+          });
+          upgraded.push({
+            ...r,
+            ingredientId: 'ing-pollo-crujiente',
+            ingredientName: 'Pechuga de Pollo Marinado y Rebozado',
+            proteinScope: 'pollo',
+          });
+        } else {
+          upgraded.push({
+            ...r,
+            proteinScope: 'all',
+          });
+        }
+      }
+      return upgraded;
+    }
   }
-  return DEFAULT_RECIPES[productId] || [];
+
+  return rawRecipe;
 };
 
 export const setProductRecipe = async (productId, recipeItems) => {
@@ -733,15 +801,33 @@ export const isProductOutOfStockByIngredients = (product, ingredientsList = null
 
   if (!Array.isArray(recipe) || recipe.length === 0) return false;
 
+  let hasCarne = false;
+  let carneOk = false;
+  let hasPollo = false;
+  let polloOk = false;
+
   for (const recItem of recipe) {
+    const scope = recItem.proteinScope || 'all';
     const matchedIng = findMatchingIngredientInList(list, recItem, false);
-    if (matchedIng) {
-      const needed = Number(recItem.amountSimple ?? recItem.amount) || 1;
-      if (matchedIng.outOfStock === true || Number(matchedIng.stock) < needed) {
-        return true;
-      }
+    const needed = Number(recItem.amountSimple ?? recItem.amount) || 1;
+    const isIngOut = matchedIng
+      ? matchedIng.outOfStock === true || Number(matchedIng.stock) < needed
+      : false;
+
+    if (scope === 'all') {
+      if (isIngOut) return true;
+    } else if (scope === 'carne') {
+      hasCarne = true;
+      if (!isIngOut) carneOk = true;
+    } else if (scope === 'pollo') {
+      hasPollo = true;
+      if (!isIngOut) polloOk = true;
     }
   }
+
+  if (hasCarne && !hasPollo && !carneOk) return true;
+  if (hasPollo && !hasCarne && !polloOk) return true;
+  if (hasCarne && hasPollo && !carneOk && !polloOk) return true;
 
   return false;
 };
@@ -752,8 +838,36 @@ export const isProductOutOfStockByIngredients = (product, ingredientsList = null
 export const deductIngredientsForOrder = async (orderItems = [], products = []) => {
   if (!orderItems || orderItems.length === 0) return getIngredients();
 
-  const ingredientsList = getIngredients().map((ing) => ({ ...ing }));
-  const allRecipes = getRecipes();
+  // Intentar sincronizar con el inventario y recetas más recientes de Firestore antes de descontar
+  let liveIngredients = getIngredients();
+  let liveRecipes = getRecipes();
+
+  const { isConfigured, db } = initFirebase();
+  if (isConfigured && db) {
+    try {
+      const [invSnap, recSnap] = await Promise.allSettled([
+        getDoc(doc(db, 'promotions', 'inventory')),
+        getDoc(doc(db, 'promotions', 'recipes')),
+      ]);
+
+      if (invSnap.status === 'fulfilled' && invSnap.value.exists()) {
+        const invData = invSnap.value.data();
+        if (Array.isArray(invData?.items) && invData.items.length > 0) {
+          liveIngredients = invData.items;
+        }
+      }
+
+      if (recSnap.status === 'fulfilled' && recSnap.value.exists()) {
+        const recData = recSnap.value.data();
+        if (recData?.recipes && typeof recData.recipes === 'object') {
+          liveRecipes = { ...DEFAULT_RECIPES, ...recData.recipes };
+        }
+      }
+    } catch {}
+  }
+
+  const ingredientsList = liveIngredients.map((ing) => ({ ...ing }));
+  const allRecipes = liveRecipes;
 
   let anyDeducted = false;
 
@@ -767,7 +881,7 @@ export const deductIngredientsForOrder = async (orderItems = [], products = []) 
 
     // 2. Buscar por prefijo de ID en el mapa de recetas (ej: 'burger-ak47-doble' -> 'burger-ak47')
     if (!recipe) {
-      const prefixKey = Object.keys(allRecipes).find((k) => rawId.startsWith(k));
+      const prefixKey = Object.keys(allRecipes).find((k) => rawId && rawId.startsWith(k));
       if (prefixKey) recipe = allRecipes[prefixKey];
     }
 
@@ -776,7 +890,7 @@ export const deductIngredientsForOrder = async (orderItems = [], products = []) 
       const foundProd = products.find(
         (p) =>
           p.id === rawId ||
-          (p.id && rawId.startsWith(p.id)) ||
+          (p.id && rawId && rawId.startsWith(p.id)) ||
           (p.name && rawName.includes(p.name.toLowerCase()))
       );
       if (foundProd) {
@@ -801,12 +915,26 @@ export const deductIngredientsForOrder = async (orderItems = [], products = []) 
     // Detectar si eligió medallón de pollo
     const isChicken =
       String(item.protein || '').toLowerCase().includes('pollo') ||
-      rawName.includes('[pollo]') ||
-      rawName.includes('pollo crunch');
+      rawName.includes('[pollo') ||
+      rawName.includes('pollo crunch') ||
+      rawName.includes('pollo frito');
 
     if (Array.isArray(recipe) && recipe.length > 0) {
+      const hasExplicitScopes = recipe.some(
+        (r) => r.proteinScope === 'pollo' || r.proteinScope === 'carne'
+      );
+
       recipe.forEach((recItem) => {
-        const targetIng = findMatchingIngredientInList(ingredientsList, recItem, isChicken);
+        const scope = recItem.proteinScope || 'all';
+
+        // Respetar el alcance de proteína (Solo Carne / Solo Pollo / Ambos)
+        if (scope === 'carne' && isChicken) return;
+        if (scope === 'pollo' && !isChicken) return;
+
+        // Si la receta no tiene scopes explícitos (formato anterior), usar intercambio automático carne->pollo
+        const shouldAutoSwap = !hasExplicitScopes && isChicken;
+        const targetIng = findMatchingIngredientInList(ingredientsList, recItem, shouldAutoSwap);
+
         if (targetIng) {
           const unitAmount = getRecipeItemDeduction(recItem, isDouble);
           const totalDeduction = unitAmount * qty;
@@ -828,7 +956,11 @@ export const deductIngredientsForOrder = async (orderItems = [], products = []) 
 
       if (isBurger) {
         const fallbackItems = [
-          { ingredientId: isChicken ? 'ing-pollo-crujiente' : 'ing-carne-medallon', amountSimple: 150, doubleRule: 'duplicate' },
+          {
+            ingredientId: isChicken ? 'ing-pollo-crujiente' : 'ing-carne-medallon',
+            amountSimple: 150,
+            doubleRule: 'duplicate',
+          },
           { ingredientId: 'ing-pan-brioche', amountSimple: 1, doubleRule: 'fixed' },
           { ingredientId: 'ing-queso-cheddar', amountSimple: 2, doubleRule: 'duplicate' },
           { ingredientId: 'ing-papas-rusticas', amountSimple: 200, doubleRule: 'fixed' },
