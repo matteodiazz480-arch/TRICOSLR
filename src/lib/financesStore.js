@@ -3,7 +3,7 @@
  * Sincronización en tiempo real multi-dispositivo y persistencia garantizada en Firestore y localStorage.
  */
 import { initFirebase, flushFirestoreWrites } from './firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from 'firebase/firestore';
 
 const FINANCES_KEY = 'tricos_finances_data';
 
@@ -203,4 +203,35 @@ export const deleteFinanceItem = async (id) => {
   }
 
   return next;
+};
+
+/**
+ * Reinicia completamente todos los movimientos financieros en local y en Firestore
+ */
+export const clearAllFinances = async () => {
+  saveFinances([]);
+  const { isConfigured, db } = initFirebase();
+  if (isConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, 'finances'));
+      const deletions = [];
+      snap.forEach((d) => {
+        deletions.push(deleteDoc(doc(db, 'finances', d.id)));
+      });
+      await Promise.allSettled(deletions);
+      await setDoc(
+        doc(db, 'promotions', 'finances_sync'),
+        {
+          latestItem: null,
+          clearedAt: new Date().toISOString(),
+          totalCount: 0,
+        },
+        { merge: true }
+      );
+      await flushFirestoreWrites(1500);
+    } catch (err) {
+      console.warn('Error limpiando finanzas en Firestore:', err);
+    }
+  }
+  return [];
 };

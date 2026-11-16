@@ -56,8 +56,14 @@ export const CircularTransition = () => {
 
     rafId = requestAnimationFrame(tick);
 
+    // Salvaguarda absoluta: desmontar siempre tras 2.4s incluso si el navegador pausó requestAnimationFrame
+    const safetyTimer = setTimeout(() => {
+      setMounted(false);
+    }, 2400);
+
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      clearTimeout(safetyTimer);
     };
   }, []);
 

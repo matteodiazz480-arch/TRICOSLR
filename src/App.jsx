@@ -13,7 +13,7 @@ import { ProductDetailSection } from './components/ProductDetailSection';
 import { CircularTransition } from './components/CircularTransition';
 import { Icon } from './components/Icon';
 import { ProductsProvider, useProducts } from './context/ProductsContext';
-import { getSession } from './lib/security';
+import { getSession, clearSession } from './lib/security';
 import { addEarning, subscribeToFinances } from './lib/financesStore';
 import { recordOrderInFirestore, isProductOutOfStock, flushFirestoreWrites } from './lib/firebase';
 import { addOrder, subscribeToOrders } from './lib/ordersStore';
@@ -22,14 +22,63 @@ import {
   subscribeToIngredients,
   subscribeToRecipes,
 } from './lib/ingredientsStore';
+import { AdminLogin } from './components/admin/AdminLogin';
 
-// Carga perezosa (lazy-load) para máxima velocidad de la tienda pública
-const AdminLogin = React.lazy(() =>
-  import('./components/admin/AdminLogin').then((m) => ({ default: m.AdminLogin }))
-);
+// Carga perezosa protegida para el panel de administración
 const AdminDashboard = React.lazy(() =>
   import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
 );
+
+// Manejador de errores para evitar cualquier pantalla en blanco
+class AdminErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('Error cargando módulo de administración:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#FFFDF6] flex flex-col items-center justify-center p-6 text-center select-none font-sub">
+          <div className="w-16 h-16 rounded-3xl bg-cartoon-yellow border-3 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center mb-4 text-2xl font-display">
+            !
+          </div>
+          <h2 className="font-display text-xl text-cartoon-ink mb-2">
+            No se pudo cargar el panel
+          </h2>
+          <p className="text-xs sm:text-sm text-gray-600 max-w-sm mb-5 font-semibold">
+            Ocurrió un problema de conexión al cargar la vista. Tocá el botón para reintentar.
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="btn-cartoon-primary text-xs py-2.5 px-4 shadow-cartoon-xs"
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '';
+                window.location.reload();
+              }}
+              className="btn-cartoon-white text-xs py-2.5 px-4"
+            >
+              Ir a la Tienda
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function StoreApp() {
   const { products, updateStock, discountStock } = useProducts();
@@ -221,26 +270,31 @@ function StoreApp() {
     handleClearCart();
   };
 
-  // Si la vista es el Panel Administrador (cargado de forma asíncrona)
+  // Si la vista es el Panel Administrador (con ErrorBoundary para prevenir pantallas en blanco)
   if (view === 'admin') {
     return (
-      <React.Suspense
-        fallback={
-          <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center font-display text-cartoon-ink">
-            <div className="w-10 h-10 border-3 border-cartoon-yellow border-t-cartoon-red rounded-full animate-spin mb-3" />
-            <span className="text-sm">Cargando Panel...</span>
-          </div>
-        }
-      >
+      <AdminErrorBoundary>
         {adminSession ? (
-          <AdminDashboard
-            session={adminSession}
-            onLogout={() => setAdminSession(null)}
-            onGoToStore={() => {
-              window.location.hash = '';
-              setView('store');
-            }}
-          />
+          <React.Suspense
+            fallback={
+              <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center font-display text-cartoon-ink">
+                <div className="w-10 h-10 border-3 border-cartoon-yellow border-t-cartoon-red rounded-full animate-spin mb-3" />
+                <span className="text-sm">Cargando Panel...</span>
+              </div>
+            }
+          >
+            <AdminDashboard
+              session={adminSession}
+              onLogout={() => {
+                clearSession();
+                setAdminSession(null);
+              }}
+              onGoToStore={() => {
+                window.location.hash = '';
+                setView('store');
+              }}
+            />
+          </React.Suspense>
         ) : (
           <AdminLogin
             onLoginSuccess={(sess) => setAdminSession(sess)}
@@ -250,7 +304,7 @@ function StoreApp() {
             }}
           />
         )}
-      </React.Suspense>
+      </AdminErrorBoundary>
     );
   }
 

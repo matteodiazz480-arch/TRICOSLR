@@ -11,6 +11,7 @@ import {
   addEarning,
   addExpense,
   deleteFinanceItem,
+  clearAllFinances,
 } from '../../lib/financesStore';
 import {
   getPromotions,
@@ -133,6 +134,13 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   const handleDeleteFinance = async (id) => {
     setFinances((prev) => prev.filter((item) => item.id !== id));
     await deleteFinanceItem(id);
+  };
+
+  const handleResetBalance = async () => {
+    if (window.confirm('¿Seguro que querés reiniciar el balance a $0? Esto eliminará todos los registros de ingresos y gastos guardados.')) {
+      setFinances([]);
+      await clearAllFinances();
+    }
   };
 
   const filteredProducts = useMemo(() => {
@@ -657,7 +665,19 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs overflow-hidden">
               <div className="px-5 py-4 bg-cartoon-cream/50 border-b-2 border-cartoon-ink/15 flex items-center justify-between">
                 <h4 className="font-display text-base text-cartoon-ink">Últimos Movimientos</h4>
-                <span className="font-sub font-bold text-xs text-gray-500">{finances.length} registros</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-sub font-bold text-xs text-gray-500">{finances.length} registros</span>
+                  {finances.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetBalance}
+                      className="px-2.5 py-1 rounded-xl bg-white border border-cartoon-ink/20 font-sub font-bold text-[11px] text-cartoon-red hover:bg-rose-50 cursor-pointer"
+                      title="Reiniciar balance y vaciar registros a $0"
+                    >
+                      Reiniciar a $0
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="divide-y-2 divide-cartoon-ink/10">

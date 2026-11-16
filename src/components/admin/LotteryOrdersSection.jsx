@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Icon } from '../Icon';
 import { buildWhatsAppUrl } from '../../lib/whatsapp';
 import { DEFAULT_PROMOTIONS_DATA } from '../../lib/promotionsStore';
-import { updateOrderStatus, fetchOrdersFromFirestore } from '../../lib/ordersStore';
+import { updateOrderStatus } from '../../lib/ordersStore';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 
@@ -71,22 +71,9 @@ export const LotteryOrdersSection = ({
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pendiente' | 'preparacion' | 'enviado' | 'winners'
 
   const [toastMessage, setToastMessage] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3200);
-  };
-
-  const handleManualSync = async () => {
-    setIsSyncing(true);
-    try {
-      const fresh = await fetchOrdersFromFirestore();
-      showToast(`Sincronización completa: ${fresh.length} pedidos cargados desde Firebase`);
-    } catch {
-      showToast('Error al conectar con Firebase');
-    } finally {
-      setIsSyncing(false);
-    }
+    setTimeout(() => setToastMessage(''), 2800);
   };
 
   // Modales
@@ -338,36 +325,15 @@ export const LotteryOrdersSection = ({
       {/* Cabecera Simple y Directa */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg sm:text-xl text-slate-900">
-              Pedidos, Estados y Sorteo
-            </h3>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 font-sub font-bold text-[11px]">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>{orders.length} en base de datos</span>
-            </span>
-          </div>
+          <h3 className="font-display text-lg sm:text-xl text-slate-900">
+            Pedidos, Estados y Sorteo
+          </h3>
           <p className="font-sub text-xs text-slate-500 mt-0.5">
-            Gestioná el despacho de cada pedido y sincronizá en tiempo real con Firebase.
+            Gestioná el estado de despacho de cada pedido y realizá el sorteo oficial.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            className="btn-cartoon-white text-xs py-2 px-3 flex items-center gap-1.5"
-            title="Forzar actualización desde Firebase Firestore"
-          >
-            <Icon
-              name="sync"
-              size={15}
-              className={isSyncing ? 'animate-spin text-cartoon-red' : 'text-cartoon-ink'}
-            />
-            <span>{isSyncing ? 'Sincronizando...' : 'Recargar Nube'}</span>
-          </button>
-
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
