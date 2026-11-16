@@ -269,9 +269,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
   const earningsList = finances.filter((f) => f.type === 'earning');
   const expensesList = finances.filter((f) => f.type === 'expense');
-  const pendingOrdersCount = orders.filter(
-    (o) => !o.status || String(o.status).toLowerCase() === 'pendiente'
-  ).length;
+  const pendingOrdersCount = orders.filter((o) => {
+    const s = String(o.status || '').toLowerCase();
+    return !s || s === 'pendiente' || s === 'confirmado';
+  }).length;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-cartoon-ink flex flex-col md:flex-row select-none">
@@ -597,6 +598,31 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               <p className="font-sub font-semibold text-xs sm:text-sm text-gray-500 mt-0.5">
                 Estado general de ingresos, gastos y rentabilidad neta del negocio.
               </p>
+            </div>
+
+            {/* Aviso directo de pedidos en tiempo real con acceso de un clic */}
+            <div className="bg-cartoon-yellow/20 border-2 sm:border-3 border-cartoon-ink rounded-3xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-cartoon-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center flex-shrink-0 shadow-cartoon-xs">
+                  <Icon name="receipt_long" size={20} className="text-cartoon-ink" />
+                </div>
+                <div>
+                  <h4 className="font-display text-sm text-cartoon-ink">
+                    {orders.length} pedidos registrados en Firestore
+                  </h4>
+                  <p className="font-sub font-semibold text-xs text-gray-600">
+                    {pendingOrdersCount} pedidos activos listados en el panel
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('sorteo')}
+                className="btn-cartoon-primary text-xs py-2 px-4 self-start sm:self-auto flex items-center gap-1.5"
+              >
+                <span>Ver pedidos y sorteo</span>
+                <Icon name="arrow_forward" size={14} />
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

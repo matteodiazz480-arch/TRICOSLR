@@ -271,8 +271,11 @@ export const CartDrawer = ({
   const handleProceedFromLocation = () => {
     if (formData.deliveryType === 'delivery') {
       if (!selectedLocation || selectedLocation.lat == null || selectedLocation.lng == null) {
-        setLocationError('Marcá un punto en el mapa para continuar');
-        return;
+        setSelectedLocation({
+          lat: -29.4135,
+          lng: -66.8558,
+          address: 'La Rioja Capital',
+        });
       }
     }
     setLocationError('');
@@ -301,11 +304,15 @@ export const CartDrawer = ({
       return;
     }
 
+    let finalLocation = selectedLocation;
     if (formData.deliveryType === 'delivery') {
-      if (!selectedLocation || selectedLocation.lat == null || selectedLocation.lng == null) {
-        setStep('location');
-        setLocationError('Marcá en el mapa la ubicación de entrega antes de confirmar');
-        return;
+      if (!finalLocation || finalLocation.lat == null || finalLocation.lng == null) {
+        finalLocation = {
+          lat: -29.4135,
+          lng: -66.8558,
+          address: formData.addressNotes?.trim() || 'La Rioja Capital',
+        };
+        setSelectedLocation(finalLocation);
       }
     }
 
@@ -319,13 +326,13 @@ export const CartDrawer = ({
     } catch {}
 
     const googleMapsUrl =
-      formData.deliveryType === 'delivery' && selectedLocation?.lat && selectedLocation?.lng
-        ? buildGoogleMapsUrl(selectedLocation.lat, selectedLocation.lng)
+      formData.deliveryType === 'delivery' && finalLocation?.lat && finalLocation?.lng
+        ? buildGoogleMapsUrl(finalLocation.lat, finalLocation.lng)
         : null;
 
     const displayAddress =
       formData.deliveryType === 'delivery'
-        ? selectedLocation?.address || 'Ubicación seleccionada en el mapa'
+        ? finalLocation?.address || 'Ubicación seleccionada en el mapa'
         : RESTAURANT_INFO.address;
 
     const L = [];

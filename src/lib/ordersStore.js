@@ -3,7 +3,15 @@
  * Sincronización multi-dispositivo en tiempo real con Firestore, localStorage y BroadcastChannel.
  */
 import { initFirebase, sanitizeForFirestore, flushFirestoreWrites } from './firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  getDocs,
+  getDocsFromServer,
+} from 'firebase/firestore';
 
 const ORDERS_KEY = 'tricos_orders_data';
 
@@ -280,10 +288,52 @@ export const toggleOrderWinner = (orderId, prizeTitle = null) => {
 };
 
 /**
- * Subscripción en tiempo real a la lista de pedidos
+ * Consulta directa y forzada a la base de datos Firestore (bypasea cache local)
+ */
+export const fetchOrdersFromFirestore = async () => {
+  const { isConfigured, db } = initFirebase();
+  if (!isConfigured || !db) return getOrders();
+
+  try {
+    const colRef = collection(db, 'orders');
+    let snap;
+    try {
+      snap = await getDocsFromServer(colRef);
+    } catch {
+      snap = await getDocs(colRef);
+    }
+
+    if (snap && !snap.empty) {
+      const list = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        list.push({ ...data, id: d.id });
+      });
+      list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      saveOrders(list, false);
+      return list;
+    }
+  } catch (err) {
+    console.warn('Error en fetchOrdersFromFirestore:', err);
+  }
+  return getOrders();
+};
+
+/**
+ * Subscripción en tiempo real a la lista de pedidos con carga directa garantizada desde Firestore
  */
 export const subscribeToOrders = (callback) => {
+  // Emitir pedidos actuales en memoria/localStorage inmediatamente
   callback(getOrders());
+
+  // Cargar inmediatamente desde Firestore para asegurar que los pedidos reales del servidor aparezcan sin demora
+  fetchOrdersFromFirestore()
+    .then((freshList) => {
+      if (Array.isArray(freshList) && freshList.length > 0) {
+        callback(freshList);
+      }
+    })
+    .catch(() => {});
 
   const syncHandler = (e) => {
     if (e.detail && Array.isArray(e.detail)) callback(e.detail);
@@ -316,15 +366,17 @@ export const subscribeToOrders = (callback) => {
       const unsubCol = onSnapshot(
         colRef,
         (snapshot) => {
-          if (snapshot.empty) return;
+          if (!snapshot) return;
           const list = [];
           snapshot.forEach((d) => {
             const data = d.data();
             list.push({ ...data, id: d.id });
           });
-          list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-          callback(list);
-          saveOrders(list, false);
+          if (list.length > 0) {
+            list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            callback(list);
+            saveOrders(list, false);
+          }
         },
         (err) => {
           console.warn('Firestore orders onSnapshot:', err);
