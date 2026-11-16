@@ -10,6 +10,7 @@ import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { BrandRibbon } from './components/BrandRibbon';
 import { ScallopedMountainDivider } from './components/SectionDividers';
 import { ProductDetailSection } from './components/ProductDetailSection';
+import { CircularTransition } from './components/CircularTransition';
 import { Icon } from './components/Icon';
 import { ProductsProvider, useProducts } from './context/ProductsContext';
 import { getSession } from './lib/security';
@@ -363,6 +364,7 @@ function StoreApp() {
 export function App() {
   return (
     <ProductsProvider>
+      <CircularTransition />
       <StoreApp />
     </ProductsProvider>
   );

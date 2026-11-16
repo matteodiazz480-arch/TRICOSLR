@@ -233,3 +233,23 @@
     drop-shadow(-2px 2px 0 #FFFDF6)
     drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
 }
+
+/* Transición circular sutil y sólida de apertura al entrar */
+@keyframes irisCircularExpand {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-iris-expand {
+  animation: irisCircularExpand 1.25s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  will-change: transform, opacity;
+}

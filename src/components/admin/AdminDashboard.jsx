@@ -438,8 +438,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               </div>
             </div>
 
-            {/* Grilla de Productos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {/* Grilla de Productos (2 columnas en celular, 3 en escritorio) */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-5">
               {filteredProducts.map((prod) => {
                 const isDirectlyPaused = prod.active === false;
                 const isOutByIng = !isDirectlyPaused && isProductOutOfStock(prod);
@@ -451,7 +451,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 return (
                   <div
                     key={prod.id}
-                    className={`bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-4 flex flex-col justify-between gap-3 transition-all ${
+                    className={`bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-2.5 sm:p-4 flex flex-col justify-between gap-2 sm:gap-3 transition-all ${
                       isUnavailable ? 'bg-rose-50/30 border-rose-300' : ''
                     }`}
                   >
@@ -473,7 +473,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       {/* Imagen con opción rápida de cambio */}
                       <div
                         onClick={() => cardFileInputRefs.current[prod.id]?.click()}
-                        className="relative w-full h-38 sm:h-40 rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink/30 overflow-hidden mb-3 cursor-pointer group"
+                        className="relative w-full h-24 sm:h-38 rounded-xl sm:rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink/20 overflow-hidden mb-1.5 sm:mb-3 cursor-pointer group"
                       >
                         {prod.image ? (
                           <img
@@ -483,24 +483,24 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                           />
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                            <Icon name="add_photo_alternate" size={28} />
-                            <span className="font-sub font-bold text-xs mt-1">Subir foto</span>
+                            <Icon name="add_photo_alternate" size={22} className="sm:scale-125" />
+                            <span className="font-sub font-bold text-[10px] sm:text-xs mt-0.5">Subir foto</span>
                           </div>
                         )}
 
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="btn-cartoon-white py-1.5 px-3 text-xs">
-                            {isUploading ? 'Subiendo...' : 'Cambiar foto'}
+                          <span className="btn-cartoon-white py-1 px-2 text-[10px] sm:text-xs">
+                            {isUploading ? '...' : 'Cambiar'}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h4 className="font-display text-base text-cartoon-ink truncate">
+                      <div className="flex items-start justify-between gap-1 sm:gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-display text-xs sm:text-base text-cartoon-ink truncate leading-tight">
                             {prod.name}
                           </h4>
-                          <p className="font-sub text-xs text-gray-500 line-clamp-1 mt-0.5">
+                          <p className="font-sub text-[10px] sm:text-xs text-gray-500 line-clamp-1 mt-0.5">
                             {prod.description || 'Sin descripción'}
                           </p>
                         </div>
@@ -509,9 +509,9 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                         <button
                           type="button"
                           onClick={() => toggleActive(prod.id, prod.active !== false)}
-                          className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs cursor-pointer transition-all flex-shrink-0 border-2 ${
+                          className={`px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-lg sm:rounded-xl font-sub font-bold text-[9px] sm:text-xs cursor-pointer transition-all flex-shrink-0 border-1.5 sm:border-2 ${
                             isUnavailable
-                              ? 'bg-cartoon-red text-white border-cartoon-ink shadow-cartoon-xs'
+                              ? 'bg-cartoon-red text-white border-cartoon-ink'
                               : 'bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200'
                           }`}
                           title="Marcar producto como Agotado o Disponible con un clic"
@@ -519,40 +519,42 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                           {isDirectlyPaused
                             ? 'Agotado'
                             : isOutByIng
-                            ? 'Falta Insumo'
-                            : 'Disponible'}
+                            ? 'Falta'
+                            : 'Activo'}
                         </button>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t-2 border-cartoon-ink/15 flex items-center justify-between gap-2">
-                      <div className="font-display text-base text-cartoon-ink">
+                    <div className="pt-2 sm:pt-3 border-t-1.5 sm:border-t-2 border-cartoon-ink/15 flex items-center justify-between gap-1">
+                      <div className="font-display text-xs sm:text-base text-cartoon-ink truncate">
                         {money(price)}
                         {priceDouble && (
-                          <span className="font-sub text-xs text-gray-500 font-normal ml-1">
-                            / Doble {money(priceDouble)}
+                          <span className="font-sub text-[9px] sm:text-xs text-gray-500 font-normal ml-0.5 block sm:inline">
+                            / 2x {money(priceDouble)}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           type="button"
                           onClick={() => {
                             setEditingProduct(prod);
                             setModalOpen(true);
                           }}
-                          className="btn-cartoon-white py-1.5 px-3 text-xs"
+                          className="btn-cartoon-white py-1 px-1.5 sm:py-1.5 sm:px-3 text-[10px] sm:text-xs"
+                          title="Editar"
                         >
-                          Editar
+                          <span className="hidden sm:inline">Editar</span>
+                          <Icon name="edit" size={13} className="sm:hidden" />
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteCandidate(prod)}
-                          className="p-2 rounded-xl text-gray-400 hover:text-cartoon-red hover:bg-rose-50 border border-transparent hover:border-rose-200 cursor-pointer"
+                          className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl text-gray-400 hover:text-cartoon-red hover:bg-rose-50 cursor-pointer"
                           title="Eliminar de la carta"
                         >
-                          <Icon name="delete" size={17} />
+                          <Icon name="delete" size={14} />
                         </button>
                       </div>
                     </div>
@@ -1079,121 +1081,143 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         </div>
       )}
 
-      {/* NAVEGACIÓN INFERIOR MÓVIL ESTILO CARTOON (5 SLOTS CON BALANCE CENTRAL ELEVADO) */}
+      {/* NAVEGACIÓN INFERIOR MÓVIL ESTILO CARTOON (5 SLOTS CON BALANCE CENTRAL ELEVADO - SIN SOMBRA) */}
       <nav
         aria-label="Navegación móvil"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-3 border-cartoon-ink shadow-[0_-4px_20px_rgba(30,27,24,0.12)] px-2 pt-1 pb-safe"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2.5 border-cartoon-ink pb-safe"
       >
-        <div className="flex items-center justify-between relative max-w-md mx-auto">
+        <div className="grid grid-cols-5 h-16 max-w-lg mx-auto relative px-1">
           {/* Slot 1: Pedidos */}
           <button
             type="button"
             onClick={() => setActiveTab('sorteo')}
-            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
-              activeTab === 'sorteo'
-                ? 'text-cartoon-ink font-bold'
-                : 'text-gray-500 hover:text-cartoon-ink'
+            className={`relative flex flex-col items-center justify-center h-full py-1 cursor-pointer transition-colors ${
+              activeTab === 'sorteo' ? 'text-cartoon-ink' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             <div
-              className={`p-1.5 rounded-xl transition-all ${
+              className={`p-1 rounded-xl transition-all ${
                 activeTab === 'sorteo'
-                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink'
                   : ''
               }`}
             >
               <Icon name="receipt_long" size={20} />
             </div>
-            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Pedidos</span>
+            <span
+              className={`text-[10px] mt-1 whitespace-nowrap leading-none ${
+                activeTab === 'sorteo' ? 'font-display text-cartoon-ink' : 'font-sub font-bold'
+              }`}
+            >
+              Pedidos
+            </span>
           </button>
 
           {/* Slot 2: Carta */}
           <button
             type="button"
             onClick={() => setActiveTab('carta')}
-            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
-              activeTab === 'carta'
-                ? 'text-cartoon-ink font-bold'
-                : 'text-gray-500 hover:text-cartoon-ink'
+            className={`relative flex flex-col items-center justify-center h-full py-1 cursor-pointer transition-colors ${
+              activeTab === 'carta' ? 'text-cartoon-ink' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             <div
-              className={`p-1.5 rounded-xl transition-all ${
+              className={`p-1 rounded-xl transition-all ${
                 activeTab === 'carta'
-                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink'
                   : ''
               }`}
             >
               <Icon name="restaurant_menu" size={20} />
             </div>
-            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Carta</span>
+            <span
+              className={`text-[10px] mt-1 whitespace-nowrap leading-none ${
+                activeTab === 'carta' ? 'font-display text-cartoon-ink' : 'font-sub font-bold'
+              }`}
+            >
+              Carta
+            </span>
           </button>
 
-          {/* Slot 3: BALANCE (BOTÓN CENTRAL DESTACADO SOBRESALIENDO ARRIBA) */}
-          <div className="flex-1 flex flex-col items-center justify-center -mt-7 relative z-10">
+          {/* Slot 3: BALANCE (CENTRAL ELEVADO - TOTALMENTE ALINEADO - SIN SOMBRA) */}
+          <div className="relative flex flex-col items-center justify-end h-full pb-2">
             <button
               type="button"
               onClick={() => setActiveTab('balance')}
               aria-label="Balance Financiero"
-              className={`w-14 h-14 rounded-full flex items-center justify-center border-3 border-cartoon-ink shadow-cartoon transition-all transform active:scale-95 cursor-pointer ${
+              className={`absolute -top-3.5 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full border-2.5 border-cartoon-ink flex items-center justify-center cursor-pointer transition-transform active:scale-95 ${
                 activeTab === 'balance'
-                  ? 'bg-cartoon-yellow text-cartoon-ink ring-4 ring-cartoon-yellow/40 scale-105'
+                  ? 'bg-cartoon-yellow text-cartoon-ink ring-3 ring-cartoon-yellow/30'
                   : 'bg-white text-cartoon-ink hover:bg-cartoon-cream'
               }`}
             >
-              <Icon name="account_balance_wallet" size={24} />
+              <Icon name="account_balance_wallet" size={22} />
             </button>
             <span
-              className={`font-display text-[10px] uppercase font-bold tracking-wider mt-1 ${
-                activeTab === 'balance' ? 'text-cartoon-ink' : 'text-gray-600'
+              className={`text-[10px] whitespace-nowrap leading-none ${
+                activeTab === 'balance'
+                  ? 'font-display text-cartoon-ink'
+                  : 'font-sub font-bold text-gray-500'
               }`}
             >
               Balance
             </span>
           </div>
 
-          {/* Slot 4: Stock / Ingredientes */}
+          {/* Slot 4: Stock */}
           <button
             type="button"
             onClick={() => setActiveTab('ingredientes')}
-            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
-              activeTab === 'ingredientes'
-                ? 'text-cartoon-ink font-bold'
-                : 'text-gray-500 hover:text-cartoon-ink'
+            className={`relative flex flex-col items-center justify-center h-full py-1 cursor-pointer transition-colors ${
+              activeTab === 'ingredientes' ? 'text-cartoon-ink' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             <div
-              className={`p-1.5 rounded-xl transition-all ${
+              className={`p-1 rounded-xl transition-all ${
                 activeTab === 'ingredientes'
-                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink'
                   : ''
               }`}
             >
               <Icon name="inventory_2" size={20} />
             </div>
-            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Stock</span>
+            <span
+              className={`text-[10px] mt-1 whitespace-nowrap leading-none ${
+                activeTab === 'ingredientes' ? 'font-display text-cartoon-ink' : 'font-sub font-bold'
+              }`}
+            >
+              Stock
+            </span>
           </button>
 
           {/* Slot 5: Más */}
           <button
             type="button"
             onClick={() => setIsMoreMenuOpen(true)}
-            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
+            className={`relative flex flex-col items-center justify-center h-full py-1 cursor-pointer transition-colors ${
               ['ganancias', 'gastos', 'promociones'].includes(activeTab) || isMoreMenuOpen
-                ? 'text-cartoon-ink font-bold'
-                : 'text-gray-500 hover:text-cartoon-ink'
+                ? 'text-cartoon-ink'
+                : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             <div
-              className={`p-1.5 rounded-xl transition-all ${
+              className={`p-1 rounded-xl transition-all ${
                 ['ganancias', 'gastos', 'promociones'].includes(activeTab) || isMoreMenuOpen
-                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  ? 'bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink'
                   : ''
               }`}
             >
               <Icon name="more_horiz" size={20} />
             </div>
-            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Más</span>
+            <span
+              className={`text-[10px] mt-1 whitespace-nowrap leading-none ${
+                ['ganancias', 'gastos', 'promociones'].includes(activeTab) || isMoreMenuOpen
+                  ? 'font-display text-cartoon-ink'
+                  : 'font-sub font-bold'
+              }`}
+            >
+              Más
+            </span>
           </button>
         </div>
       </nav>
