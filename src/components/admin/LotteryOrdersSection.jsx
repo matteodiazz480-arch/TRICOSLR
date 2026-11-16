@@ -360,21 +360,21 @@ export const LotteryOrdersSection = ({
       {/* ============================================================== */}
       {/* BARRA DE BÚSQUEDA Y FILTROS VISUALES DE ESTADO */}
       {/* ============================================================== */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="bg-white p-4 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
-            <Icon name="search" size={16} />
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none flex items-center">
+            <Icon name="search" size={18} />
           </div>
           <input
             type="text"
             placeholder="Buscar por cliente, teléfono o N° de ticket..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-sub text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-slate-900"
+            className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-white border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
           />
         </div>
 
-        {/* Filtros de Estado con Colores Sobrios */}
+        {/* Filtros de Estado */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           {[
             { id: 'all', label: `Todos (${statusCounts.all})`, dot: null },
@@ -389,10 +389,10 @@ export const LotteryOrdersSection = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-2 rounded-xl font-sub font-semibold text-xs whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-colors border ${
+                className={`px-3.5 py-2 rounded-2xl font-sub font-bold text-xs whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-all border-2 ${
                   active
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                    : 'bg-white text-cartoon-ink/75 hover:bg-cartoon-cream border-cartoon-ink/20'
                 }`}
               >
                 {tab.dot && <span className={`w-2 h-2 rounded-full ${tab.dot}`} />}
@@ -407,14 +407,14 @@ export const LotteryOrdersSection = ({
       {/* LISTADO LIMPIO DE PEDIDOS Y CLIENTES */}
       {/* ============================================================== */}
       {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-          <p className="font-display text-sm text-slate-900 mb-1">No hay pedidos en esta vista</p>
-          <p className="font-sub text-xs text-slate-500">
+        <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-10 text-center">
+          <p className="font-display text-base text-cartoon-ink mb-1">No hay pedidos en esta vista</p>
+          <p className="font-sub font-semibold text-xs text-gray-500">
             Cambiá el filtro de estado o realizá otra búsqueda.
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {filteredOrders.map((order) => {
             const currentStId = normalizeStatus(order.status);
             const stConfig =
@@ -423,16 +423,16 @@ export const LotteryOrdersSection = ({
             return (
               <div
                 key={order.id}
-                className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:border-slate-300 transition-colors"
+                className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all"
               >
                 {/* Columna Izquierda: Datos del Cliente y Pedido */}
-                <div className="space-y-1 min-w-0 flex-1">
+                <div className="space-y-1.5 min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                    <span className="font-display text-xs px-2.5 py-1 rounded-xl bg-cartoon-cream border-2 border-cartoon-ink/20 text-cartoon-ink">
                       #{order.ticketNumber || '1001'}
                     </span>
 
-                    <h4 className="font-display text-sm sm:text-base text-slate-900 truncate">
+                    <h4 className="font-display text-base text-cartoon-ink truncate">
                       {order.customerName}
                     </h4>
 
@@ -441,7 +441,7 @@ export const LotteryOrdersSection = ({
                         href={buildWhatsAppUrl(order.phone, `Hola ${order.customerName}, te escribimos de Trico's sobre tu pedido.`)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-sub font-semibold text-xs transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-sub font-bold text-xs transition-colors"
                       >
                         <Icon name="call" size={13} />
                         <span>{order.phone}</span>

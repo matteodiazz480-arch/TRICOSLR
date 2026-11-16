@@ -40,7 +40,8 @@ const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   const { products, toggleActive, saveProduct, deleteProduct } = useProducts();
 
-  const [activeTab, setActiveTab] = useState('sorteo');
+  const [activeTab, setActiveTab] = useState('balance');
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const [finances, setFinances] = useState(() => getFinances());
   useEffect(() => {
@@ -270,36 +271,36 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   const expensesList = finances.filter((f) => f.type === 'expense');
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row select-none">
-      {/* BARRA LATERAL ESCRITORIO */}
-      <aside className="hidden md:flex md:w-60 lg:w-64 flex-col bg-white border-r border-slate-200 p-5 justify-between sticky top-0 h-screen">
+    <div className="min-h-screen bg-[#F8F9FA] text-cartoon-ink flex flex-col md:flex-row select-none">
+      {/* BARRA LATERAL ESCRITORIO ESTILO CARTOON */}
+      <aside className="hidden md:flex md:w-60 lg:w-64 flex-col bg-white border-r-3 border-cartoon-ink p-5 justify-between sticky top-0 h-screen shadow-cartoon-xs">
         <div>
-          <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-3 pb-5 border-b-2 border-cartoon-ink/15">
+            <div className="w-11 h-11 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
               <img src="/assets/logo.svg?v=4" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h2 className="font-display text-lg text-slate-900 leading-none">TRICO'S</h2>
-              <span className="font-sub font-semibold text-[10px] text-slate-400 uppercase tracking-wider mt-0.5 block">
-                Administración
+              <h2 className="font-display text-xl text-cartoon-ink leading-none">TRICO'S</h2>
+              <span className="font-sub font-bold text-[11px] text-gray-500 uppercase tracking-wider mt-1 block">
+                Panel de Control
               </span>
             </div>
           </div>
 
-          <nav className="mt-5 space-y-1">
+          <nav className="mt-5 space-y-1.5">
             {navItems.map((item) => {
               const active = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sub font-semibold text-xs transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-sub font-bold text-xs transition-all cursor-pointer border-2 ${
                     active
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display text-sm'
+                      : 'text-cartoon-ink/75 hover:bg-cartoon-cream hover:text-cartoon-ink border-transparent'
                   }`}
                 >
-                  <Icon name={item.icon} size={18} />
+                  <Icon name={item.icon} size={19} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -307,10 +308,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
           </nav>
         </div>
 
-        <div className="space-y-2 pt-4 border-t border-slate-100">
+        <div className="space-y-2 pt-4 border-t-2 border-cartoon-ink/15">
           <button
             onClick={onGoToStore}
-            className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-sub font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            className="btn-cartoon-white w-full py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             <Icon name="storefront" size={16} />
             <span>Ver Tienda</span>
@@ -320,7 +321,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               clearSession();
               onLogout();
             }}
-            className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-sub font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            className="btn-cartoon-red w-full py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             <Icon name="logout" size={16} />
             <span>Cerrar Sesión</span>
@@ -328,19 +329,19 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         </div>
       </aside>
 
-      {/* CABECERA MÓVIL */}
-      <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+      {/* CABECERA MÓVIL ESTILO CARTOON */}
+      <header className="md:hidden bg-white border-b-3 border-cartoon-ink px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 p-0.5 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center">
             <img src="/assets/logo.svg?v=4" alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <span className="font-display text-base text-slate-900">TRICO'S ADMIN</span>
+          <span className="font-display text-base text-cartoon-ink">TRICO'S ADMIN</span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={onGoToStore}
-            className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 font-sub font-semibold text-xs flex items-center gap-1 cursor-pointer"
+            className="btn-cartoon-white px-2.5 py-1.5 text-xs flex items-center gap-1 cursor-pointer"
           >
             <Icon name="storefront" size={15} />
             <span>Tienda</span>
@@ -350,7 +351,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               clearSession();
               onLogout();
             }}
-            className="p-1.5 rounded-lg bg-rose-50 text-rose-600 cursor-pointer"
+            className="btn-cartoon-red p-1.5 rounded-xl cursor-pointer"
             aria-label="Salir"
           >
             <Icon name="logout" size={16} />
@@ -359,7 +360,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
       </header>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-32 md:pb-8 max-w-6xl w-full mx-auto">
         {/* ============================================================== */}
         {/* PESTAÑA: PEDIDOS, ESTADOS Y SORTEO */}
         {/* ============================================================== */}
@@ -377,41 +378,42 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* PESTAÑA: CARTA DE PRODUCTOS CON KILL-SWITCH DE AGOTADO */}
         {/* ============================================================== */}
         {activeTab === 'carta' && (
-          <div className="space-y-5 animate-fadeIn">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="font-display text-lg sm:text-xl text-slate-900">
+                <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink">
                   Carta de Productos
                 </h3>
-                <p className="font-sub text-xs text-slate-500 mt-0.5">
-                  Usá el botón de estado para marcar un producto como Agotado o Disponible con un solo clic.
+                <p className="font-sub font-semibold text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Marcá un plato como Agotado o Disponible con un solo clic. El stock se descuenta de los ingredientes.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   setEditingProduct(null);
                   setModalOpen(true);
                 }}
-                className="btn-cartoon-primary text-xs py-2.5 px-4 self-start sm:self-auto"
+                className="btn-cartoon-primary text-xs sm:text-sm py-2.5 px-4 self-start sm:self-auto flex items-center gap-2"
               >
-                <Icon name="add" size={16} />
+                <Icon name="add" size={18} />
                 <span>Agregar Producto</span>
               </button>
             </div>
 
             {/* Buscador y Filtro de Categoría */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="bg-white p-4 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               <div className="relative flex-1">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
-                  <Icon name="search" size={16} />
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none flex items-center">
+                  <Icon name="search" size={18} />
                 </div>
                 <input
                   type="text"
-                  placeholder="Buscar producto..."
+                  placeholder="Buscar producto en la carta..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-sub text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-slate-900"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-white border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                 />
               </div>
 
@@ -421,11 +423,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   return (
                     <button
                       key={cat.id}
+                      type="button"
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-3 py-1.5 rounded-xl font-sub font-semibold text-xs whitespace-nowrap cursor-pointer transition-colors ${
+                      className={`px-3.5 py-2 rounded-2xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border-2 ${
                         active
-                          ? 'bg-slate-900 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                          : 'bg-white text-cartoon-ink/75 hover:bg-cartoon-cream border-cartoon-ink/20'
                       }`}
                     >
                       {cat.label}
@@ -435,8 +438,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               </div>
             </div>
 
-            {/* Grilla de Productos Limpia */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Grilla de Productos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               {filteredProducts.map((prod) => {
                 const isDirectlyPaused = prod.active === false;
                 const isOutByIng = !isDirectlyPaused && isProductOutOfStock(prod);
@@ -448,8 +451,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 return (
                   <div
                     key={prod.id}
-                    className={`bg-white rounded-2xl border p-4 flex flex-col justify-between gap-3 transition-all ${
-                      isUnavailable ? 'border-rose-200 bg-rose-50/20' : 'border-slate-200'
+                    className={`bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-4 flex flex-col justify-between gap-3 transition-all ${
+                      isUnavailable ? 'bg-rose-50/30 border-rose-300' : ''
                     }`}
                   >
                     <input
@@ -470,7 +473,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       {/* Imagen con opción rápida de cambio */}
                       <div
                         onClick={() => cardFileInputRefs.current[prod.id]?.click()}
-                        className="relative w-full h-36 rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden mb-3 cursor-pointer group"
+                        className="relative w-full h-38 sm:h-40 rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink/30 overflow-hidden mb-3 cursor-pointer group"
                       >
                         {prod.image ? (
                           <img
@@ -479,14 +482,14 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                             className="w-full h-full object-cover object-center"
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                            <Icon name="add_photo_alternate" size={24} />
-                            <span className="font-sub text-[11px] mt-1">Subir foto</span>
+                          <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                            <Icon name="add_photo_alternate" size={28} />
+                            <span className="font-sub font-bold text-xs mt-1">Subir foto</span>
                           </div>
                         )}
 
-                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="px-2.5 py-1 rounded-lg bg-white text-slate-900 font-sub font-semibold text-xs shadow-xs">
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="btn-cartoon-white py-1.5 px-3 text-xs">
                             {isUploading ? 'Subiendo...' : 'Cambiar foto'}
                           </span>
                         </div>
@@ -494,10 +497,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <h4 className="font-display text-sm text-slate-900 truncate">
+                          <h4 className="font-display text-base text-cartoon-ink truncate">
                             {prod.name}
                           </h4>
-                          <p className="font-sub text-xs text-slate-500 line-clamp-1 mt-0.5">
+                          <p className="font-sub text-xs text-gray-500 line-clamp-1 mt-0.5">
                             {prod.description || 'Sin descripción'}
                           </p>
                         </div>
@@ -506,10 +509,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                         <button
                           type="button"
                           onClick={() => toggleActive(prod.id, prod.active !== false)}
-                          className={`px-2.5 py-1 rounded-lg font-sub font-semibold text-[11px] cursor-pointer transition-colors flex-shrink-0 border ${
+                          className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs cursor-pointer transition-all flex-shrink-0 border-2 ${
                             isUnavailable
-                              ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              ? 'bg-cartoon-red text-white border-cartoon-ink shadow-cartoon-xs'
+                              : 'bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200'
                           }`}
                           title="Marcar producto como Agotado o Disponible con un clic"
                         >
@@ -522,34 +525,34 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       </div>
                     </div>
 
-                    <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <div className="font-display text-sm text-slate-900">
+                    <div className="pt-3 border-t-2 border-cartoon-ink/15 flex items-center justify-between gap-2">
+                      <div className="font-display text-base text-cartoon-ink">
                         {money(price)}
                         {priceDouble && (
-                          <span className="font-sub text-xs text-slate-400 font-normal ml-1">
+                          <span className="font-sub text-xs text-gray-500 font-normal ml-1">
                             / Doble {money(priceDouble)}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => {
                             setEditingProduct(prod);
                             setModalOpen(true);
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-sub font-semibold text-xs cursor-pointer"
+                          className="btn-cartoon-white py-1.5 px-3 text-xs"
                         >
                           Editar
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteCandidate(prod)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
-                          title="Eliminar"
+                          className="p-2 rounded-xl text-gray-400 hover:text-cartoon-red hover:bg-rose-50 border border-transparent hover:border-rose-200 cursor-pointer"
+                          title="Eliminar de la carta"
                         >
-                          <Icon name="delete" size={15} />
+                          <Icon name="delete" size={17} />
                         </button>
                       </div>
                     </div>
@@ -576,76 +579,84 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {activeTab === 'balance' && (
           <div className="space-y-6 animate-fadeIn">
             <div>
-              <h3 className="font-display text-lg sm:text-xl text-slate-900">
+              <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink">
                 Resumen Financiero
               </h3>
-              <p className="font-sub text-xs text-slate-500 mt-0.5">
-                Estado general de ingresos, gastos y rentabilidad neta.
+              <p className="font-sub font-semibold text-xs sm:text-sm text-gray-500 mt-0.5">
+                Estado general de ingresos, gastos y rentabilidad neta del negocio.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200">
-                <span className="font-sub font-semibold text-xs text-slate-500 uppercase">
+              <div className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs">
+                <span className="font-sub font-bold text-xs text-emerald-700 uppercase tracking-wider block">
                   Ingresos Totales
                 </span>
-                <p className="font-display text-2xl text-emerald-600 mt-1">
+                <p className="font-display text-3xl sm:text-4xl text-emerald-600 mt-1">
                   {money(financialTotals.totalEarnings)}
                 </p>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200">
-                <span className="font-sub font-semibold text-xs text-slate-500 uppercase">
+              <div className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs">
+                <span className="font-sub font-bold text-xs text-rose-700 uppercase tracking-wider block">
                   Gastos Totales
                 </span>
-                <p className="font-display text-2xl text-rose-600 mt-1">
+                <p className="font-display text-3xl sm:text-4xl text-cartoon-red mt-1">
                   {money(financialTotals.totalExpenses)}
                 </p>
               </div>
 
-              <div className="bg-slate-900 text-white p-5 rounded-2xl">
-                <span className="font-sub font-semibold text-xs text-slate-400 uppercase">
+              <div className="bg-cartoon-yellow text-cartoon-ink p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon">
+                <span className="font-sub font-bold text-xs text-cartoon-ink/80 uppercase tracking-wider block">
                   Balance Neto
                 </span>
-                <p className="font-display text-2xl mt-1">
+                <p className="font-display text-3xl sm:text-4xl text-cartoon-ink mt-1">
                   {money(financialTotals.netBalance)}
                 </p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h4 className="font-display text-sm text-slate-900">Últimos Movimientos</h4>
-                <span className="font-sub text-xs text-slate-400">{finances.length} registros</span>
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs overflow-hidden">
+              <div className="px-5 py-4 bg-cartoon-cream/50 border-b-2 border-cartoon-ink/15 flex items-center justify-between">
+                <h4 className="font-display text-base text-cartoon-ink">Últimos Movimientos</h4>
+                <span className="font-sub font-bold text-xs text-gray-500">{finances.length} registros</span>
               </div>
 
-              <div className="divide-y divide-slate-100">
-                {finances.slice(0, 12).map((item) => (
-                  <div key={item.id} className="px-5 py-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-sub font-semibold text-xs text-slate-900 truncate">
-                        {item.concept}
-                      </p>
-                      <span className="font-sub text-[11px] text-slate-400">{item.date}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`font-display text-xs sm:text-sm ${
-                          item.type === 'earning' ? 'text-emerald-600' : 'text-rose-600'
-                        }`}
-                      >
-                        {item.type === 'earning' ? '+' : '-'}
-                        {money(item.amount)}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteFinance(item.id)}
-                        className="text-slate-300 hover:text-rose-600 cursor-pointer"
-                      >
-                        <Icon name="delete" size={15} />
-                      </button>
-                    </div>
+              <div className="divide-y-2 divide-cartoon-ink/10">
+                {finances.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400 font-sub text-sm">
+                    No hay movimientos financieros registrados aún.
                   </div>
-                ))}
+                ) : (
+                  finances.slice(0, 12).map((item) => (
+                    <div key={item.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-sub font-bold text-sm text-cartoon-ink truncate">
+                          {item.concept}
+                        </p>
+                        <span className="font-sub text-xs text-gray-400">{item.date}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`font-display text-sm sm:text-base ${
+                            item.type === 'earning' ? 'text-emerald-600' : 'text-cartoon-red'
+                          }`}
+                        >
+                          {item.type === 'earning' ? '+' : '-'}
+                          {money(item.amount)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFinance(item.id)}
+                          className="text-gray-300 hover:text-cartoon-red p-1 cursor-pointer transition-colors"
+                          title="Eliminar movimiento"
+                        >
+                          <Icon name="delete" size={17} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -656,14 +667,14 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* ============================================================== */}
         {activeTab === 'ganancias' && (
           <div className="space-y-6 animate-fadeIn">
-            <h3 className="font-display text-lg sm:text-xl text-slate-900">Registro de Ingresos</h3>
+            <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink">Registro de Ingresos</h3>
 
             <form
               onSubmit={handleAddEarningSubmit}
-              className="bg-white p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end"
+              className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs grid grid-cols-1 sm:grid-cols-4 gap-3.5 items-end"
             >
               <div>
-                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                   Monto ($)
                 </label>
                 <input
@@ -672,11 +683,11 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   value={earningForm.amount}
                   onChange={(e) => setEarningForm({ ...earningForm, amount: e.target.value })}
                   placeholder="0"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                   Concepto
                 </label>
                 <input
@@ -684,33 +695,41 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   required
                   value={earningForm.concept}
                   onChange={(e) => setEarningForm({ ...earningForm, concept: e.target.value })}
-                  placeholder="Ej: Venta en local"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                  placeholder="Ej: Venta presencial o evento"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                 />
               </div>
-              <button type="submit" className="btn-cartoon-green py-2 text-xs">
+              <button type="submit" className="btn-cartoon-green py-2.5 text-xs sm:text-sm">
                 Registrar Ingreso
               </button>
             </form>
 
-            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
-              {earningsList.map((item) => (
-                <div key={item.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-sub font-semibold text-xs text-slate-900">{item.concept}</p>
-                    <span className="font-sub text-[11px] text-slate-400">{item.date}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-display text-sm text-emerald-600">+{money(item.amount)}</span>
-                    <button
-                      onClick={() => handleDeleteFinance(item.id)}
-                      className="text-slate-300 hover:text-rose-600 cursor-pointer"
-                    >
-                      <Icon name="delete" size={15} />
-                    </button>
-                  </div>
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs divide-y-2 divide-cartoon-ink/10">
+              {earningsList.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 font-sub text-sm">
+                  No hay ingresos cargados.
                 </div>
-              ))}
+              ) : (
+                earningsList.map((item) => (
+                  <div key={item.id} className="px-5 py-3.5 flex items-center justify-between">
+                    <div>
+                      <p className="font-sub font-bold text-sm text-cartoon-ink">{item.concept}</p>
+                      <span className="font-sub text-xs text-gray-400">{item.date}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-display text-base text-emerald-600">+{money(item.amount)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFinance(item.id)}
+                        className="text-gray-300 hover:text-cartoon-red p-1 cursor-pointer transition-colors"
+                        title="Eliminar"
+                      >
+                        <Icon name="delete" size={17} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -720,14 +739,14 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {/* ============================================================== */}
         {activeTab === 'gastos' && (
           <div className="space-y-6 animate-fadeIn">
-            <h3 className="font-display text-lg sm:text-xl text-slate-900">Registro de Gastos</h3>
+            <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink">Registro de Gastos</h3>
 
             <form
               onSubmit={handleAddExpenseSubmit}
-              className="bg-white p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end"
+              className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs grid grid-cols-1 sm:grid-cols-4 gap-3.5 items-end"
             >
               <div>
-                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                   Monto ($)
                 </label>
                 <input
@@ -736,11 +755,11 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   value={expenseForm.amount}
                   onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
                   placeholder="0"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block font-sub font-semibold text-xs text-slate-700 mb-1">
+                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                   Concepto
                 </label>
                 <input
@@ -748,33 +767,41 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                   required
                   value={expenseForm.concept}
                   onChange={(e) => setExpenseForm({ ...expenseForm, concept: e.target.value })}
-                  placeholder="Ej: Compra de insumos, packaging"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                  placeholder="Ej: Compra de insumos, packaging, etc."
+                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                 />
               </div>
-              <button type="submit" className="btn-cartoon-red py-2 text-xs">
+              <button type="submit" className="btn-cartoon-red py-2.5 text-xs sm:text-sm">
                 Registrar Gasto
               </button>
             </form>
 
-            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
-              {expensesList.map((item) => (
-                <div key={item.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-sub font-semibold text-xs text-slate-900">{item.concept}</p>
-                    <span className="font-sub text-[11px] text-slate-400">{item.date}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-display text-sm text-rose-600">-{money(item.amount)}</span>
-                    <button
-                      onClick={() => handleDeleteFinance(item.id)}
-                      className="text-slate-300 hover:text-rose-600 cursor-pointer"
-                    >
-                      <Icon name="delete" size={15} />
-                    </button>
-                  </div>
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs divide-y-2 divide-cartoon-ink/10">
+              {expensesList.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 font-sub text-sm">
+                  No hay gastos cargados.
                 </div>
-              ))}
+              ) : (
+                expensesList.map((item) => (
+                  <div key={item.id} className="px-5 py-3.5 flex items-center justify-between">
+                    <div>
+                      <p className="font-sub font-bold text-sm text-cartoon-ink">{item.concept}</p>
+                      <span className="font-sub text-xs text-gray-400">{item.date}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-display text-base text-cartoon-red">-{money(item.amount)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFinance(item.id)}
+                        className="text-gray-300 hover:text-cartoon-red p-1 cursor-pointer transition-colors"
+                        title="Eliminar"
+                      >
+                        <Icon name="delete" size={17} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -785,59 +812,59 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         {activeTab === 'promociones' && (
           <div className="space-y-6 animate-fadeIn">
             <div>
-              <h3 className="font-display text-lg sm:text-xl text-slate-900">
+              <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink">
                 Configuración de Sorteo y Cupones
               </h3>
-              <p className="font-sub text-xs text-slate-500 mt-0.5">
-                Administrá la visibilidad del sorteo en la tienda y los códigos de descuento.
+              <p className="font-sub font-semibold text-xs sm:text-sm text-gray-500 mt-0.5">
+                Administrá el sorteo de la tienda y creá cupones de descuento.
               </p>
             </div>
 
             {promoMessage && (
-              <div className="p-3 rounded-xl bg-slate-900 text-white font-sub text-xs flex items-center gap-2">
-                <Icon name="check_circle" size={16} className="text-emerald-400" />
+              <div className="p-3.5 rounded-2xl bg-cartoon-yellow text-cartoon-ink border-2 border-cartoon-ink shadow-cartoon-xs font-sub font-bold text-xs flex items-center gap-2">
+                <Icon name="check_circle" size={18} />
                 <span>{promoMessage}</span>
               </div>
             )}
 
             {/* Configuración del Sorteo */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-5 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3.5 border-b-2 border-cartoon-ink/15">
                 <div>
-                  <h4 className="font-display text-base text-slate-900">Sorteo Oficial</h4>
-                  <span className="font-sub text-xs text-slate-500">
-                    Visible en la página principal de la tienda
+                  <h4 className="font-display text-lg text-cartoon-ink">Sorteo Oficial</h4>
+                  <span className="font-sub text-xs text-gray-500">
+                    Visible en la página principal y conectado con la ruleta
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleToggleGiveawayActive}
-                  className={`px-3 py-1.5 rounded-xl font-sub font-semibold text-xs cursor-pointer border ${
+                  className={`px-3.5 py-1.5 rounded-2xl font-sub font-bold text-xs cursor-pointer border-2 transition-all ${
                     giveawayForm.active
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-400'
+                      : 'bg-gray-100 text-gray-500 border-gray-300'
                   }`}
                 >
                   {giveawayForm.active ? 'Sorteo Activo' : 'Sorteo Pausado'}
                 </button>
               </div>
 
-              <form onSubmit={handleSaveGiveawaySubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleSaveGiveawaySubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="font-sub font-semibold text-xs text-slate-700 block mb-1">
+                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
                     Título del Sorteo
                   </label>
                   <input
                     type="text"
                     value={giveawayForm.title}
                     onChange={(e) => setGiveawayForm({ ...giveawayForm, title: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="font-sub font-semibold text-xs text-slate-700 block mb-1">
+                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
                     Fecha del Sorteo
                   </label>
                   <div className="flex gap-2">
@@ -845,9 +872,9 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       type="text"
                       value={giveawayForm.drawDate}
                       onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                      className="flex-1 px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                     />
-                    <button type="submit" className="btn-cartoon-primary py-2 px-4 text-xs">
+                    <button type="submit" className="btn-cartoon-primary py-2.5 px-4 text-xs">
                       Guardar
                     </button>
                   </div>
@@ -856,12 +883,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             </div>
 
             {/* Cupones de Descuento */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-              <h4 className="font-display text-base text-slate-900">Cupones de Descuento</h4>
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-5 sm:p-6 space-y-4">
+              <h4 className="font-display text-lg text-cartoon-ink">Cupones de Descuento</h4>
 
-              <form onSubmit={handleAddCouponSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+              <form onSubmit={handleAddCouponSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3.5 items-end">
                 <div>
-                  <label className="font-sub font-semibold text-xs text-slate-700 block mb-1">
+                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
                     Código
                   </label>
                   <input
@@ -870,12 +897,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                     value={couponForm.code}
                     onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
                     placeholder="TRICO10"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs uppercase"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink uppercase focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="font-sub font-semibold text-xs text-slate-700 block mb-1">
+                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
                     Descuento (%)
                   </label>
                   <input
@@ -885,12 +912,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                     required
                     value={couponForm.discount}
                     onChange={(e) => setCouponForm({ ...couponForm, discount: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="font-sub font-semibold text-xs text-slate-700 block mb-1">
+                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
                     Descripción
                   </label>
                   <input
@@ -898,30 +925,30 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                     value={couponForm.label}
                     onChange={(e) => setCouponForm({ ...couponForm, label: e.target.value })}
                     placeholder="Descuento especial"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-sub text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
-                <button type="submit" className="btn-cartoon-primary py-2 text-xs">
+                <button type="submit" className="btn-cartoon-primary py-2.5 text-xs sm:text-sm">
                   Crear Cupón
                 </button>
               </form>
 
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y-2 divide-cartoon-ink/10">
                 {(promoData?.coupons || []).map((c) => (
-                  <div key={c.code} className="py-3 flex items-center justify-between">
+                  <div key={c.code} className="py-3.5 flex items-center justify-between">
                     <div>
-                      <span className="font-display text-xs text-slate-900">{c.code}</span>
-                      <span className="font-sub text-xs text-slate-500 ml-2">{c.label}</span>
+                      <span className="font-display text-sm text-cartoon-ink">{c.code}</span>
+                      <span className="font-sub text-xs text-gray-500 ml-2">{c.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => toggleCouponActive(c.code)}
-                        className={`px-2.5 py-1 rounded-lg font-sub font-semibold text-[11px] cursor-pointer ${
+                        className={`px-3 py-1 rounded-xl font-sub font-bold text-xs cursor-pointer border ${
                           c.active !== false
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-slate-100 text-slate-500'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : 'bg-gray-100 text-gray-500 border-gray-300'
                         }`}
                       >
                         {c.active !== false ? 'Activo' : 'Pausado'}
@@ -929,9 +956,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                       <button
                         type="button"
                         onClick={() => deleteCoupon(c.code)}
-                        className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                        className="text-gray-300 hover:text-cartoon-red p-1 cursor-pointer transition-colors"
+                        title="Eliminar cupón"
                       >
-                        <Icon name="delete" size={15} />
+                        <Icon name="delete" size={17} />
                       </button>
                     </div>
                   </div>
@@ -942,28 +970,232 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         )}
       </main>
 
-      {/* NAVEGACIÓN INFERIOR MÓVIL */}
+      {/* DRAWER / MODAL "MÁS" PARA MÓVIL ESTILO CARTOON */}
+      {isMoreMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn"
+          onClick={() => setIsMoreMenuOpen(false)}
+        >
+          <div
+            className="bg-white rounded-t-3xl border-t-3 border-x-3 border-cartoon-ink p-5 pb-8 space-y-3.5 shadow-2xl animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b-2 border-cartoon-ink/15">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-cartoon-yellow border-2 border-cartoon-ink flex items-center justify-center">
+                  <Icon name="apps" size={18} className="text-cartoon-ink" />
+                </div>
+                <span className="font-display text-lg text-cartoon-ink">Más opciones</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMoreMenuOpen(false)}
+                className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 border-2 border-cartoon-ink flex items-center justify-center text-cartoon-ink cursor-pointer"
+              >
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              {[
+                {
+                  id: 'ganancias',
+                  label: 'Ingresos',
+                  desc: 'Registros y entradas manuales',
+                  icon: 'trending_up',
+                  color: 'text-emerald-700 bg-emerald-50 border-emerald-300',
+                },
+                {
+                  id: 'gastos',
+                  label: 'Gastos',
+                  desc: 'Control de compras y costos',
+                  icon: 'trending_down',
+                  color: 'text-rose-700 bg-rose-50 border-rose-300',
+                },
+                {
+                  id: 'promociones',
+                  label: 'Promos & Sorteo',
+                  desc: 'Premios, ruleta y cupones',
+                  icon: 'campaign',
+                  color: 'text-amber-800 bg-amber-50 border-amber-300',
+                },
+              ].map((item) => {
+                const active = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsMoreMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                      active
+                        ? 'bg-cartoon-yellow border-cartoon-ink shadow-cartoon-xs text-cartoon-ink font-display'
+                        : 'bg-white border-cartoon-ink/20 hover:border-cartoon-ink text-cartoon-ink font-sub font-bold'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center ${item.color}`}>
+                        <Icon name={item.icon} size={20} />
+                      </div>
+                      <div className="text-left">
+                        <span className="font-display text-sm block leading-tight">{item.label}</span>
+                        <span className="font-sub text-xs text-gray-500 font-normal">{item.desc}</span>
+                      </div>
+                    </div>
+                    <Icon name="chevron_right" size={18} className="text-gray-400" />
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-3 border-t-2 border-cartoon-ink/15 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  onGoToStore();
+                }}
+                className="btn-cartoon-white py-2.5 px-3 text-xs flex items-center justify-center gap-1.5"
+              >
+                <Icon name="storefront" size={16} />
+                <span>Ver Tienda</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  clearSession();
+                  onLogout();
+                }}
+                className="btn-cartoon-red py-2.5 px-3 text-xs flex items-center justify-center gap-1.5"
+              >
+                <Icon name="logout" size={16} />
+                <span>Cerrar Sesión</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NAVEGACIÓN INFERIOR MÓVIL ESTILO CARTOON (5 SLOTS CON BALANCE CENTRAL ELEVADO) */}
       <nav
         aria-label="Navegación móvil"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 flex items-center gap-1 overflow-x-auto no-scrollbar py-2 px-2 shadow-lg"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-3 border-cartoon-ink shadow-[0_-4px_20px_rgba(30,27,24,0.12)] px-2 pt-1 pb-safe"
       >
-        {navItems.map((item) => {
-          const active = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all cursor-pointer flex-shrink-0 ${
-                active
-                  ? 'text-white bg-slate-900 font-semibold'
-                  : 'text-slate-500 hover:text-slate-900'
+        <div className="flex items-center justify-between relative max-w-md mx-auto">
+          {/* Slot 1: Pedidos */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('sorteo')}
+            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
+              activeTab === 'sorteo'
+                ? 'text-cartoon-ink font-bold'
+                : 'text-gray-500 hover:text-cartoon-ink'
+            }`}
+          >
+            <div
+              className={`p-1.5 rounded-xl transition-all ${
+                activeTab === 'sorteo'
+                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  : ''
               }`}
             >
-              <Icon name={item.icon} size={17} />
-              <span className="font-sub text-[10px] mt-0.5 whitespace-nowrap">{item.label}</span>
+              <Icon name="receipt_long" size={20} />
+            </div>
+            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Pedidos</span>
+          </button>
+
+          {/* Slot 2: Carta */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('carta')}
+            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
+              activeTab === 'carta'
+                ? 'text-cartoon-ink font-bold'
+                : 'text-gray-500 hover:text-cartoon-ink'
+            }`}
+          >
+            <div
+              className={`p-1.5 rounded-xl transition-all ${
+                activeTab === 'carta'
+                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  : ''
+              }`}
+            >
+              <Icon name="restaurant_menu" size={20} />
+            </div>
+            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Carta</span>
+          </button>
+
+          {/* Slot 3: BALANCE (BOTÓN CENTRAL DESTACADO SOBRESALIENDO ARRIBA) */}
+          <div className="flex-1 flex flex-col items-center justify-center -mt-7 relative z-10">
+            <button
+              type="button"
+              onClick={() => setActiveTab('balance')}
+              aria-label="Balance Financiero"
+              className={`w-14 h-14 rounded-full flex items-center justify-center border-3 border-cartoon-ink shadow-cartoon transition-all transform active:scale-95 cursor-pointer ${
+                activeTab === 'balance'
+                  ? 'bg-cartoon-yellow text-cartoon-ink ring-4 ring-cartoon-yellow/40 scale-105'
+                  : 'bg-white text-cartoon-ink hover:bg-cartoon-cream'
+              }`}
+            >
+              <Icon name="account_balance_wallet" size={24} />
             </button>
-          );
-        })}
+            <span
+              className={`font-display text-[10px] uppercase font-bold tracking-wider mt-1 ${
+                activeTab === 'balance' ? 'text-cartoon-ink' : 'text-gray-600'
+              }`}
+            >
+              Balance
+            </span>
+          </div>
+
+          {/* Slot 4: Stock / Ingredientes */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('ingredientes')}
+            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
+              activeTab === 'ingredientes'
+                ? 'text-cartoon-ink font-bold'
+                : 'text-gray-500 hover:text-cartoon-ink'
+            }`}
+          >
+            <div
+              className={`p-1.5 rounded-xl transition-all ${
+                activeTab === 'ingredientes'
+                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  : ''
+              }`}
+            >
+              <Icon name="inventory_2" size={20} />
+            </div>
+            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Stock</span>
+          </button>
+
+          {/* Slot 5: Más */}
+          <button
+            type="button"
+            onClick={() => setIsMoreMenuOpen(true)}
+            className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer flex-1 ${
+              ['ganancias', 'gastos', 'promociones'].includes(activeTab) || isMoreMenuOpen
+                ? 'text-cartoon-ink font-bold'
+                : 'text-gray-500 hover:text-cartoon-ink'
+            }`}
+          >
+            <div
+              className={`p-1.5 rounded-xl transition-all ${
+                ['ganancias', 'gastos', 'promociones'].includes(activeTab) || isMoreMenuOpen
+                  ? 'bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs'
+                  : ''
+              }`}
+            >
+              <Icon name="more_horiz" size={20} />
+            </div>
+            <span className="font-sub font-bold text-[10px] mt-0.5 whitespace-nowrap">Más</span>
+          </button>
+        </div>
       </nav>
 
       {/* Modal Producto */}
@@ -979,20 +1211,22 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
       {/* Modal Confirmar Borrado de Producto */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-5 text-center space-y-4 my-auto animate-modalIn">
-            <h3 className="font-display text-sm text-slate-900">Eliminar producto</h3>
-            <p className="font-sub text-xs text-slate-500">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="relative w-full max-w-xs bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon p-6 text-center space-y-4 my-auto animate-modalIn">
+            <h3 className="font-display text-base text-cartoon-ink">Eliminar producto</h3>
+            <p className="font-sub text-xs text-gray-600">
               ¿Confirmás eliminar <strong>{deleteCandidate.name}</strong> de la carta?
             </p>
-            <div className="flex gap-2 justify-center">
+            <div className="flex gap-2 justify-center pt-2">
               <button
+                type="button"
                 onClick={() => setDeleteCandidate(null)}
                 className="btn-cartoon-white py-2 px-4 text-xs"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={() => {
                   deleteProduct(deleteCandidate.id);
                   setDeleteCandidate(null);

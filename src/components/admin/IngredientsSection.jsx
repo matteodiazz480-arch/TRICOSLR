@@ -313,30 +313,30 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border-2 border-cartoon-ink shadow-cartoon-xs self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setSubTab('inventario')}
-            className={`px-3.5 py-2 rounded-lg font-sub font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
+            className={`px-3.5 py-2 rounded-xl font-sub font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all border-2 ${
               subTab === 'inventario'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                : 'text-cartoon-ink/75 hover:bg-cartoon-cream border-transparent'
             }`}
           >
-            <Icon name="inventory_2" size={15} />
+            <Icon name="inventory_2" size={16} />
             <span>Stock de Insumos</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubTab('recetas')}
-            className={`px-3.5 py-2 rounded-lg font-sub font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
+            className={`px-3.5 py-2 rounded-xl font-sub font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all border-2 ${
               subTab === 'recetas'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                : 'text-cartoon-ink/75 hover:bg-cartoon-cream border-transparent'
             }`}
           >
-            <Icon name="menu_book" size={15} />
+            <Icon name="menu_book" size={16} />
             <span>Recetas (Simple / Doble)</span>
           </button>
         </div>
@@ -348,17 +348,17 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
       {subTab === 'inventario' && (
         <div className="space-y-4">
           {/* Resumen y Filtros */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs">
             <div className="relative flex-1">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
-                <Icon name="search" size={16} />
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none flex items-center">
+                <Icon name="search" size={18} />
               </div>
               <input
                 type="text"
                 placeholder="Buscar ingrediente..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-sub text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-slate-900"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-white border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
               />
             </div>
 
@@ -372,10 +372,10 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   key={f.id}
                   type="button"
                   onClick={() => setFilterAlert(f.id)}
-                  className={`px-3 py-2 rounded-xl font-sub font-semibold text-xs cursor-pointer transition-colors ${
+                  className={`px-3.5 py-2 rounded-2xl font-sub font-bold text-xs cursor-pointer transition-all border-2 ${
                     filterAlert === f.id
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                      : 'bg-white text-cartoon-ink/75 hover:bg-cartoon-cream border-cartoon-ink/20'
                   }`}
                 >
                   {f.label}
@@ -385,16 +385,16 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="btn-cartoon-primary text-xs py-2 px-3.5"
+                className="btn-cartoon-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
               >
-                <Icon name="add" size={15} />
-                <span>Nuevo Insumo</span>
+                <Icon name="add" size={16} />
+                <span>Nuevo</span>
               </button>
             </div>
           </div>
 
-          {/* Grilla de Ingredientes Simplificada */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {/* Grilla de Ingredientes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredIngredients.map((item) => {
               const stock = Number(item.stock) || 0;
               const min = Number(item.minStock) || 0;
@@ -405,20 +405,16 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
               return (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-2xl border p-4 flex flex-col justify-between gap-3 transition-all ${
-                    isOut
-                      ? 'border-rose-300 bg-rose-50/20'
-                      : isLow
-                      ? 'border-amber-300'
-                      : 'border-slate-200'
+                  className={`bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-4 flex flex-col justify-between gap-3 transition-all ${
+                    isOut ? 'bg-rose-50/40 border-rose-400' : isLow ? 'bg-amber-50/30' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h4 className="font-display text-sm text-slate-900 truncate">
+                      <h4 className="font-display text-base text-cartoon-ink truncate">
                         {item.name}
                       </h4>
-                      <span className="font-sub text-xs text-slate-400">
+                      <span className="font-sub font-semibold text-xs text-gray-500">
                         Mínimo sugerido: {min.toLocaleString('es-AR')} {item.unit}
                       </span>
                     </div>
@@ -434,10 +430,10 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                             : `"${item.name}" marcado como Agotado`
                         );
                       }}
-                      className={`px-2.5 py-1 rounded-lg font-sub font-semibold text-[11px] cursor-pointer transition-colors flex-shrink-0 border ${
+                      className={`px-3 py-1.5 rounded-xl font-sub font-bold text-xs cursor-pointer transition-all flex-shrink-0 border-2 ${
                         isOut
-                          ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          ? 'bg-cartoon-red text-white border-cartoon-ink shadow-cartoon-xs'
+                          : 'bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200'
                       }`}
                       title="Marcar como agotado o disponible con un clic"
                     >
@@ -446,47 +442,47 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   </div>
 
                   {/* Cantidad Actual */}
-                  <div className="flex items-baseline justify-between pt-2 border-t border-slate-100">
+                  <div className="flex items-baseline justify-between pt-3 border-t-2 border-cartoon-ink/15">
                     <div>
-                      <span className="font-display text-xl text-slate-900">
+                      <span className="font-display text-2xl text-cartoon-ink">
                         {stock.toLocaleString('es-AR')}
                       </span>
-                      <span className="font-sub text-xs text-slate-500 ml-1">
+                      <span className="font-sub font-bold text-xs text-gray-500 ml-1">
                         {item.unit}
                       </span>
                     </div>
 
                     {/* Ajuste rápido y Edición */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => adjustIngredientStock(item.id, -stepDelta)}
-                        className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-sub font-semibold text-xs cursor-pointer"
+                        className="btn-cartoon-white px-2.5 py-1 text-xs"
                       >
                         -{stepDelta}
                       </button>
                       <button
                         type="button"
                         onClick={() => adjustIngredientStock(item.id, stepDelta)}
-                        className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-sub font-semibold text-xs cursor-pointer"
+                        className="btn-cartoon-white px-2.5 py-1 text-xs"
                       >
                         +{stepDelta}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(item)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 cursor-pointer"
+                        className="p-1.5 rounded-xl text-gray-400 hover:text-cartoon-ink hover:bg-cartoon-cream cursor-pointer"
                         title="Editar"
                       >
-                        <Icon name="edit" size={15} />
+                        <Icon name="edit" size={17} />
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteCandidate(item)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                        className="p-1.5 rounded-xl text-gray-400 hover:text-cartoon-red hover:bg-rose-50 cursor-pointer"
                         title="Eliminar"
                       >
-                        <Icon name="delete" size={15} />
+                        <Icon name="delete" size={17} />
                       </button>
                     </div>
                   </div>
