@@ -585,43 +585,43 @@ export const CartDrawer = ({
                       return (
                         <div
                           key={product.id}
-                          className={`p-2.5 sm:p-3 rounded-2xl border-2 shadow-cartoon-xs flex flex-col gap-2 transition-all overflow-hidden ${
+                          className={`p-3 sm:p-3.5 rounded-2xl border-2 shadow-cartoon-xs flex flex-col gap-2.5 transition-all overflow-hidden ${
                             isItemOutOfStock ? 'bg-rose-50/90 border-cartoon-red' : 'bg-white border-cartoon-ink'
                           }`}
                         >
-                          <div className="flex items-start gap-2.5">
-                            {/* Miniatura */}
-                            <div className="w-12 h-12 rounded-xl bg-cartoon-cream border-2 border-cartoon-ink flex-shrink-0 overflow-hidden flex items-center justify-center">
+                          <div className="flex items-start gap-3">
+                            {/* Miniatura Más Visible en Celular */}
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-cartoon-cream border-2 border-cartoon-ink flex-shrink-0 overflow-hidden flex items-center justify-center">
                               {product.image ? (
                                 <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                               ) : (
-                                <Icon name="restaurant" size={18} className="text-cartoon-ink/40" />
+                                <Icon name="restaurant" size={20} className="text-cartoon-ink/40" />
                               )}
                             </div>
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-1">
-                                <h4 className="font-display text-xs sm:text-sm text-cartoon-ink truncate leading-tight">
+                              <div className="flex items-start justify-between gap-1.5">
+                                <h4 className="font-display text-sm sm:text-base text-cartoon-ink leading-tight line-clamp-2">
                                   {product.name}
                                 </h4>
                                 <button
                                   type="button"
                                   onClick={() => onRemoveItem(product.id)}
-                                  className="text-cartoon-ink/40 hover:text-cartoon-red transition-colors p-0.5 cursor-pointer"
+                                  className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-rose-100 border border-gray-300 hover:border-cartoon-red text-cartoon-ink/50 hover:text-cartoon-red flex items-center justify-center transition-all active:scale-95 cursor-pointer flex-shrink-0"
                                   title="Quitar plato"
                                   aria-label="Quitar plato"
                                 >
-                                  <Icon name="close" size={14} />
+                                  <Icon name="close" size={15} />
                                 </button>
                               </div>
 
-                              <p className="font-sub text-[11px] text-cartoon-ink/70">
+                              <p className="font-sub font-semibold text-xs sm:text-sm text-cartoon-ink/75 mt-0.5">
                                 {money(product.price)} c/u
                               </p>
 
                               {isItemOutOfStock && (
-                                <span className="inline-block mt-0.5 text-[10px] font-bold text-cartoon-red bg-rose-100 px-1.5 py-0.2 rounded border border-cartoon-red/40">
+                                <span className="inline-block mt-1 text-[10px] font-bold text-cartoon-red bg-rose-100 px-2 py-0.5 rounded border border-cartoon-red/40">
                                   Sin stock disponible
                                 </span>
                               )}
@@ -629,24 +629,24 @@ export const CartDrawer = ({
                           </div>
 
                           {/* Control de cantidad y subtotal del item */}
-                          <div className="flex items-center justify-between pt-1 border-t border-cartoon-ink/10 text-xs">
+                          <div className="flex items-center justify-between pt-1.5 border-t border-cartoon-ink/10">
                             <div className="flex items-center gap-1.5 bg-cartoon-cream border-2 border-cartoon-ink rounded-xl p-0.5 shadow-cartoon-xs">
                               <button
                                 type="button"
                                 onClick={() => onUpdateQuantity(product.id, quantity - 1)}
-                                className="w-6 h-6 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink font-bold hover:bg-cartoon-yellow active:scale-95 cursor-pointer"
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink font-black text-sm hover:bg-cartoon-yellow active:scale-95 cursor-pointer shadow-2xs"
                                 aria-label="Restar una unidad"
                               >
                                 -
                               </button>
-                              <span className="font-display text-xs w-5 text-center text-cartoon-ink">
+                              <span className="font-display text-sm sm:text-base w-6 text-center text-cartoon-ink">
                                 {quantity}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => onUpdateQuantity(product.id, quantity + 1)}
                                 disabled={isItemOutOfStock}
-                                className="w-6 h-6 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink font-bold hover:bg-cartoon-yellow active:scale-95 cursor-pointer disabled:opacity-40"
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white border border-cartoon-ink flex items-center justify-center text-cartoon-ink font-black text-sm hover:bg-cartoon-yellow active:scale-95 cursor-pointer disabled:opacity-40 shadow-2xs"
                                 aria-label="Sumar una unidad"
                               >
                                 +
@@ -654,8 +654,8 @@ export const CartDrawer = ({
                             </div>
 
                             <div className="text-right">
-                              <span className="font-sub text-[10px] text-cartoon-ink/60 block">Subtotal:</span>
-                              <span className="font-display text-xs sm:text-sm text-cartoon-ink">
+                              <span className="font-sub font-bold text-[11px] text-cartoon-ink/60 block">Subtotal:</span>
+                              <span className="font-display text-sm sm:text-base text-cartoon-red font-black">
                                 {money(itemSubtotal)}
                               </span>
                             </div>
@@ -731,7 +731,7 @@ export const CartDrawer = ({
                 <button
                   type="button"
                   onClick={handleProceedToLocation}
-                  className="w-full btn-cartoon-red text-xs sm:text-sm py-3 flex items-center justify-center gap-2 group cursor-pointer shadow-cartoon active:scale-95 transition-transform"
+                  className="w-full btn-cartoon-red text-sm sm:text-base py-3.5 flex items-center justify-center gap-2 group cursor-pointer shadow-cartoon active:scale-95 transition-transform"
                 >
                   <Icon name="location_on" size={18} />
                   <span>ELEGIR UBICACIÓN DE ENTREGA</span>

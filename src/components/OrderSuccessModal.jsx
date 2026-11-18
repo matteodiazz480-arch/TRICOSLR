@@ -19,27 +19,27 @@ export const OrderSuccessModal = ({ isOpen, onClose, orderDetails }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-4 flex items-center justify-center select-none">
+    <div className="fixed inset-0 z-50 overflow-y-auto p-2 sm:p-4 flex items-center justify-center select-none">
       <div
         onClick={onClose}
         className="fixed inset-0 bg-cartoon-ink/75 backdrop-blur-xs transition-opacity"
       />
 
-      <div className="relative bg-cartoon-cream w-full max-w-md rounded-3xl border-3 sm:border-4 border-cartoon-ink shadow-cartoon-xl overflow-hidden z-10 p-4 sm:p-6 text-center animate-pop-in my-auto max-h-[92vh] flex flex-col">
-        <div className="flex-shrink-0 flex items-center justify-between pb-3 border-b-2 border-cartoon-ink/15">
-          <div className="flex items-center gap-2.5 text-left">
-            <div className="w-11 h-11 rounded-2xl bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
+      <div className="relative bg-cartoon-cream w-full max-w-md rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xl overflow-hidden z-10 p-3.5 sm:p-5 text-center animate-pop-in my-auto max-h-[94vh] sm:max-h-[92vh] flex flex-col">
+        <div className="flex-shrink-0 flex items-center justify-between pb-2.5 sm:pb-3 border-b-2 border-cartoon-ink/15">
+          <div className="flex items-center gap-2.5 text-left min-w-0 pr-2">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-cartoon-yellow border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
               <img
                 src="/assets/sticker_personaje.png"
                 alt="Trico"
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <span className="badge-cartoon bg-cartoon-green text-cartoon-ink text-[10px] inline-block mb-0.5">
+            <div className="min-w-0">
+              <span className="badge-cartoon bg-cartoon-green text-cartoon-ink text-[9px] sm:text-[10px] inline-block mb-0.5">
                 PEDIDO LISTO
               </span>
-              <h3 className="font-display text-base sm:text-lg text-cartoon-ink leading-tight">
+              <h3 className="font-display text-sm sm:text-base md:text-lg text-cartoon-ink leading-tight truncate">
                 ¡Gracias{orderDetails.customerName ? `, ${orderDetails.customerName}` : ''}!
               </h3>
             </div>

@@ -604,14 +604,14 @@ export const LotteryOrdersSection = ({
       {/* MODAL 1: RULETA VISUAL MODERNA Y PROFESIONAL */}
       {/* ============================================================== */}
       {isLotteryModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden my-auto animate-modalIn">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-auto animate-modalIn flex flex-col max-h-[94vh] sm:max-h-[90vh]">
             {/* Cabecera del Modal */}
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <h3 className="font-display text-base sm:text-lg">Ruleta Oficial de Sorteo</h3>
-                <p className="font-sub text-xs text-slate-400">
-                  Todos los clientes incluidos ({wheelCandidates.length} participantes elegibles)
+            <div className="px-4 py-2.5 sm:px-6 sm:py-3.5 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
+              <div className="min-w-0 pr-2">
+                <h3 className="font-display text-sm sm:text-base lg:text-lg truncate">Ruleta Oficial de Sorteo</h3>
+                <p className="font-sub text-[10px] sm:text-xs text-slate-400 truncate">
+                  Todos los clientes incluidos ({wheelCandidates.length} elegibles)
                 </p>
               </div>
               <button
@@ -620,19 +620,19 @@ export const LotteryOrdersSection = ({
                   handleResetSpin();
                   setIsLotteryModalOpen(false);
                 }}
-                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer flex-shrink-0"
               >
-                <Icon name="close" size={18} />
+                <Icon name="close" size={17} />
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-1">
               {/* Selector de Premio a Sortear */}
               <div>
-                <label className="block font-sub font-semibold text-xs text-slate-500 uppercase tracking-wider mb-2">
+                <label className="block font-sub font-semibold text-[11px] sm:text-xs text-slate-500 uppercase tracking-wider mb-1.5 sm:mb-2">
                   Premio en juego:
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
                   {officialPrizes.map((p) => {
                     const active = selectedPrize?.id === p.id;
                     return (
@@ -641,16 +641,16 @@ export const LotteryOrdersSection = ({
                         type="button"
                         disabled={isSpinning}
                         onClick={() => setSelectedPrizeId(p.id)}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                           active
                             ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
                         }`}
                       >
-                        <span className={`font-sub font-bold text-[10px] block ${active ? 'text-amber-400' : 'text-slate-400'}`}>
+                        <span className={`font-sub font-bold text-[9px] sm:text-[10px] block ${active ? 'text-amber-400' : 'text-slate-400'}`}>
                           {p.badge}
                         </span>
-                        <span className="font-display text-xs line-clamp-1 mt-0.5">
+                        <span className="font-display text-[11px] sm:text-xs line-clamp-1 mt-0.5">
                           {p.title}
                         </span>
                       </button>
@@ -660,15 +660,15 @@ export const LotteryOrdersSection = ({
               </div>
 
               {/* Contenedor Central de la Ruleta Circular y Resultado */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center">
                 {/* Rueda SVG */}
                 <div className="md:col-span-7 flex flex-col items-center justify-center relative">
                   {/* Puntero Superior */}
-                  <div className="z-20 -mb-3">
-                    <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-rose-600 filter drop-shadow-sm" />
+                  <div className="z-20 -mb-2.5 sm:-mb-3">
+                    <div className="w-0 h-0 border-l-[8px] sm:border-l-[10px] border-l-transparent border-r-[8px] sm:border-r-[10px] border-r-transparent border-t-[15px] sm:border-t-[18px] border-t-rose-600 filter drop-shadow-sm" />
                   </div>
 
-                  <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full p-2 bg-slate-900 shadow-xl border-4 border-slate-800 flex items-center justify-center">
+                  <div className="relative w-48 h-48 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-full p-1.5 sm:p-2 bg-slate-900 shadow-xl border-3 sm:border-4 border-slate-800 flex items-center justify-center">
                     <svg
                       viewBox="0 0 320 320"
                       className="w-full h-full rounded-full overflow-hidden"
@@ -793,9 +793,9 @@ export const LotteryOrdersSection = ({
       {/* MODAL 2: FICHA SIMPLIFICADA DEL CLIENTE Y PEDIDO */}
       {/* ============================================================== */}
       {selectedOrderDetails && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 my-auto animate-modalIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
+          <div className="relative w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-4 sm:p-5 space-y-3 sm:space-y-4 my-auto max-h-[92vh] overflow-y-auto animate-modalIn">
+            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100">
               <div>
                 <span className="font-mono text-xs text-slate-400">
                   Ticket #{selectedOrderDetails.ticketNumber}
@@ -897,9 +897,9 @@ export const LotteryOrdersSection = ({
       {/* MODAL 3: CARGAR PEDIDO / PARTICIPANTE MANUAL */}
       {/* ============================================================== */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 my-auto animate-modalIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl p-4 sm:p-5 space-y-3 sm:space-y-3.5 my-auto max-h-[92vh] overflow-y-auto animate-modalIn">
+            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100">
               <h3 className="font-display text-base text-slate-900">Cargar Pedido Manual</h3>
               <button
                 type="button"
@@ -990,7 +990,7 @@ export const LotteryOrdersSection = ({
       {/* MODAL 4: CONFIRMAR ELIMINACIÓN */}
       {/* ============================================================== */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
           <div className="relative w-full max-w-xs bg-white rounded-2xl border border-slate-200 shadow-xl p-5 text-center space-y-4 my-auto animate-modalIn">
             <h3 className="font-display text-sm text-slate-900">Eliminar registro</h3>
             <p className="font-sub text-xs text-slate-500">

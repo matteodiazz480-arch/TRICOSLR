@@ -82,7 +82,7 @@ export const MascotSection = ({
       </div>
 
       {/* 4. Contenido Superpuesto: Personaje + Texto "El Sello del Verdadero Crunch" */}
-      <div className="relative z-30 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 md:py-32">
+      <div className="relative z-30 max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-20 sm:py-28 md:py-32">
         <Reveal>
           <div className="flex flex-col md:flex-row items-center justify-center gap-6 sm:gap-10 md:gap-12">
             

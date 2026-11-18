@@ -978,10 +978,10 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
       {/* MODAL CREAR / EDITAR INGREDIENTE (ESTILO CARTOON) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-sm bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon overflow-hidden my-auto animate-modalIn">
-            <div className="p-4 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between">
-              <h3 className="font-display text-lg text-cartoon-ink">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
+          <div className="relative w-full max-w-sm bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon overflow-hidden my-auto animate-modalIn flex flex-col max-h-[92vh]">
+            <div className="p-3.5 sm:p-4 bg-cartoon-yellow border-b-2 sm:border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
+              <h3 className="font-display text-base sm:text-lg text-cartoon-ink">
                 {editingIngredient ? 'Editar Insumo' : 'Nuevo Insumo'}
               </h3>
               <button
@@ -993,9 +993,9 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveIngredient} className="p-5 space-y-3.5">
+            <form onSubmit={handleSaveIngredient} className="p-3.5 sm:p-5 space-y-3 sm:space-y-3.5 overflow-y-auto flex-1">
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                <label className="block font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink mb-1">
                   Nombre del Insumo
                 </label>
                 <input
@@ -1004,18 +1004,18 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   value={formIngredient.name}
                   onChange={(e) => setFormIngredient({ ...formIngredient, name: e.target.value })}
                   placeholder="Ej: Pan Brioche, Pechuga de Pollo"
-                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                  className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                 />
               </div>
 
               <div>
-                <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
+                <label className="block font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink mb-1">
                   Unidad de Medida
                 </label>
                 <select
                   value={formIngredient.unit}
                   onChange={(e) => setFormIngredient({ ...formIngredient, unit: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink bg-white focus:outline-none focus:border-cartoon-ink"
+                  className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl border-2 border-cartoon-ink/30 font-sub font-bold text-xs sm:text-sm text-cartoon-ink bg-white focus:outline-none focus:border-cartoon-ink"
                 >
                   {UNITS.map((u) => (
                     <option key={u.value} value={u.value}>
@@ -1025,7 +1025,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                 <div>
                   <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                     Stock Actual
@@ -1079,8 +1079,8 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
       {/* MODAL CONFIRMAR ELIMINACIÓN */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-xs bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon p-6 text-center space-y-4 my-auto animate-modalIn">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
+          <div className="relative w-full max-w-xs bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon p-4 sm:p-6 text-center space-y-3.5 my-auto animate-modalIn">
             <h3 className="font-display text-base text-cartoon-ink">Eliminar insumo</h3>
             <p className="font-sub text-xs text-gray-600">
               ¿Confirmás eliminar <strong>{deleteCandidate.name}</strong> del inventario?

@@ -85,7 +85,7 @@ export const MenuSection = ({ onAddToCart, onSelectProduct }) => {
       className="py-8 sm:py-14 md:py-18 relative select-none"
       style={{ backgroundColor: '#FFFDF6' }}
     >
-      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+      <div className="max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-3.5 sm:px-6 lg:px-8 xl:px-12">
         
         {/* Cabecera Principal */}
         <Reveal>
@@ -159,14 +159,15 @@ export const MenuSection = ({ onAddToCart, onSelectProduct }) => {
             </div>
 
             {searchedProducts.length > 0 ? (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
-                {searchedProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onSelectProduct={onSelectProduct}
-                    onAddToCart={onAddToCart}
-                  />
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7">
+                {searchedProducts.map((product, idx) => (
+                  <Reveal key={product.id} delay={(idx % 4) * 40} yOffset={16}>
+                    <ProductCard
+                      product={product}
+                      onSelectProduct={onSelectProduct}
+                      onAddToCart={onAddToCart}
+                    />
+                  </Reveal>
                 ))}
               </div>
             ) : (
@@ -203,15 +204,16 @@ export const MenuSection = ({ onAddToCart, onSelectProduct }) => {
                 </h3>
               </div>
 
-              {/* Grilla Compacta: 2 columnas en celular */}
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
-                {featuredPreviewProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onSelectProduct={onSelectProduct}
-                    onAddToCart={onAddToCart}
-                  />
+              {/* Grilla Compacta: 2 columnas en celular, 3 en tablet, 4 en desktop amplio */}
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7">
+                {featuredPreviewProducts.map((product, idx) => (
+                  <Reveal key={product.id} delay={(idx % 4) * 40} yOffset={16}>
+                    <ProductCard
+                      product={product}
+                      onSelectProduct={onSelectProduct}
+                      onAddToCart={onAddToCart}
+                    />
+                  </Reveal>
                 ))}
               </div>
             </div>
@@ -258,16 +260,17 @@ export const MenuSection = ({ onAddToCart, onSelectProduct }) => {
                     </h3>
                   </div>
 
-                  {/* Grilla 2 Columnas en Celular y 3 Columnas en PC */}
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
-                    {section.items.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onSelectProduct={onSelectProduct}
-                        onAddToCart={onAddToCart}
-                        accentColor={theme.accentColor}
-                      />
+                  {/* Grilla 2 Columnas en Celular, 3 en Tablet, 4 en Desktop Amplio */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7">
+                    {section.items.map((product, idx) => (
+                      <Reveal key={product.id} delay={(idx % 4) * 40} yOffset={16}>
+                        <ProductCard
+                          product={product}
+                          onSelectProduct={onSelectProduct}
+                          onAddToCart={onAddToCart}
+                          accentColor={theme.accentColor}
+                        />
+                      </Reveal>
                     ))}
                   </div>
 

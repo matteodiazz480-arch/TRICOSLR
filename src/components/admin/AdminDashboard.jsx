@@ -1315,8 +1315,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
       {/* Modal Confirmar Borrado de Producto */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-          <div className="relative w-full max-w-xs bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon p-6 text-center space-y-4 my-auto animate-modalIn">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
+          <div className="relative w-full max-w-xs bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon p-4 sm:p-6 text-center space-y-3.5 my-auto animate-modalIn">
             <h3 className="font-display text-base text-cartoon-ink">Eliminar producto</h3>
             <p className="font-sub text-xs text-gray-600">
               ¿Confirmás eliminar <strong>{deleteCandidate.name}</strong> de la carta?

@@ -100,18 +100,18 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className="relative w-full max-w-md bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon overflow-hidden flex flex-col max-h-[90vh] my-auto animate-modalIn">
-        <div className="p-4 sm:p-5 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink">
-              <Icon name="restaurant_menu" size={20} />
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none">
+      <div className="relative w-full max-w-md bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] my-auto animate-modalIn">
+        <div className="p-3.5 sm:p-4 bg-cartoon-yellow border-b-2 sm:border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink flex-shrink-0">
+              <Icon name="restaurant_menu" size={18} />
             </div>
-            <div>
-              <h3 className="font-display text-lg sm:text-xl text-cartoon-ink leading-tight">
+            <div className="min-w-0">
+              <h3 className="font-display text-base sm:text-lg text-cartoon-ink leading-tight truncate">
                 {product ? 'Editar Producto' : 'Nuevo Plato'}
               </h3>
-              <span className="font-sub text-[11px] text-cartoon-ink/75 font-semibold block">
+              <span className="font-sub text-[10px] sm:text-[11px] text-cartoon-ink/75 font-semibold block truncate">
                 Carta oficial de TRICO'S
               </span>
             </div>
@@ -119,13 +119,13 @@ export const ProductModal = ({ isOpen, onClose, product, onSave }) => {
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-white hover:bg-cartoon-cream border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink cursor-pointer"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white hover:bg-cartoon-cream border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink cursor-pointer flex-shrink-0"
           >
-            <Icon name="close" size={18} />
+            <Icon name="close" size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-3.5 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
           {error && (
             <div className="p-3 bg-cartoon-red text-white rounded-2xl font-sub font-bold text-xs border-2 border-cartoon-ink shadow-cartoon-xs flex items-center gap-2">
               <Icon name="error" size={18} />

@@ -14,7 +14,7 @@ export const Footer = () => {
       className="text-white pt-10 pb-8 select-none"
       style={{ backgroundColor: '#1E1B18' }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
         
         {/* Top Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b-2 border-white/15 items-start">

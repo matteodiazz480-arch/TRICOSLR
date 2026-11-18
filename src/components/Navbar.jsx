@@ -7,7 +7,7 @@ export const Navbar = ({ cartCount, cartTotal, onOpenCart }) => {
       className="sticky top-0 z-40 border-b-3 border-cartoon-ink"
       style={{ backgroundColor: '#FFC93C' }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[72px] flex items-center justify-between">
+      <div className="max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-16 sm:h-[72px] flex items-center justify-between">
         
         {/* Logo Proporcionado, Completo y sin Recortes en un Navbar Compacto */}
         <a href="#" className="flex items-center gap-2.5 sm:gap-3 select-none group">

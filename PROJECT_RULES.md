@@ -112,6 +112,18 @@
   3. Se crearon los favicons oficiales en versión clara (`favicon.svg`, `favicon-32x32.png`, `apple-touch-icon.png`, `favicon.ico`) con fondo blanco/crema y trazos nítidos tinta cómic `#1E1B18`, reemplazando el icono verde en `index.html`.
   4. Se desarrolló el modal `GiveawayAdminModal.jsx` accesible desde el botón "Administrar Sorteo" en Promociones: permite modificar, agregar y eliminar premios, definir cantidad de ganadores, gestionar o reasignar ganadores existentes, establecer fecha de sorteo y eliminar el sorteo completo con confirmación (desapareciendo de inmediato de `PromosSection.jsx` sin afectar pedidos ni datos existentes).
 
+### Error 9: Modales móviles sobrecargados, tienda desaprovechada en desktop, pedidos reducidos en celular y animaciones de scroll no reutilizables
+- **Causa raíz:** 
+  1. En dispositivos móviles, las ventanas emergentes (GiveawayAdminModal, ProductModal, Ruleta, Pedido Manual, Detalle de Pedido, Insumos) utilizaban paddings y márgenes sobredimensionados (`p-4` a `p-6`, botones grandes, espaciados verticales amplios), provocando que los elementos quedaran amontonados y ocuparan un alto excesivo con scrolls incómodos.
+  2. En la versión de escritorio de la tienda, los contenedores principales estaban acotados a `max-w-6xl` con grillas de 3 columnas estándar, dejando amplios vacíos horizontales y desaprovechando pantallas amplias (1440px - 1536px).
+  3. En la versión móvil del carrito/pedidos, las miniaturas de productos (48px), tipografías y botones de control de cantidad (24px) resultaban demasiado pequeños para una lectura rápida y cómoda interacción táctil.
+  4. El componente `Reveal.jsx` dejaba de observar los elementos (`unobserve`) tras la primera aparición, impidiendo que las animaciones se reprodujeran nuevamente al hacer scroll hacia arriba o al navegar repetidamente por la página.
+- **Solución implementada:** 
+  1. Rediseño ergonómico de todas las ventanas emergentes en móvil: se compactó el padding general a `p-2 sm:p-4`, inputs a `py-2 px-3 rounded-xl`, pestañas y botones secundarios a `py-1.5 px-3`, y se redimensionó el contenedor de la ruleta (`w-48 h-48 sm:w-64 sm:h-64`) para garantizar visualización sin desbordes y un scroll interno impecable en pantallas chicas.
+  2. Aprovechamiento horizontal en desktop: se ampliaron los contenedores principales a `max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px]` y la grilla de carta a `grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7`, escalando proporcionalmente tipografía, botones y stickers del Hero, Carta, Promos y Footer sin agregar secciones ni textos innecesarios.
+  3. Mayor legibilidad y confort táctil en pedidos móviles: se aumentaron las miniaturas a `w-14 h-14 sm:w-16 sm:h-16`, botones de cantidad y borrado a 28px-32px con sombras cartoon, subtotales destacados en rojo cómic y títulos multilínea sin cortes bruscos.
+  4. Animaciones de scroll estilo Motion reutilizables y bidireccionales: se reconstruyó `Reveal.jsx` con `IntersectionObserver` continuo (`setIsVisible(entry.isIntersecting)`), umbral suave (`threshold: 0.08`, `rootMargin: '0px 0px -35px 0px'`) y transiciones de hardware (`transform: translate3d(...)` y `opacity` con curva `cubic-bezier(0.23, 1, 0.32, 1)`), logrando entradas sutiles y elegantes tanto al bajar como al subir el scroll en cualquier dispositivo.
+
 ---
 
 ## 3. ARQUITECTURA DE DATOS EN FIREBASE FIRESTORE

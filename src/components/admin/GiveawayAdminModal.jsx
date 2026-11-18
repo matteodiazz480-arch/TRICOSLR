@@ -225,21 +225,21 @@ export const GiveawayAdminModal = ({
   const eligibleOrders = orders.filter((o) => !o.isWinner);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 select-none animate-fadeIn">
-      <div className="relative w-full max-w-3xl bg-white rounded-3xl border-3 border-cartoon-ink shadow-cartoon my-auto overflow-hidden animate-modalIn flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 select-none animate-fadeIn">
+      <div className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon my-auto overflow-hidden animate-modalIn flex flex-col max-h-[94vh] sm:max-h-[90vh]">
         
-        {/* Cabecera Estilo Cartoon */}
-        <div className="px-5 sm:px-7 py-4 bg-cartoon-yellow border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink flex-shrink-0">
-              <Icon name="campaign" size={22} />
+        {/* Cabecera Estilo Cartoon Compacta y Proporcionada */}
+        <div className="px-4 py-2.5 sm:px-6 sm:py-3.5 bg-cartoon-yellow border-b-2 sm:border-b-3 border-cartoon-ink flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink flex-shrink-0">
+              <Icon name="campaign" size={20} />
             </div>
-            <div>
-              <h3 className="font-display text-lg sm:text-xl text-cartoon-ink leading-tight">
+            <div className="min-w-0">
+              <h3 className="font-display text-base sm:text-lg lg:text-xl text-cartoon-ink leading-tight truncate">
                 Administración de Sorteo y Premios
               </h3>
-              <p className="font-sub font-semibold text-xs text-cartoon-ink/75">
-                Configurá premios, ganadores, fecha de finalización y visibilidad pública.
+              <p className="font-sub font-semibold text-[11px] sm:text-xs text-cartoon-ink/75 truncate">
+                Premios, ganadores, fecha de finalización y estado.
               </p>
             </div>
           </div>
@@ -247,64 +247,64 @@ export const GiveawayAdminModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-2xl bg-white hover:bg-cartoon-cream border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink cursor-pointer active:translate-x-0.5 active:translate-y-0.5"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-white hover:bg-cartoon-cream border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center text-cartoon-ink cursor-pointer active:translate-x-0.5 active:translate-y-0.5 flex-shrink-0"
           >
-            <Icon name="close" size={18} />
+            <Icon name="close" size={17} />
           </button>
         </div>
 
         {/* Feedback Toast */}
         {feedbackMsg && (
-          <div className="px-5 py-2.5 bg-emerald-100 border-b-2 border-emerald-300 text-emerald-900 font-sub font-bold text-xs flex items-center gap-2">
-            <Icon name="check_circle" size={16} className="text-emerald-700" />
+          <div className="px-4 py-2 bg-emerald-100 border-b-2 border-emerald-300 text-emerald-900 font-sub font-bold text-xs flex items-center gap-2">
+            <Icon name="check_circle" size={15} className="text-emerald-700" />
             <span>{feedbackMsg}</span>
           </div>
         )}
 
         {/* Pestañas de Navegación del Modal */}
-        <div className="flex items-center border-b-2 border-cartoon-ink/15 px-4 sm:px-6 bg-[#FAF8F5] gap-2 overflow-x-auto no-scrollbar flex-shrink-0 pt-2">
+        <div className="flex items-center border-b-2 border-cartoon-ink/15 px-3 sm:px-6 bg-[#FAF8F5] gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar flex-shrink-0 pt-1.5 sm:pt-2">
           <button
             type="button"
             onClick={() => setActiveTab('general')}
-            className={`px-4 py-2.5 rounded-t-2xl font-sub font-bold text-xs sm:text-sm flex items-center gap-2 border-t-2 border-x-2 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-t-xl sm:rounded-t-2xl font-sub font-bold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 border-t-2 border-x-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'general'
                 ? 'bg-white text-cartoon-ink border-cartoon-ink border-b-0 shadow-2xs font-display'
                 : 'bg-transparent text-gray-500 border-transparent hover:text-cartoon-ink'
             }`}
           >
-            <Icon name="tune" size={16} />
-            <span>Configuración General</span>
+            <Icon name="tune" size={15} />
+            <span>General</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('prizes')}
-            className={`px-4 py-2.5 rounded-t-2xl font-sub font-bold text-xs sm:text-sm flex items-center gap-2 border-t-2 border-x-2 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-t-xl sm:rounded-t-2xl font-sub font-bold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 border-t-2 border-x-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'prizes'
                 ? 'bg-white text-cartoon-ink border-cartoon-ink border-b-0 shadow-2xs font-display'
                 : 'bg-transparent text-gray-500 border-transparent hover:text-cartoon-ink'
             }`}
           >
-            <Icon name="emoji_events" size={16} />
+            <Icon name="emoji_events" size={15} />
             <span>Premios ({formState.prizes.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('winners')}
-            className={`px-4 py-2.5 rounded-t-2xl font-sub font-bold text-xs sm:text-sm flex items-center gap-2 border-t-2 border-x-2 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-t-xl sm:rounded-t-2xl font-sub font-bold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 border-t-2 border-x-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'winners'
                 ? 'bg-white text-cartoon-ink border-cartoon-ink border-b-0 shadow-2xs font-display'
                 : 'bg-transparent text-gray-500 border-transparent hover:text-cartoon-ink'
             }`}
           >
-            <Icon name="military_tech" size={16} />
+            <Icon name="military_tech" size={15} />
             <span>Ganadores ({currentWinners.length}/{formState.winnersCount})</span>
           </button>
         </div>
 
         {/* Contenido Scrolleable del Modal */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-3.5 sm:p-5 lg:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-6">
           
           {/* Alerta de Sorteo Eliminado */}
           {formState.deleted && (
@@ -330,53 +330,53 @@ export const GiveawayAdminModal = ({
           {/* TAB 1: CONFIGURACIÓN GENERAL */}
           {/* ============================================================== */}
           {activeTab === 'general' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
                 {/* Título */}
                 <div className="sm:col-span-2">
-                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                  <label className="font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink block mb-0.5 sm:mb-1">
                     Título del Sorteo (Público)
                   </label>
                   <input
                     type="text"
                     value={formState.title}
                     onChange={(e) => setFormState({ ...formState, title: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                     placeholder="GRAN SORTEO TRICO'S"
                   />
                 </div>
 
                 {/* Subtítulo */}
                 <div className="sm:col-span-2">
-                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                  <label className="font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink block mb-0.5 sm:mb-1">
                     Subtítulo / Instrucciones
                   </label>
                   <input
                     type="text"
                     value={formState.subtitle}
                     onChange={(e) => setFormState({ ...formState, subtitle: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                     placeholder="¡Con cada pedido en la web participás automáticamente por premios!"
                   />
                 </div>
 
                 {/* Fecha de Finalización / Sorteo */}
                 <div>
-                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                  <label className="font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink block mb-0.5 sm:mb-1">
                     Fecha de Finalización / Sortea
                   </label>
                   <input
                     type="text"
                     value={formState.drawDate}
                     onChange={(e) => setFormState({ ...formState, drawDate: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                     placeholder="Fin de mes (o ej: 31 de Diciembre)"
                   />
                 </div>
 
                 {/* Cantidad de Ganadores */}
                 <div>
-                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                  <label className="font-sub font-bold text-[11px] sm:text-xs text-cartoon-ink block mb-0.5 sm:mb-1">
                     Cantidad Total de Ganadores
                   </label>
                   <input
@@ -387,27 +387,27 @@ export const GiveawayAdminModal = ({
                     onChange={(e) =>
                       setFormState({ ...formState, winnersCount: Math.max(1, Number(e.target.value)) })
                     }
-                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
                 {/* Estado Activo / Pausado */}
-                <div className="sm:col-span-2 flex items-center justify-between p-3.5 rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink">
-                  <div>
-                    <span className="font-display text-sm text-cartoon-ink block">
+                <div className="sm:col-span-2 flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-cartoon-cream border-2 border-cartoon-ink gap-2">
+                  <div className="min-w-0">
+                    <span className="font-display text-xs sm:text-sm text-cartoon-ink block">
                       Estado de Visibilidad
                     </span>
-                    <span className="font-sub text-xs text-gray-500">
+                    <span className="font-sub text-[10px] sm:text-xs text-gray-500 block truncate sm:whitespace-normal">
                       {formState.active
-                        ? 'El banner del sorteo se muestra en la web pública.'
-                        : 'El sorteo está pausado (oculto en la tienda pública).'}
+                        ? 'Visible en la web pública.'
+                        : 'Pausado (oculto en la tienda).'}
                     </span>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => setFormState({ ...formState, active: !formState.active })}
-                    className={`px-4 py-2 rounded-xl font-sub font-bold text-xs border-2 transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-sub font-bold text-[11px] sm:text-xs border-2 transition-all cursor-pointer flex-shrink-0 ${
                       formState.active
                         ? 'bg-emerald-100 text-emerald-800 border-emerald-500 shadow-2xs font-display'
                         : 'bg-gray-100 text-gray-500 border-gray-300'
@@ -419,22 +419,22 @@ export const GiveawayAdminModal = ({
               </div>
 
               {/* Botón de Guardar General */}
-              <div className="pt-2 flex justify-end">
+              <div className="pt-1 sm:pt-2 flex justify-end">
                 <button
                   type="button"
                   onClick={handleSaveGeneral}
-                  className="btn-cartoon-primary py-2.5 px-6 text-xs sm:text-sm"
+                  className="btn-cartoon-primary w-full sm:w-auto py-2 px-5 sm:py-2.5 sm:px-6 text-xs sm:text-sm"
                 >
                   Guardar Información General
                 </button>
               </div>
 
               {/* Zona de Peligro: Eliminar Sorteo Completo */}
-              <div className="mt-8 pt-5 border-t-2 border-cartoon-ink/15">
-                <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="mt-4 pt-3 sm:mt-6 sm:pt-4 border-t-2 border-cartoon-ink/15">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-red-50 border-2 border-red-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <h5 className="font-display text-sm text-red-900">Eliminar Sorteo Completo</h5>
-                    <p className="font-sub text-xs text-red-700">
+                    <h5 className="font-display text-xs sm:text-sm text-red-900">Eliminar Sorteo Completo</h5>
+                    <p className="font-sub text-[11px] sm:text-xs text-red-700">
                       Elimina el sorteo y hace que desaparezca de la página pública de promociones.
                     </p>
                   </div>
@@ -802,17 +802,17 @@ export const GiveawayAdminModal = ({
         </div>
 
         {/* Pie del Modal */}
-        <div className="px-5 sm:px-7 py-3.5 bg-gray-50 border-t-2 border-cartoon-ink/15 flex items-center justify-between flex-shrink-0">
-          <span className="font-sub text-xs text-gray-500">
+        <div className="px-4 py-2.5 sm:px-6 sm:py-3 bg-gray-50 border-t-2 border-cartoon-ink/15 flex items-center justify-between flex-shrink-0">
+          <span className="font-sub text-[11px] sm:text-xs text-gray-500 truncate mr-2">
             {formState.deleted
               ? 'Sorteo marcado como eliminado'
-              : `${formState.prizes.length} premios • ${formState.winnersCount} ganadores configurados`}
+              : `${formState.prizes.length} premios • ${formState.winnersCount} ganadores`}
           </span>
 
           <button
             type="button"
             onClick={onClose}
-            className="btn-cartoon-white py-2 px-5 text-xs sm:text-sm"
+            className="btn-cartoon-white py-1.5 px-4 sm:py-2 sm:px-5 text-xs sm:text-sm flex-shrink-0"
           >
             Listo
           </button>

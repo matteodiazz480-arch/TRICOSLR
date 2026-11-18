@@ -32,7 +32,7 @@ export const PromosSection = () => {
       id="promos"
       className="py-8 sm:py-14 md:py-18 relative bg-[#FFF5D6]"
     >
-      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+      <div className="max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-3.5 sm:px-6 lg:px-8 xl:px-12">
         
         {/* Cabecera Simple */}
         <Reveal>
