@@ -80,6 +80,17 @@
 - **Causa raíz:** Si un cliente en su teléfono elegía "A Domicilio" y no seleccionaba manualmente el pin en el mapa, el validador abortaba el flujo y no permitía confirmar el pedido.
 - **Solución implementada:** En `CartDrawer.jsx`, si el cliente no interactúa con el mapa interactivo pero ingresa datos, se aplica una ubicación de respaldo en La Rioja Capital de forma transparente, permitiendo que el pedido se envíe sin interrupciones.
 
+### Error 6: Dificultad para deslizar productos en recetas y aspecto aplastado en computadoras/laptops
+- **Causa raíz:** 
+  1. El selector de productos tenía la clase `no-scrollbar` y no interceptaba el evento `wheel` vertical del ratón de PC para convertirlo en scroll horizontal. El usuario en computadoras de escritorio no podía acceder a los productos desbordados a la derecha.
+  2. La grilla de recetas forzaba 3 columnas (`lg:grid-cols-3`) desde los 1024px de ancho. En laptops estándar (1366x768 o pantallas con escalado DPI), el ancho efectivo dejaba apenas ~290px por tarjeta, provocando que los números (`Simple 150 unidades`), badges y botones de duplicación se vieran comprimidos y aplastados.
+- **Solución implementada:** 
+  1. Se implementó una barra de desplazamiento horizontal estilo cómic (`.cartoon-scrollbar-horizontal`) con track redondeado y thumb amarillo táctil situada en la base sin invadir los botones.
+  2. Se configuró el evento `wheel` en el selector para transformar el giro vertical del ratón en desplazamiento horizontal suave.
+  3. Se incorporaron flechas interactivas de navegación (`<` y `>`) para desplazar la lista con un solo clic.
+  4. Se rediseñó la cuadrícula a 2 columnas amplias y confortables en laptops y PCs medianas (`grid-cols-1 md:grid-cols-2 2xl:grid-cols-3`), dando más de 480px de ancho a cada tarjeta, con cajas de Simple/Doble mucho más aireadas y tipografía nítida no aplastada.
+  5. Se añadió `overflow-y-auto` a la barra lateral y `min-w-0` al contenedor principal para asegurar un comportamiento responsive perfecto en cualquier resolución y zoom.
+
 ---
 
 ## 3. ARQUITECTURA DE DATOS EN FIREBASE FIRESTORE

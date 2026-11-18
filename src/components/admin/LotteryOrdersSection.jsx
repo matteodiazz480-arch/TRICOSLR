@@ -375,7 +375,7 @@ export const LotteryOrdersSection = ({
         </div>
 
         {/* Filtros de Estado */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto cartoon-scrollbar-horizontal pb-1.5 py-0.5">
           {[
             { id: 'all', label: `Todos (${statusCounts.all})`, dot: null },
             { id: 'pendiente', label: `Pendientes (${statusCounts.pendiente})`, dot: 'bg-amber-500' },

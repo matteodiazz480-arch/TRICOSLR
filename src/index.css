@@ -95,6 +95,7 @@
 /* Custom Cartoon Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: #FFFDF6;
@@ -107,6 +108,38 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #FF4757;
+}
+
+/* Barra de desplazamiento horizontal estilo cartoon bien integrada y no invasiva */
+.cartoon-scrollbar-horizontal {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #FFC93C #FFF9E6;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cartoon-scrollbar-horizontal::-webkit-scrollbar {
+  height: 8px;
+  display: block;
+}
+
+.cartoon-scrollbar-horizontal::-webkit-scrollbar-track {
+  background: #FFF9E6;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(30, 27, 24, 0.22);
+  margin: 0 6px;
+}
+
+.cartoon-scrollbar-horizontal::-webkit-scrollbar-thumb {
+  background: #FFC93C;
+  border: 1.5px solid #1E1B18;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.cartoon-scrollbar-horizontal::-webkit-scrollbar-thumb:hover {
+  background: #FFB800;
 }
 
 .no-scrollbar::-webkit-scrollbar {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Icon } from '../Icon';
 import {
   addIngredient,
@@ -67,11 +67,61 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
 
   const [proteinFilter, setProteinFilter] = useState('all'); // 'all' | 'carne' | 'pollo'
 
-  const handleSelectProduct = (prodId) => {
+  // Referencia y estado para el desplazamiento horizontal de productos (con rueda del ratón y barra visible)
+  const productsScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScrollIndicators = () => {
+    const el = productsScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 6);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
+  };
+
+  const handleScrollProducts = (delta) => {
+    const el = productsScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: delta, behavior: 'smooth' });
+    setTimeout(checkScrollIndicators, 260);
+  };
+
+  useEffect(() => {
+    const el = productsScrollRef.current;
+    if (!el) return;
+
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) > 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY * 1.15;
+        checkScrollIndicators();
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('scroll', checkScrollIndicators);
+    window.addEventListener('resize', checkScrollIndicators);
+    checkScrollIndicators();
+
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('scroll', checkScrollIndicators);
+      window.removeEventListener('resize', checkScrollIndicators);
+    };
+  }, [products, subTab]);
+
+  const handleSelectProduct = (prodId, ev) => {
     setSelectedProductId(prodId);
     setProteinFilter('all');
     const prod = products.find((p) => p.id === prodId);
     setCurrentRecipe(getProductRecipe(prodId, prod));
+    if (ev?.currentTarget?.scrollIntoView) {
+      ev.currentTarget.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      });
+    }
   };
 
   const detectProteinScopeForIngredient = (ingId, ingName = '', activeFilter = 'all') => {
@@ -568,46 +618,89 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
       {/* ============================================================== */}
       {subTab === 'recetas' && (
         <div className="space-y-4">
-          {/* Selector de Producto */}
-          <div className="bg-white p-4 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs space-y-2.5">
-            <label className="block font-sub font-bold text-xs text-cartoon-ink">
-              Seleccioná el producto para configurar su receta:
-            </label>
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-              {products.map((prod) => {
-                const isSelected = selectedProductId === prod.id;
-                return (
-                  <button
-                    key={prod.id}
-                    type="button"
-                    onClick={() => handleSelectProduct(prod.id)}
-                    className={`px-3.5 py-2 rounded-2xl font-sub font-bold text-xs whitespace-nowrap cursor-pointer transition-all border-2 ${
-                      isSelected
-                        ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
-                        : 'bg-white text-cartoon-ink/75 border-cartoon-ink/20 hover:border-cartoon-ink'
-                    }`}
-                  >
-                    {prod.name}
-                  </button>
-                );
-              })}
+          {/* Selector de Producto con Barra de Desplazamiento Cartoon, Rueda del Ratón y Flechas */}
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <label className="block font-sub font-bold text-xs sm:text-sm text-cartoon-ink">
+                Seleccioná el producto para configurar su receta:
+              </label>
+              <span className="font-sub font-semibold text-[11px] text-gray-500 flex items-center gap-1">
+                <Icon name="swap_horiz" size={14} className="text-cartoon-ink/60" />
+                <span>Navegá con la rueda del ratón, las flechas o la barra inferior</span>
+              </span>
+            </div>
+
+            <div className="relative flex items-center gap-2">
+              {/* Flecha Izquierda para navegación rápida en escritorio y tablet */}
+              <button
+                type="button"
+                onClick={() => handleScrollProducts(-240)}
+                disabled={!canScrollLeft}
+                aria-label="Desplazar a la izquierda"
+                className={`w-9 h-9 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${
+                  canScrollLeft
+                    ? 'opacity-100 hover:bg-cartoon-yellow text-cartoon-ink active:scale-95'
+                    : 'opacity-25 cursor-not-allowed pointer-events-none text-gray-400'
+                }`}
+              >
+                <Icon name="chevron_left" size={20} />
+              </button>
+
+              {/* Contenedor desplazable con scrollbar estilo cómic y soporte de rueda del ratón */}
+              <div
+                ref={productsScrollRef}
+                className="flex-1 flex items-center gap-2.5 cartoon-scrollbar-horizontal pb-2.5 pt-1 px-1 select-none"
+              >
+                {products.map((prod) => {
+                  const isSelected = selectedProductId === prod.id;
+                  return (
+                    <button
+                      key={prod.id}
+                      type="button"
+                      onClick={(e) => handleSelectProduct(prod.id, e)}
+                      className={`px-4 py-2.5 rounded-2xl font-sub font-bold text-xs sm:text-sm whitespace-nowrap cursor-pointer transition-all border-2 flex-shrink-0 ${
+                        isSelected
+                          ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display'
+                          : 'bg-white text-cartoon-ink/80 border-cartoon-ink/20 hover:border-cartoon-ink hover:bg-cartoon-cream'
+                      }`}
+                    >
+                      {prod.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Flecha Derecha para navegación rápida en escritorio y tablet */}
+              <button
+                type="button"
+                onClick={() => handleScrollProducts(240)}
+                disabled={!canScrollRight}
+                aria-label="Desplazar a la derecha"
+                className={`w-9 h-9 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${
+                  canScrollRight
+                    ? 'opacity-100 hover:bg-cartoon-yellow text-cartoon-ink active:scale-95'
+                    : 'opacity-25 cursor-not-allowed pointer-events-none text-gray-400'
+                }`}
+              >
+                <Icon name="chevron_right" size={20} />
+              </button>
             </div>
           </div>
 
           {/* Configuración de la Receta */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b-2 border-cartoon-ink/15">
+          <div className="bg-white p-4 sm:p-6 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b-2 border-cartoon-ink/15">
               <div>
-                <h4 className="font-display text-lg text-cartoon-ink">
+                <h4 className="font-display text-lg sm:text-xl text-cartoon-ink">
                   Receta de {selectedProduct?.name}
                 </h4>
-                <p className="font-sub font-semibold text-xs text-gray-500">
+                <p className="font-sub font-semibold text-xs sm:text-sm text-gray-500 mt-0.5">
                   Diferenciá ingredientes para Carne o Pollo, y definí Simple vs Doble.
                 </p>
               </div>
 
               {/* Selector de vista por proteína (Carne / Pollo / Todos) */}
-              <div className="flex items-center gap-1.5 bg-cartoon-cream p-1 rounded-2xl border-2 border-cartoon-ink self-start sm:self-auto">
+              <div className="flex items-center gap-1.5 bg-cartoon-cream p-1.5 rounded-2xl border-2 border-cartoon-ink self-start md:self-auto flex-shrink-0">
                 {[
                   { id: 'all', label: `Todos (${currentRecipe.length})` },
                   { id: 'carne', label: 'Versión Carne' },
@@ -642,11 +735,12 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
             </div>
 
             {visibleRecipeItems.length === 0 ? (
-              <div className="p-6 text-center text-gray-500 font-sub font-semibold text-xs bg-cartoon-cream/40 rounded-2xl border-2 border-dashed border-cartoon-ink/25">
+              <div className="p-8 text-center text-gray-500 font-sub font-semibold text-xs sm:text-sm bg-cartoon-cream/40 rounded-2xl border-2 border-dashed border-cartoon-ink/25">
                 Sin ingredientes asignados para esta vista. Utilizá el formulario inferior para agregarlos.
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              /* Grilla totalmente responsive: 1 col móvil, 2 columnas amplias en laptops/computadoras, 3 en pantallas ultra-anchas */
+              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
                 {visibleRecipeItems.map((recItem) => {
                   const ingInfo =
                     ingredients.find((i) => i.id === recItem.ingredientId) ||
@@ -697,19 +791,19 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   return (
                     <div
                       key={`${recItem.ingredientId}-${scope}`}
-                      className="p-3.5 rounded-2xl bg-cartoon-cream/50 border-2 border-cartoon-ink shadow-cartoon-xs flex flex-col justify-between gap-2.5"
+                      className="p-4 sm:p-5 rounded-3xl bg-cartoon-cream/50 border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs flex flex-col justify-between gap-3.5 transition-all"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-display text-sm text-cartoon-ink truncate">
+                        <span className="font-display text-sm sm:text-base text-cartoon-ink truncate">
                           {ingName}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveFromRecipe(recItem.ingredientId, scope)}
-                          className="text-gray-400 hover:text-cartoon-red cursor-pointer"
-                          title="Quitar"
+                          className="text-gray-400 hover:text-cartoon-red cursor-pointer p-0.5 rounded-lg hover:bg-rose-50"
+                          title="Quitar de la receta"
                         >
-                          <Icon name="close" size={16} />
+                          <Icon name="close" size={17} />
                         </button>
                       </div>
 
@@ -717,39 +811,45 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                       <button
                         type="button"
                         onClick={() => handleCycleProteinScope(recItem.ingredientId, scope)}
-                        className={`py-1 px-2.5 rounded-xl font-sub font-bold text-[11px] flex items-center justify-between cursor-pointer transition-colors border ${scopeConfig.cls}`}
+                        className={`py-1.5 px-3 rounded-2xl font-sub font-bold text-xs flex items-center justify-between cursor-pointer transition-colors border-2 ${scopeConfig.cls}`}
                         title="Tocá para cambiar si aplica a Carne, Pollo o Ambos"
                       >
                         <span>{scopeConfig.label}</span>
-                        <span className="underline text-[10px] ml-2">Cambiar</span>
+                        <span className="underline text-[11px] ml-2 font-display">Cambiar</span>
                       </button>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-white p-2 rounded-xl border border-cartoon-ink/20">
-                          <span className="font-sub font-bold text-[10px] text-gray-400 block">Simple</span>
-                          <span className="font-display text-sm text-cartoon-ink">
-                            {simpleVal} {unit}
+                      {/* Cajas de cantidad Simple vs Doble con diseño amplio no aplastado */}
+                      <div className="grid grid-cols-2 gap-2.5 text-xs">
+                        <div className="bg-white p-3 rounded-2xl border-2 border-cartoon-ink/20 flex flex-col justify-between">
+                          <span className="font-sub font-bold text-[10px] text-gray-400 block uppercase tracking-wider">
+                            Simple
+                          </span>
+                          <span className="font-display text-base sm:text-lg text-cartoon-ink mt-0.5 truncate">
+                            {simpleVal} <span className="text-xs font-sub font-semibold text-gray-500">{unit}</span>
                           </span>
                         </div>
-                        <div className="bg-white p-2 rounded-xl border border-cartoon-ink/20">
-                          <span className="font-sub font-bold text-[10px] text-gray-400 block">Doble</span>
-                          <span className="font-display text-sm text-cartoon-ink">
-                            {doubleVal} {unit}
+                        <div className="bg-white p-3 rounded-2xl border-2 border-cartoon-ink/20 flex flex-col justify-between">
+                          <span className="font-sub font-bold text-[10px] text-gray-400 block uppercase tracking-wider">
+                            Doble
+                          </span>
+                          <span className="font-display text-base sm:text-lg text-cartoon-ink mt-0.5 truncate">
+                            {doubleVal} <span className="text-xs font-sub font-semibold text-gray-500">{unit}</span>
                           </span>
                         </div>
                       </div>
 
+                      {/* Botón de regla de variante */}
                       <button
                         type="button"
                         onClick={() => handleToggleRecipeDoubleRule(recItem.ingredientId, scope)}
-                        className={`py-1.5 px-2.5 rounded-xl font-sub font-bold text-[11px] flex items-center justify-between cursor-pointer transition-colors border ${
+                        className={`py-2 px-3 rounded-2xl font-sub font-bold text-xs flex items-center justify-between cursor-pointer transition-colors border-2 ${
                           isFixed
                             ? 'bg-amber-50 text-amber-800 border-amber-300'
                             : 'bg-blue-50 text-blue-800 border-blue-300'
                         }`}
                       >
-                        <span>{isFixed ? 'Fijo en Doble (No duplica)' : 'Se duplica en Doble (x2)'}</span>
-                        <span className="underline text-[10px]">Cambiar</span>
+                        <span className="truncate">{isFixed ? 'Fijo en Doble (No duplica)' : 'Se duplica en Doble (x2)'}</span>
+                        <span className="underline text-[11px] ml-2 font-display flex-shrink-0">Cambiar</span>
                       </button>
                     </div>
                   );
@@ -757,20 +857,23 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
               </div>
             )}
 
-            {/* Formulario para Agregar Insumo a la Receta */}
+            {/* Formulario para Agregar Insumo a la Receta con distribución totalmente responsive */}
             <form
               onSubmit={handleAddIngredientToRecipe}
-              className="p-4 rounded-2xl bg-cartoon-cream/60 border-2 border-cartoon-ink space-y-3"
+              className="p-4 sm:p-5 rounded-3xl bg-cartoon-cream/60 border-2 sm:border-3 border-cartoon-ink space-y-3.5 shadow-cartoon-xs"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                <div className="sm:col-span-3">
+              <h5 className="font-display text-sm text-cartoon-ink">
+                Agregar insumo a la receta de {selectedProduct?.name}
+              </h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                <div className="sm:col-span-1 lg:col-span-3">
                   <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                     Ingrediente
                   </label>
                   <select
                     value={recipeNewItem.ingredientId}
                     onChange={(e) => handleIngredientSelectChange(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-semibold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2.5 rounded-2xl bg-white border-2 border-cartoon-ink/30 font-sub font-semibold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   >
                     {ingredients.map((ing) => (
                       <option key={ing.id} value={ing.id}>
@@ -780,16 +883,16 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   </select>
                 </div>
 
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-1 lg:col-span-3">
                   <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
-                    Aplica a (Carne / Pollo)
+                    Aplica a
                   </label>
                   <select
                     value={recipeNewItem.proteinScope}
                     onChange={(e) =>
                       setRecipeNewItem((prev) => ({ ...prev, proteinScope: e.target.value }))
                     }
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2.5 rounded-2xl bg-white border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   >
                     <option value="all">Ambos (Carne y Pollo)</option>
                     <option value="carne">Solo si pide Carne</option>
@@ -797,7 +900,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   </select>
                 </div>
 
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-1 lg:col-span-2">
                   <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                     Cant. Simple
                   </label>
@@ -815,11 +918,11 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                         amountDouble: prev.doubleRule === 'duplicate' ? simple * 2 : simple,
                       }));
                     }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2.5 rounded-2xl bg-white border-2 border-cartoon-ink/30 font-sub font-bold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   />
                 </div>
 
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-1 lg:col-span-2">
                   <label className="block font-sub font-bold text-xs text-cartoon-ink mb-1">
                     Regla en Doble
                   </label>
@@ -834,7 +937,7 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                         amountDouble: rule === 'duplicate' ? simple * 2 : simple,
                       }));
                     }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-cartoon-ink/30 font-sub font-semibold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
+                    className="w-full px-3 py-2.5 rounded-2xl bg-white border-2 border-cartoon-ink/30 font-sub font-semibold text-xs text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
                   >
                     <option value="duplicate">Duplicar (x2)</option>
                     <option value="fixed">Fijo (x1)</option>
@@ -842,10 +945,10 @@ export const IngredientsSection = ({ ingredients = [], products = [] }) => {
                   </select>
                 </div>
 
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 lg:col-span-2">
                   <button
                     type="submit"
-                    className="w-full btn-cartoon-primary py-2.5 px-3 text-xs"
+                    className="w-full btn-cartoon-primary py-2.5 px-3 text-xs shadow-cartoon-xs"
                   >
                     Guardar
                   </button>

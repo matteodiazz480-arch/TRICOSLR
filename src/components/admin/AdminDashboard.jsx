@@ -284,36 +284,36 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-cartoon-ink flex flex-col md:flex-row select-none">
-      {/* BARRA LATERAL ESCRITORIO ESTILO CARTOON */}
-      <aside className="hidden md:flex md:w-60 lg:w-64 flex-col bg-white border-r-3 border-cartoon-ink p-5 justify-between sticky top-0 h-screen shadow-cartoon-xs">
+      {/* BARRA LATERAL ESCRITORIO ESTILO CARTOON - Totalmente adaptable a laptops y monitores */}
+      <aside className="hidden md:flex md:w-56 lg:w-60 xl:w-64 flex-col bg-white border-r-3 border-cartoon-ink p-4 lg:p-5 justify-between sticky top-0 h-screen overflow-y-auto cartoon-scrollbar shadow-cartoon-xs flex-shrink-0">
         <div>
-          <div className="flex items-center gap-3 pb-5 border-b-2 border-cartoon-ink/15">
-            <div className="w-11 h-11 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-3 pb-4 border-b-2 border-cartoon-ink/15">
+            <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
               <img src="/assets/logo.svg?v=4" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h2 className="font-display text-xl text-cartoon-ink leading-none">TRICO'S</h2>
-              <span className="font-sub font-bold text-[11px] text-gray-500 uppercase tracking-wider mt-1 block">
+              <h2 className="font-display text-lg lg:text-xl text-cartoon-ink leading-none">TRICO'S</h2>
+              <span className="font-sub font-bold text-[10px] lg:text-[11px] text-gray-500 uppercase tracking-wider mt-1 block">
                 Panel de Control
               </span>
             </div>
           </div>
 
-          <nav className="mt-5 space-y-1.5">
+          <nav className="mt-4 space-y-1">
             {navItems.map((item) => {
               const active = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl font-sub font-bold text-xs transition-all cursor-pointer border-2 ${
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 lg:px-3.5 lg:py-2.5 rounded-2xl font-sub font-bold text-xs transition-all cursor-pointer border-2 ${
                     active
                       ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display text-sm'
                       : 'text-cartoon-ink/75 hover:bg-cartoon-cream hover:text-cartoon-ink border-transparent'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon name={item.icon} size={19} />
+                  <div className="flex items-center gap-2.5 lg:gap-3">
+                    <Icon name={item.icon} size={18} />
                     <span>{item.label}</span>
                   </div>
                   {item.id === 'sorteo' && pendingOrdersCount > 0 && (
@@ -327,12 +327,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
           </nav>
         </div>
 
-        <div className="space-y-2 pt-4 border-t-2 border-cartoon-ink/15">
+        <div className="space-y-2 pt-3 border-t-2 border-cartoon-ink/15">
           <button
             onClick={onGoToStore}
-            className="btn-cartoon-white w-full py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="btn-cartoon-white w-full py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Icon name="storefront" size={16} />
+            <Icon name="storefront" size={15} />
             <span>Ver Tienda</span>
           </button>
           <button
@@ -340,9 +340,9 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               clearSession();
               onLogout();
             }}
-            className="btn-cartoon-red w-full py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="btn-cartoon-red w-full py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Icon name="logout" size={16} />
+            <Icon name="logout" size={15} />
             <span>Cerrar Sesión</span>
           </button>
         </div>
@@ -378,8 +378,8 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
         </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-32 md:pb-8 max-w-6xl w-full mx-auto">
+      {/* CONTENIDO PRINCIPAL - Adaptación responsive amplia sin efecto aplastado */}
+      <main className="flex-1 p-3.5 sm:p-5 lg:p-6 xl:p-8 pb-32 md:pb-8 max-w-7xl w-full mx-auto min-w-0">
         {/* ============================================================== */}
         {/* PESTAÑA: PEDIDOS, ESTADOS Y SORTEO */}
         {/* ============================================================== */}
@@ -436,7 +436,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 />
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto cartoon-scrollbar-horizontal pb-1.5 py-0.5">
                 {CATEGORIES.map((cat) => {
                   const active = selectedCategory === cat.id;
                   return (
