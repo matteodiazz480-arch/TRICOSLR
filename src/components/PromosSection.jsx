@@ -49,7 +49,7 @@ export const PromosSection = () => {
         {/* ============================================================== */}
         {/* TARJETA DEL SORTEO: SIMPLIFICADA, ELEGANTE Y DIRECTA */}
         {/* ============================================================== */}
-        {giveaway.active && (
+        {giveaway && giveaway.active && !giveaway.deleted && (
           <Reveal delay={0}>
             <div className="mb-8 rounded-3xl bg-gradient-to-r from-amber-300 via-amber-200 to-yellow-200 border-3 sm:border-4 border-cartoon-ink shadow-cartoon-sm p-4 sm:p-6">
               
@@ -69,62 +69,29 @@ export const PromosSection = () => {
               </div>
 
               <p className="font-sub font-bold text-xs sm:text-sm text-cartoon-ink/80 mb-4">
-                ¡Con cada pedido en la web participás automáticamente por 4 premios!
+                {giveaway.subtitle || `¡Con cada pedido en la web participás automáticamente por ${(giveaway.prizes || DEFAULT_PROMOTIONS_DATA.giveaway.prizes).length} premios!`}
               </p>
 
-              {/* Los 4 Premios Simplificados (4 cajas limpias) */}
+              {/* Los Premios Dinámicos mapeados desde la administración */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                <div className="bg-white rounded-xl border-2 border-cartoon-ink p-3 flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-9 h-9 rounded-lg bg-cartoon-yellow/30 border border-cartoon-ink flex items-center justify-center flex-shrink-0 text-cartoon-ink">
-                    <Icon name="devices" size={18} />
+                {(giveaway.prizes || DEFAULT_PROMOTIONS_DATA.giveaway.prizes).map((prize, idx) => (
+                  <div key={prize.id || idx} className="bg-white rounded-xl border-2 border-cartoon-ink p-3 flex items-center gap-2.5 shadow-2xs">
+                    <div className="w-9 h-9 rounded-lg bg-cartoon-yellow/30 border border-cartoon-ink flex items-center justify-center flex-shrink-0 text-cartoon-ink">
+                      <Icon name={prize.icon || 'emoji_events'} size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-display text-[10px] text-cartoon-red font-black block">
+                        {prize.badge || `${idx + 1}° PREMIO`}
+                      </span>
+                      <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight truncate">
+                        {prize.title}
+                      </p>
+                      <span className="font-sub text-[10px] text-gray-500 block truncate">
+                        {prize.detail}
+                      </span>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-display text-[10px] text-cartoon-red font-black block">1° PREMIO</span>
-                    <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight truncate">
-                      Diseño Web Profesional
-                    </p>
-                    <span className="font-sub text-[10px] text-gray-500 block truncate">Creación + 1 mes dominio</span>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl border-2 border-cartoon-ink p-3 flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-9 h-9 rounded-lg bg-cartoon-yellow/30 border border-cartoon-ink flex items-center justify-center flex-shrink-0 text-cartoon-ink">
-                    <Icon name="lunch_dining" size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="font-display text-[10px] text-cartoon-red font-black block">2° PREMIO</span>
-                    <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight truncate">
-                      Combo Carioca + Delivery
-                    </p>
-                    <span className="font-sub text-[10px] text-gray-500 block truncate">Envío 100% bonificado</span>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl border-2 border-cartoon-ink p-3 flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-9 h-9 rounded-lg bg-cartoon-yellow/30 border border-cartoon-ink flex items-center justify-center flex-shrink-0 text-cartoon-ink">
-                    <Icon name="share" size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="font-display text-[10px] text-cartoon-red font-black block">3° PREMIO</span>
-                    <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight truncate">
-                      Mes Gestión Redes Sociales
-                    </p>
-                    <span className="font-sub text-[10px] text-gray-500 block truncate">Planificación y diseño</span>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl border-2 border-cartoon-ink p-3 flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-9 h-9 rounded-lg bg-cartoon-yellow/30 border border-cartoon-ink flex items-center justify-center flex-shrink-0 text-cartoon-ink">
-                    <Icon name="fastfood" size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="font-display text-[10px] text-cartoon-red font-black block">4° PREMIO</span>
-                    <p className="font-sub font-bold text-xs text-cartoon-ink leading-tight truncate">
-                      Combo Pollo para Compartir
-                    </p>
-                    <span className="font-sub text-[10px] text-gray-500 block truncate">Tiras crocantes con salsas</span>
-                  </div>
-                </div>
+                ))}
               </div>
 
               {/* Botón rápido a la carta */}

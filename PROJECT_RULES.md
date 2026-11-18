@@ -100,6 +100,18 @@
   2. Se configuró la grilla responsive a 2 columnas amplias en laptops y PCs estándar (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5`) y se blindó con `overflow-hidden` todas las tarjetas del sistema (insumos, recetas, productos de carta, resumen financiero, cupones, pedidos y carrito) con `min-w-0` en los contenedores de texto y precio.
   3. En el selector de productos, se ocultó la barra de desplazamiento visual (`no-scrollbar`) y se eliminó el texto secundario, manteniendo intactas y alineadas las flechas interactivas (`<` y `>`) y el soporte de scroll horizontal nativo con la rueda del ratón (`wheel`).
 
+### Error 8: Omisión de participantes en la ruleta de sorteo, corte inferior de scroll en desktop y favicon verde no representativo
+- **Causa raíz:** 
+  1. En `LotteryOrdersSection.jsx`, los candidatos de la ruleta visual estaban limitados con `source.slice(0, 12)`, dejando fuera a los demás clientes participantes cuando el número superaba 12.
+  2. En `BrandRibbon.jsx`, la rotación `-rotate-2` en pantallas de escritorio anchas (1366px-1920px) superaba el espacio de `overflow-hidden py-6 sm:py-8`, cortando la parte inferior de la cinta de delivery. En `AdminDashboard.jsx`, el contenedor `main` contaba con un padding inferior escaso en PC (`md:pb-8`), dificultando el scroll libre hasta el final del contenido.
+  3. `index.html` apuntaba el favicon hacia `/assets/logo.svg`, cuyos píxeles internos eran de color verde oscuro (`#244031`), desentonando con la identidad cómic/cartoon de la marca (`#FFC93C`, `#FFFDF6`, `#1E1B18`).
+  4. La configuración de sorteo carecía de un modal flotante centralizado para administrar premios (CRUD), cantidad de ganadores, fechas de cierre, edición de ganadores y eliminación completa, y la página pública `PromosSection.jsx` tenía tarjetas estáticas que no reaccionaban ante la eliminación del sorteo.
+- **Solución implementada:** 
+  1. Se eliminó la restricción `slice(0, 12)` en `LotteryOrdersSection.jsx`, garantizando que el 100% de clientes participen en la rueda visual. Se añadió adaptación de texto y sectores SVG según el número de participantes, junto a un ticker animado en vivo que muestra los nombres rotando en tiempo real durante el giro.
+  2. Se optimizó `BrandRibbon.jsx` ampliando el padding a `py-8 sm:py-10 md:py-12` y suavizando el ángulo en pantallas anchas para que nunca sufra cortes. Se amplió el padding inferior en `AdminDashboard.jsx` (`md:pb-24`) y se ajustó el viewport en `index.css` asegurando navegación fluida y completa hasta el final.
+  3. Se crearon los favicons oficiales en versión clara (`favicon.svg`, `favicon-32x32.png`, `apple-touch-icon.png`, `favicon.ico`) con fondo blanco/crema y trazos nítidos tinta cómic `#1E1B18`, reemplazando el icono verde en `index.html`.
+  4. Se desarrolló el modal `GiveawayAdminModal.jsx` accesible desde el botón "Administrar Sorteo" en Promociones: permite modificar, agregar y eliminar premios, definir cantidad de ganadores, gestionar o reasignar ganadores existentes, establecer fecha de sorteo y eliminar el sorteo completo con confirmación (desapareciendo de inmediato de `PromosSection.jsx` sin afectar pedidos ni datos existentes).
+
 ---
 
 ## 3. ARQUITECTURA DE DATOS EN FIREBASE FIRESTORE

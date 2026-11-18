@@ -17,13 +17,17 @@ import {
   getPromotions,
   subscribeToPromotions,
   updateGiveaway,
+  deleteGiveaway,
+  restoreGiveaway,
   addCoupon,
   deleteCoupon,
   toggleCouponActive,
+  DEFAULT_PROMOTIONS_DATA,
 } from '../../lib/promotionsStore';
 import { compressImageFile } from '../../lib/imageCompressor';
 import { LotteryOrdersSection } from './LotteryOrdersSection';
 import { IngredientsSection } from './IngredientsSection';
+import { GiveawayAdminModal } from './GiveawayAdminModal';
 import {
   getOrders,
   subscribeToOrders,
@@ -173,6 +177,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
   });
 
   const [promoMessage, setPromoMessage] = useState('');
+  const [isGiveawayModalOpen, setIsGiveawayModalOpen] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToPromotions((data) => {
@@ -379,7 +384,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
       </header>
 
       {/* CONTENIDO PRINCIPAL - Adaptación responsive amplia sin efecto aplastado */}
-      <main className="flex-1 p-3.5 sm:p-5 lg:p-6 xl:p-8 pb-32 md:pb-8 max-w-7xl w-full mx-auto min-w-0">
+      <main className="flex-1 p-3.5 sm:p-5 lg:p-6 xl:p-8 pb-32 md:pb-24 max-w-7xl w-full mx-auto min-w-0">
         {/* ============================================================== */}
         {/* PESTAÑA: PEDIDOS, ESTADOS Y SORTEO */}
         {/* ============================================================== */}
@@ -885,59 +890,73 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               </div>
             )}
 
-            {/* Configuración del Sorteo */}
+            {/* Configuración del Sorteo Oficial con Modal Flotante */}
             <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-5 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3.5 border-b-2 border-cartoon-ink/15">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b-2 border-cartoon-ink/15">
                 <div>
-                  <h4 className="font-display text-lg text-cartoon-ink">Sorteo Oficial</h4>
-                  <span className="font-sub text-xs text-gray-500">
-                    Visible en la página principal y conectado con la ruleta
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-display text-lg sm:text-xl text-cartoon-ink">Sorteo Oficial</h4>
+                    {promoData?.giveaway?.deleted ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300 font-sub font-bold text-[10px] uppercase">
+                        Eliminado (Oculto en web)
+                      </span>
+                    ) : promoData?.giveaway?.active !== false ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-sub font-bold text-[10px] uppercase">
+                        Activo en Web
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-300 font-sub font-bold text-[10px] uppercase">
+                        Pausado
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-sub text-xs text-gray-500 mt-0.5 block">
+                    Conectado con la ruleta de pedidos y la página pública de promociones.
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleToggleGiveawayActive}
-                  className={`px-3.5 py-1.5 rounded-2xl font-sub font-bold text-xs cursor-pointer border-2 transition-all ${
-                    giveawayForm.active
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-400'
-                      : 'bg-gray-100 text-gray-500 border-gray-300'
-                  }`}
-                >
-                  {giveawayForm.active ? 'Sorteo Activo' : 'Sorteo Pausado'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsGiveawayModalOpen(true)}
+                    className="btn-cartoon-primary py-2.5 px-4 text-xs sm:text-sm flex items-center gap-2"
+                  >
+                    <Icon name="tune" size={17} />
+                    <span>Administrar Sorteo</span>
+                  </button>
+                </div>
               </div>
 
-              <form onSubmit={handleSaveGiveawaySubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
-                    Título del Sorteo
-                  </label>
-                  <input
-                    type="text"
-                    value={giveawayForm.title}
-                    onChange={(e) => setGiveawayForm({ ...giveawayForm, title: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
-                  />
+              {/* Métricas y Resumen Rápido del Sorteo */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                <div className="p-3 rounded-2xl bg-cartoon-cream/60 border border-cartoon-ink/20">
+                  <span className="font-sub font-bold text-[10px] text-gray-500 uppercase block">Título</span>
+                  <span className="font-display text-xs sm:text-sm text-cartoon-ink truncate block mt-0.5">
+                    {promoData?.giveaway?.title || "GRAN SORTEO TRICO'S"}
+                  </span>
                 </div>
 
-                <div>
-                  <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
-                    Fecha del Sorteo
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={giveawayForm.drawDate}
-                      onChange={(e) => setGiveawayForm({ ...giveawayForm, drawDate: e.target.value })}
-                      className="flex-1 px-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink/30 font-sub text-xs sm:text-sm text-cartoon-ink focus:outline-none focus:border-cartoon-ink"
-                    />
-                    <button type="submit" className="btn-cartoon-primary py-2.5 px-4 text-xs">
-                      Guardar
-                    </button>
-                  </div>
+                <div className="p-3 rounded-2xl bg-cartoon-cream/60 border border-cartoon-ink/20">
+                  <span className="font-sub font-bold text-[10px] text-gray-500 uppercase block">Finalización</span>
+                  <span className="font-display text-xs sm:text-sm text-cartoon-ink truncate block mt-0.5">
+                    {promoData?.giveaway?.drawDate || 'Fin de mes'}
+                  </span>
                 </div>
-              </form>
+
+                <div className="p-3 rounded-2xl bg-cartoon-cream/60 border border-cartoon-ink/20">
+                  <span className="font-sub font-bold text-[10px] text-gray-500 uppercase block">Premios en Juego</span>
+                  <span className="font-display text-xs sm:text-sm text-cartoon-ink truncate block mt-0.5">
+                    {(promoData?.giveaway?.prizes || DEFAULT_PROMOTIONS_DATA.giveaway.prizes).length} premios
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-cartoon-cream/60 border border-cartoon-ink/20">
+                  <span className="font-sub font-bold text-[10px] text-gray-500 uppercase block">Ganadores</span>
+                  <span className="font-display text-xs sm:text-sm text-cartoon-ink truncate block mt-0.5">
+                    {orders.filter((o) => o.isWinner).length} / {promoData?.giveaway?.winnersCount || 4} asignados
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Cupones de Descuento */}
@@ -1324,6 +1343,30 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
           </div>
         </div>
       )}
+
+      {/* Modal Administración de Sorteo y Premios */}
+      <GiveawayAdminModal
+        isOpen={isGiveawayModalOpen}
+        onClose={() => setIsGiveawayModalOpen(false)}
+        giveaway={promoData?.giveaway}
+        orders={orders}
+        onUpdateGiveaway={(updates) => {
+          updateGiveaway(updates);
+          setPromoMessage('Sorteo actualizado');
+          setTimeout(() => setPromoMessage(''), 2200);
+        }}
+        onDeleteGiveaway={() => {
+          deleteGiveaway();
+          setPromoMessage('Sorteo eliminado de la web');
+          setTimeout(() => setPromoMessage(''), 2200);
+        }}
+        onRestoreGiveaway={() => {
+          restoreGiveaway();
+          setPromoMessage('Sorteo restaurado');
+          setTimeout(() => setPromoMessage(''), 2200);
+        }}
+        onToggleWinner={toggleOrderWinner}
+      />
     </div>
   );
 };

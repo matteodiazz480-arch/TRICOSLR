@@ -99,11 +99,14 @@ export const LotteryOrdersSection = ({
   const [isSpinning, setIsSpinning] = useState(false);
   const [wheelRotation, setWheelRotation] = useState(0);
   const [chosenWinner, setChosenWinner] = useState(null);
+  const [liveTickerName, setLiveTickerName] = useState('');
   const spinTimeoutRef = useRef(null);
+  const tickerIntervalRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+      if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
     };
   }, []);
 
@@ -144,11 +147,11 @@ export const LotteryOrdersSection = ({
     });
   }, [orders, search, statusFilter]);
 
-  // Segmentos de la ruleta (máximo 12 visibles en la rueda para legibilidad, aunque el sorteo elige entre todos los elegibles)
+  // Todos los clientes que participan del sorteo (sin límites artificiales)
   const wheelCandidates = useMemo(() => {
     const pool = orders.filter((o) => !o.isWinner);
     const source = pool.length > 0 ? pool : orders;
-    return source.slice(0, 12);
+    return source;
   }, [orders]);
 
   const handleStartSpin = () => {
@@ -175,17 +178,30 @@ export const LotteryOrdersSection = ({
     setIsSpinning(true);
     setWheelRotation(nextRotation);
 
+    // Animación en vivo mostrando nombres mientras gira
+    if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
+    tickerIntervalRef.current = setInterval(() => {
+      if (pool.length > 0) {
+        const randIdx = Math.floor(Math.random() * pool.length);
+        setLiveTickerName(pool[randIdx]?.customerName || 'Cliente');
+      }
+    }, 110);
+
     if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
     spinTimeoutRef.current = setTimeout(() => {
+      if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
       setIsSpinning(false);
       setChosenWinner(finalWinner);
+      setLiveTickerName(finalWinner.customerName || 'Cliente');
     }, 4200);
   };
 
   const handleResetSpin = () => {
     if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    if (tickerIntervalRef.current) clearInterval(tickerIntervalRef.current);
     setIsSpinning(false);
     setChosenWinner(null);
+    setLiveTickerName('');
     setWheelRotation(0);
   };
 
@@ -265,6 +281,32 @@ export const LotteryOrdersSection = ({
     const center = 160;
     const anglePerSlice = 360 / count;
 
+    // Adaptar dinámicamente tipografía, posición y formato de etiqueta según la cantidad total de participantes
+    let fontSize = 10;
+    let textRadiusFactor = 0.62;
+    let maxChar = 12;
+    let mode = 'full'; // 'full' | 'short' | 'ticket' | 'compact'
+
+    if (count <= 16) {
+      fontSize = 10;
+      textRadiusFactor = 0.62;
+      maxChar = 12;
+      mode = 'full';
+    } else if (count <= 32) {
+      fontSize = 8;
+      textRadiusFactor = 0.65;
+      maxChar = 9;
+      mode = 'short';
+    } else if (count <= 60) {
+      fontSize = 7;
+      textRadiusFactor = 0.70;
+      mode = 'ticket';
+    } else {
+      fontSize = 5.5;
+      textRadiusFactor = 0.76;
+      mode = 'compact';
+    }
+
     return wheelCandidates.map((cand, i) => {
       const startAngle = i * anglePerSlice - 90;
       const endAngle = (i + 1) * anglePerSlice - 90;
@@ -280,13 +322,25 @@ export const LotteryOrdersSection = ({
       const d = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
 
       const midAngle = startAngle + anglePerSlice / 2;
-      const textRadius = radius * 0.62;
+      const textRadius = radius * textRadiusFactor;
       const tx = center + textRadius * Math.cos((midAngle * Math.PI) / 180);
       const ty = center + textRadius * Math.sin((midAngle * Math.PI) / 180);
-      const shortName =
-        (cand.customerName || 'Cliente').length > 13
-          ? `${cand.customerName.slice(0, 12)}…`
-          : cand.customerName || 'Cliente';
+
+      let textLabel = '';
+      if (mode === 'full') {
+        const full = cand.customerName || 'Cliente';
+        textLabel = full.length > maxChar ? `${full.slice(0, maxChar - 1)}…` : full;
+      } else if (mode === 'short') {
+        const first = (cand.customerName || 'Cliente').split(' ')[0] || 'Cliente';
+        textLabel = first.length > maxChar ? `${first.slice(0, maxChar - 1)}…` : first;
+      } else if (mode === 'ticket') {
+        textLabel = `#${cand.ticketNumber || i + 1}`;
+      } else {
+        textLabel = `${cand.ticketNumber || i + 1}`;
+      }
+
+      // Si hay una cantidad masiva (> 60 participantes), espaciar las etiquetas para no sobrecargar
+      const shouldRenderText = count <= 60 || i % Math.ceil(count / 60) === 0;
 
       return (
         <g key={cand.id || i}>
@@ -294,20 +348,22 @@ export const LotteryOrdersSection = ({
             d={d}
             fill={WHEEL_COLORS[i % WHEEL_COLORS.length]}
             stroke="#FFFFFF"
-            strokeWidth="1.5"
+            strokeWidth={count > 48 ? '0.8' : '1.5'}
           />
-          <text
-            x={tx}
-            y={ty}
-            fill="#FFFFFF"
-            fontSize="10"
-            fontWeight="600"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            transform={`rotate(${midAngle}, ${tx}, ${ty})`}
-          >
-            {shortName}
-          </text>
+          {shouldRenderText && (
+            <text
+              x={tx}
+              y={ty}
+              fill="#FFFFFF"
+              fontSize={fontSize}
+              fontWeight="700"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              transform={`rotate(${midAngle}, ${tx}, ${ty})`}
+            >
+              {textLabel}
+            </text>
+          )}
         </g>
       );
     });
@@ -555,7 +611,7 @@ export const LotteryOrdersSection = ({
               <div>
                 <h3 className="font-display text-base sm:text-lg">Ruleta Oficial de Sorteo</h3>
                 <p className="font-sub text-xs text-slate-400">
-                  {orders.length} participantes registrados
+                  Todos los clientes incluidos ({wheelCandidates.length} participantes elegibles)
                 </p>
               </div>
               <button
@@ -627,9 +683,9 @@ export const LotteryOrdersSection = ({
                     </svg>
 
                     {/* Centro de la Ruleta */}
-                    <div className="absolute w-14 h-14 rounded-full bg-white border-4 border-slate-900 shadow-md flex items-center justify-center">
+                    <div className="absolute w-14 h-14 rounded-full bg-white border-4 border-slate-900 shadow-md flex items-center justify-center overflow-hidden">
                       <img
-                        src="/assets/logo.svg"
+                        src="/assets/favicon-512x512.png"
                         alt="Trico's"
                         className="w-9 h-9 object-contain"
                       />
@@ -641,10 +697,18 @@ export const LotteryOrdersSection = ({
                 <div className="md:col-span-5 flex flex-col justify-between space-y-4">
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center min-h-[150px] flex flex-col items-center justify-center">
                     {isSpinning ? (
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full">
                         <span className="inline-block w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
                         <p className="font-display text-sm text-slate-900">Girando ruleta...</p>
-                        <p className="font-sub text-xs text-slate-500">Seleccionando ganador al azar</p>
+                        <div className="px-3 py-2 rounded-xl bg-amber-100 border border-amber-300">
+                          <span className="font-sub text-[10px] text-amber-800 block uppercase font-bold">Pasando por:</span>
+                          <span className="font-display text-xs text-slate-900 truncate block mt-0.5">
+                            {liveTickerName || 'Participante'}
+                          </span>
+                        </div>
+                        <p className="font-sub text-[11px] text-slate-500">
+                          {wheelCandidates.length} participantes en juego
+                        </p>
                       </div>
                     ) : chosenWinner ? (
                       <div className="space-y-1.5 animate-fadeIn">
@@ -665,7 +729,7 @@ export const LotteryOrdersSection = ({
                       <div className="space-y-1">
                         <p className="font-display text-sm text-slate-700">Listo para sortear</p>
                         <p className="font-sub text-xs text-slate-400">
-                          Presioná el botón para girar la ruleta
+                          {wheelCandidates.length} clientes participando
                         </p>
                       </div>
                     )}

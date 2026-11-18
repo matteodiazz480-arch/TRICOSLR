@@ -10,42 +10,43 @@ const PROMOTIONS_KEY = 'tricos_promotions_data';
 export const DEFAULT_PROMOTIONS_DATA = {
   giveaway: {
     active: true,
+    deleted: false,
     title: 'GRAN SORTEO TRICO\'S',
-    subtitle: '¡Participá gratis con tu pedido o etiquetándonos en Instagram!',
-    prizeName: 'Combo Carioca + Delivery Gratis',
-    winnersCount: 1,
+    subtitle: '¡Con cada pedido en la web participás automáticamente por 4 premios!',
+    prizeName: 'Diseño Web + Combos y Gestión',
+    winnersCount: 4,
     drawDate: 'Fin de mes',
     prizes: [
       {
         id: 1,
-        title: 'Diseño de Web Profesional Personalizada',
-        detail: 'Para oficios, emprendimientos o comercio (incluye creación completa y mes de dominio gratis).',
+        title: 'Diseño Web Profesional',
+        detail: 'Creación + 1 mes dominio',
         icon: 'devices',
         badge: '1° PREMIO',
       },
       {
         id: 2,
-        title: 'Combo Carioca + Delivery Gratis',
-        detail: 'Banquete de hamburguesas con papas fritas y envío 100% bonificado a tu casa.',
+        title: 'Combo Carioca + Delivery',
+        detail: 'Envío 100% bonificado',
         icon: 'lunch_dining',
         badge: '2° PREMIO',
       },
       {
         id: 3,
-        title: 'Mes de Gestión de Redes Sociales',
-        detail: 'Planificación estratégica, diseño gráfico de publicaciones y optimización de perfil.',
+        title: 'Mes Gestión Redes Sociales',
+        detail: 'Planificación y diseño',
         icon: 'share',
         badge: '3° PREMIO',
       },
       {
         id: 4,
-        title: 'Combo Pollo Frito para Compartir',
-        detail: 'Tiras y piezas ultra crocantes con doble salsa especial y papas doradas.',
+        title: 'Combo Pollo para Compartir',
+        detail: 'Tiras crocantes con salsas',
         icon: 'fastfood',
         badge: '4° PREMIO',
       },
     ],
-    terms: 'Participás automáticamente con cualquier pedido realizado en la web con tu número de teléfono, o compartiendo una foto de tu pedido en Instagram etiquetando a @tricos.',
+    terms: 'Participás automáticamente con cualquier pedido realizado en la web con tu número de teléfono.',
   },
   coupons: [
     {
@@ -73,13 +74,15 @@ export const getPromotions = () => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
+        const gw = parsed.giveaway || {};
         return {
           giveaway: {
             ...DEFAULT_PROMOTIONS_DATA.giveaway,
-            ...(parsed.giveaway || {}),
+            ...gw,
+            deleted: gw.deleted === true,
             prizes:
-              Array.isArray(parsed.giveaway?.prizes) && parsed.giveaway.prizes.length > 0
-                ? parsed.giveaway.prizes
+              Array.isArray(gw.prizes) && gw.prizes.length > 0
+                ? gw.prizes
                 : DEFAULT_PROMOTIONS_DATA.giveaway.prizes,
           },
           coupons: Array.isArray(parsed.coupons) ? parsed.coupons : DEFAULT_PROMOTIONS_DATA.coupons,
@@ -172,6 +175,35 @@ export const updateGiveaway = (giveawayUpdates) => {
     giveaway: {
       ...current.giveaway,
       ...giveawayUpdates,
+    },
+  };
+  savePromotions(next, true);
+  return next;
+};
+
+export const deleteGiveaway = () => {
+  const current = getPromotions();
+  const next = {
+    ...current,
+    giveaway: {
+      ...current.giveaway,
+      deleted: true,
+      active: false,
+    },
+  };
+  savePromotions(next, true);
+  return next;
+};
+
+export const restoreGiveaway = () => {
+  const current = getPromotions();
+  const next = {
+    ...current,
+    giveaway: {
+      ...DEFAULT_PROMOTIONS_DATA.giveaway,
+      ...current.giveaway,
+      deleted: false,
+      active: true,
     },
   };
   savePromotions(next, true);
