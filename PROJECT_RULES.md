@@ -91,6 +91,15 @@
   4. Se rediseñó la cuadrícula a 2 columnas amplias y confortables en laptops y PCs medianas (`grid-cols-1 md:grid-cols-2 2xl:grid-cols-3`), dando más de 480px de ancho a cada tarjeta, con cajas de Simple/Doble mucho más aireadas y tipografía nítida no aplastada.
   5. Se añadió `overflow-y-auto` a la barra lateral y `min-w-0` al contenedor principal para asegurar un comportamiento responsive perfecto en cualquier resolución y zoom.
 
+### Error 7: Desborde de contenido y botones fuera del borde de las tarjetas e invasión visual de la barra de scroll en recetas
+- **Causa raíz:** 
+  1. En las tarjetas de ingredientes (`Stock de Insumos`), la fila inferior agrupaba en una única línea flex rígida el valor de stock (`35.400 g`), los botones de incremento (`-500` y `+500`), el botón de editar y el de eliminar. En tarjetas de ancho menor a 330px, los botones de editar y papelera se desbordaban físicamente más allá del borde redondeado de la tarjeta por falta de espacio horizontal y ausencia de `overflow-hidden`.
+  2. En el selector de productos de recetas, la barra de scroll inferior amarilla generaba distracción visual, y el texto indicativo resultaba redundante una vez incorporadas las flechas de navegación táctiles y el scroll por rueda del ratón.
+- **Solución implementada:** 
+  1. Se reestructuraron las tarjetas de insumos: los botones de administración (`Editar` y `Eliminar`) se trasladaron a la cabecera superior junto al botón kill-switch (`Disponible / Agotado`), dejando la fila inferior exclusivamente para la cifra destacada de stock y los botones de ajuste rápido (`-` y `+`).
+  2. Se configuró la grilla responsive a 2 columnas amplias en laptops y PCs estándar (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5`) y se blindó con `overflow-hidden` todas las tarjetas del sistema (insumos, recetas, productos de carta, resumen financiero, cupones, pedidos y carrito) con `min-w-0` en los contenedores de texto y precio.
+  3. En el selector de productos, se ocultó la barra de desplazamiento visual (`no-scrollbar`) y se eliminó el texto secundario, manteniendo intactas y alineadas las flechas interactivas (`<` y `>`) y el soporte de scroll horizontal nativo con la rueda del ratón (`wheel`).
+
 ---
 
 ## 3. ARQUITECTURA DE DATOS EN FIREBASE FIRESTORE

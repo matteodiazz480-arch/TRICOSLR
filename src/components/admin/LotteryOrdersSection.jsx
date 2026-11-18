@@ -423,7 +423,7 @@ export const LotteryOrdersSection = ({
             return (
               <div
                 key={order.id}
-                className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all"
+                className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4 transition-all overflow-hidden"
               >
                 {/* Columna Izquierda: Datos del Cliente y Pedido */}
                 <div className="space-y-1.5 min-w-0 flex-1">
@@ -488,7 +488,7 @@ export const LotteryOrdersSection = ({
                 </div>
 
                 {/* Columna Derecha: Selector Sobrio de Estado, Total y Acciones */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between lg:justify-end gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between xl:justify-end gap-3 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100 flex-shrink-0">
                   {/* Selector directo de Estado (Pendiente / En preparación / Enviado) */}
                   <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
                     {ORDER_STATUSES.map((st) => {

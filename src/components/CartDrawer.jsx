@@ -585,7 +585,7 @@ export const CartDrawer = ({
                       return (
                         <div
                           key={product.id}
-                          className={`p-2.5 sm:p-3 rounded-2xl border-2 shadow-cartoon-xs flex flex-col gap-2 transition-all ${
+                          className={`p-2.5 sm:p-3 rounded-2xl border-2 shadow-cartoon-xs flex flex-col gap-2 transition-all overflow-hidden ${
                             isItemOutOfStock ? 'bg-rose-50/90 border-cartoon-red' : 'bg-white border-cartoon-ink'
                           }`}
                         >

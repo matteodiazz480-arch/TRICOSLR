@@ -34,7 +34,7 @@ export const ProductCard = ({ product, onSelectProduct, onAddToCart }) => {
   return (
     <div
       onClick={handleCardClick}
-      className={`card-cartoon flex flex-col justify-between select-none relative bg-white p-2.5 sm:p-3.5 border-2 sm:border-3 border-cartoon-ink rounded-2xl sm:rounded-3xl shadow-cartoon-sm hover:shadow-cartoon transition-all duration-200 group cursor-pointer ${
+      className={`card-cartoon flex flex-col justify-between select-none relative bg-white p-2.5 sm:p-3.5 border-2 sm:border-3 border-cartoon-ink rounded-2xl sm:rounded-3xl shadow-cartoon-sm hover:shadow-cartoon transition-all duration-200 group cursor-pointer overflow-hidden ${
         isOutOfStock
           ? 'opacity-65 grayscale-[30%] hover:translate-y-0'
           : 'hover:-translate-y-1'

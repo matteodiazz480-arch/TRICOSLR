@@ -436,7 +436,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 />
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto cartoon-scrollbar-horizontal pb-1.5 py-0.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                 {CATEGORIES.map((cat) => {
                   const active = selectedCategory === cat.id;
                   return (
@@ -470,7 +470,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 return (
                   <div
                     key={prod.id}
-                    className={`bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-2.5 sm:p-4 flex flex-col justify-between gap-2 sm:gap-3 transition-all ${
+                    className={`bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-2.5 sm:p-4 flex flex-col justify-between gap-2 sm:gap-3 transition-all overflow-hidden ${
                       isUnavailable ? 'bg-rose-50/30 border-rose-300' : ''
                     }`}
                   >
@@ -545,7 +545,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                     </div>
 
                     <div className="pt-2 sm:pt-3 border-t-1.5 sm:border-t-2 border-cartoon-ink/15 flex items-center justify-between gap-1">
-                      <div className="font-display text-xs sm:text-base text-cartoon-ink truncate">
+                      <div className="font-display text-xs sm:text-base text-cartoon-ink truncate min-w-0 flex-1">
                         {money(price)}
                         {priceDouble && (
                           <span className="font-sub text-[9px] sm:text-xs text-gray-500 font-normal ml-0.5 block sm:inline">
@@ -634,29 +634,29 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs">
-                <span className="font-sub font-bold text-xs text-emerald-700 uppercase tracking-wider block">
+              <div className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs overflow-hidden">
+                <span className="font-sub font-bold text-xs text-emerald-700 uppercase tracking-wider block truncate">
                   Ingresos Totales
                 </span>
-                <p className="font-display text-3xl sm:text-4xl text-emerald-600 mt-1">
+                <p className="font-display text-3xl sm:text-4xl text-emerald-600 mt-1 truncate">
                   {money(financialTotals.totalEarnings)}
                 </p>
               </div>
 
-              <div className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs">
-                <span className="font-sub font-bold text-xs text-rose-700 uppercase tracking-wider block">
+              <div className="bg-white p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs overflow-hidden">
+                <span className="font-sub font-bold text-xs text-rose-700 uppercase tracking-wider block truncate">
                   Gastos Totales
                 </span>
-                <p className="font-display text-3xl sm:text-4xl text-cartoon-red mt-1">
+                <p className="font-display text-3xl sm:text-4xl text-cartoon-red mt-1 truncate">
                   {money(financialTotals.totalExpenses)}
                 </p>
               </div>
 
-              <div className="bg-cartoon-yellow text-cartoon-ink p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon">
-                <span className="font-sub font-bold text-xs text-cartoon-ink/80 uppercase tracking-wider block">
+              <div className="bg-cartoon-yellow text-cartoon-ink p-5 rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon overflow-hidden">
+                <span className="font-sub font-bold text-xs text-cartoon-ink/80 uppercase tracking-wider block truncate">
                   Balance Neto
                 </span>
-                <p className="font-display text-3xl sm:text-4xl text-cartoon-ink mt-1">
+                <p className="font-display text-3xl sm:text-4xl text-cartoon-ink mt-1 truncate">
                   {money(financialTotals.netBalance)}
                 </p>
               </div>
@@ -994,12 +994,12 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
               <div className="divide-y-2 divide-cartoon-ink/10">
                 {(promoData?.coupons || []).map((c) => (
-                  <div key={c.code} className="py-3.5 flex items-center justify-between">
-                    <div>
+                  <div key={c.code} className="py-3.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1 truncate">
                       <span className="font-display text-sm text-cartoon-ink">{c.code}</span>
                       <span className="font-sub text-xs text-gray-500 ml-2">{c.label}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         type="button"
                         onClick={() => toggleCouponActive(c.code)}
