@@ -337,35 +337,35 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-cartoon-ink flex flex-col md:flex-row select-none">
-      {/* BARRA LATERAL ESCRITORIO ESTILO CARTOON - Totalmente adaptable a laptops y monitores */}
-      <aside className="hidden md:flex md:w-56 lg:w-60 xl:w-64 flex-col bg-white border-r-3 border-cartoon-ink p-4 lg:p-5 justify-between sticky top-0 h-screen overflow-y-auto cartoon-scrollbar shadow-cartoon-xs flex-shrink-0">
-        <div>
-          <div className="flex items-center gap-3 pb-4 border-b-2 border-cartoon-ink/15">
-            <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
+      {/* BARRA LATERAL ESCRITORIO ESTILO CARTOON - Fija permanentemente en viewport */}
+      <aside className="hidden md:flex md:w-56 lg:w-60 xl:w-64 flex-col bg-white border-r-3 border-cartoon-ink p-3.5 lg:p-4 justify-between fixed top-0 left-0 bottom-0 h-screen overflow-y-auto cartoon-scrollbar shadow-cartoon-xs flex-shrink-0 z-30">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center gap-2.5 lg:gap-3 pb-3 lg:pb-3.5 border-b-2 border-cartoon-ink/15 flex-shrink-0">
+            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-2xl bg-white border-2 border-cartoon-ink shadow-cartoon-xs p-1 flex items-center justify-center flex-shrink-0">
               <img src="/assets/logo.svg?v=4" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h2 className="font-display text-lg lg:text-xl text-cartoon-ink leading-none">TRICO'S</h2>
-              <span className="font-sub font-bold text-[10px] lg:text-[11px] text-gray-500 uppercase tracking-wider mt-1 block">
+              <h2 className="font-display text-base lg:text-lg text-cartoon-ink leading-none">TRICO'S</h2>
+              <span className="font-sub font-bold text-[9px] lg:text-[10px] text-gray-500 uppercase tracking-wider mt-0.5 block">
                 Panel de Control
               </span>
             </div>
           </div>
 
-          <nav className="mt-4 space-y-1">
+          <nav className="mt-3 space-y-1 overflow-y-auto cartoon-scrollbar pr-0.5">
             {navItems.map((item) => {
               const active = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 lg:px-3.5 lg:py-2.5 rounded-2xl font-sub font-bold text-xs transition-all cursor-pointer border-2 ${
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-2xl font-sub font-bold text-xs transition-all cursor-pointer border-2 ${
                     active
                       ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink shadow-cartoon-xs font-display text-sm'
                       : 'text-cartoon-ink/75 hover:bg-cartoon-cream hover:text-cartoon-ink border-transparent'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 lg:gap-3">
+                  <div className="flex items-center gap-2.5">
                     <Icon name={item.icon} size={18} />
                     <span>{item.label}</span>
                   </div>
@@ -380,10 +380,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
           </nav>
         </div>
 
-        <div className="space-y-2 pt-3 border-t-2 border-cartoon-ink/15">
+        <div className="space-y-1.5 pt-2.5 border-t-2 border-cartoon-ink/15 flex-shrink-0">
           <button
             onClick={onGoToStore}
-            className="btn-cartoon-white w-full py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="btn-cartoon-white w-full py-1.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             <Icon name="storefront" size={15} />
             <span>Ver Tienda</span>
@@ -393,13 +393,16 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
               clearSession();
               onLogout();
             }}
-            className="btn-cartoon-red w-full py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="btn-cartoon-red w-full py-1.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             <Icon name="logout" size={15} />
             <span>Cerrar Sesión</span>
           </button>
         </div>
       </aside>
+
+      {/* ÁREA DE CONTENIDO (Desplazada el ancho del sidebar fijo en desktop) */}
+      <div className="flex-1 flex flex-col min-w-0 w-full md:pl-56 lg:pl-60 xl:pl-64">
 
       {/* CABECERA MÓVIL ESTILO CARTOON */}
       <header className="md:hidden bg-white border-b-3 border-cartoon-ink px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
@@ -1255,6 +1258,7 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
           </div>
         )}
       </main>
+      </div>
 
       {/* DRAWER / MODAL "MÁS" PARA MÓVIL ESTILO CARTOON */}
       {isMoreMenuOpen && (

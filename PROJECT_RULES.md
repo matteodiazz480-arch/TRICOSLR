@@ -135,6 +135,13 @@
      - **Tienda y Carrito (`CartDrawer`):** La barra de progreso calcula dinámicamente la meta según el monto configurado; si es $0 califica 100% de inmediato; y si está desactivado no exhibe la barra ni aplica bonificación engañosa.
      - **Despacho y Panel de Pedidos (`LotteryOrdersSection`):** Muestra claramente en el listado y detalle si el pedido calificó con envío gratis bonificado.
 
+### Error 11: Desplazamiento y desaparición de la barra lateral (navbar) en computadora al hacer scroll
+- **Causa raíz:** En `AdminDashboard.jsx`, el elemento `<aside>` utilizaba `sticky top-0 h-screen`. Dado que `html` y `body` en `index.css` poseen `overflow-x: hidden` para prevenir desbordes móviles, el navegador anula o desvincula el comportamiento de `position: sticky` respecto al viewport en pantallas de escritorio. Al compartir el contenedor flex con el contenido extenso de `<main>`, al hacer scroll hacia abajo la barra lateral se desplazaba con la página y terminaba desapareciendo por completo de la pantalla, dejando un espacio en blanco y ocultando los accesos a las secciones.
+- **Solución implementada:**
+  1. Se cambió el posicionamiento de `<aside>` a `position: fixed` (`fixed top-0 left-0 bottom-0 h-screen z-30`), anclándolo de manera absoluta e inmune al viewport del navegador, asegurando que permanezca visible y fijo al 100% durante cualquier scroll vertical con la rueda del ratón.
+  2. Se envolvió el área de contenido en un contenedor con padding lateral responsivo idéntico al ancho de la barra (`md:pl-56 lg:pl-60 xl:pl-64`) para evitar superposiciones en desktop y mantener la vista completa en móvil.
+  3. Se ajustaron las proporciones internas del sidebar (cabecera con logo `flex-shrink-0`, acciones inferiores `flex-shrink-0`, y botones de navegación compactos en `py-2`) para que todo el contenido del panel (logo + 7 secciones + Ver Tienda + Cerrar Sesión) quepa cómodamente en pantallas con baja resolución vertical (a partir de 550px) sin forzar scroll interno.
+
 ---
 
 ## 3. ARQUITECTURA DE DATOS EN FIREBASE FIRESTORE
