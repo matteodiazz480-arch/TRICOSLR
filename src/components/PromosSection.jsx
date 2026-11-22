@@ -26,6 +26,9 @@ export const PromosSection = () => {
 
   const giveaway = promoData?.giveaway || DEFAULT_PROMOTIONS_DATA.giveaway;
   const coupons = (promoData?.coupons || []).filter((c) => c.active !== false);
+  const freeDelivery = promoData?.freeDelivery || DEFAULT_PROMOTIONS_DATA.freeDelivery;
+  const isDeliveryActive = freeDelivery?.active !== false;
+  const deliveryMinAmount = Number(freeDelivery?.minAmount ?? 55000);
 
   return (
     <section
@@ -184,32 +187,38 @@ export const PromosSection = () => {
             );
           })}
 
-          {/* Delivery Gratis Promo */}
-          <Reveal delay={80} className="h-full">
-            <div className="card-cartoon h-full bg-white p-4 sm:p-5 flex flex-col justify-between border-3 border-cartoon-ink relative overflow-hidden">
-              <div>
-                <span className="badge-cartoon bg-cartoon-teal text-cartoon-ink text-[10px] mb-1.5 inline-block">
-                  DELIVERY
-                </span>
-                <h3 className="font-display text-sm sm:text-base text-cartoon-ink leading-snug mb-1">
-                  Envío GRATIS desde $55.000
-                </h3>
-                <p className="font-sub text-[11px] text-gray-500 mb-2.5">
-                  El costo de envío corre por nuestra cuenta.
-                </p>
-              </div>
+          {/* Delivery Gratis Promo (Dinámico según configuración de administración) */}
+          {isDeliveryActive && (
+            <Reveal delay={80} className="h-full">
+              <div className="card-cartoon h-full bg-white p-4 sm:p-5 flex flex-col justify-between border-3 border-cartoon-ink relative overflow-hidden">
+                <div>
+                  <span className="badge-cartoon bg-cartoon-teal text-cartoon-ink text-[10px] mb-1.5 inline-block">
+                    DELIVERY
+                  </span>
+                  <h3 className="font-display text-sm sm:text-base text-cartoon-ink leading-snug mb-1">
+                    {deliveryMinAmount === 0
+                      ? 'Envío 100% GRATIS'
+                      : `Envío GRATIS desde $${deliveryMinAmount.toLocaleString('es-AR')}`}
+                  </h3>
+                  <p className="font-sub text-[11px] text-gray-500 mb-2.5">
+                    {deliveryMinAmount === 0
+                      ? '¡Bonificado en todos tus pedidos a domicilio sin compra mínima!'
+                      : `El costo de envío corre por nuestra cuenta superando $${deliveryMinAmount.toLocaleString('es-AR')}.`}
+                  </p>
+                </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-200 mt-2">
-                <span className="font-display text-xs text-cartoon-green-dark">ENVÍO $0</span>
-                <a
-                  href="#menu"
-                  className="btn-cartoon-white text-xs py-1 px-3"
-                >
-                  Ver Menú
-                </a>
+                <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-200 mt-2">
+                  <span className="font-display text-xs text-cartoon-green-dark">ENVÍO $0</span>
+                  <a
+                    href="#menu"
+                    className="btn-cartoon-white text-xs py-1 px-3"
+                  >
+                    Ver Menú
+                  </a>
+                </div>
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          )}
 
         </div>
 

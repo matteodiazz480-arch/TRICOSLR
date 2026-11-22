@@ -518,7 +518,11 @@ export const LotteryOrdersSection = ({
                   {/* Resumen conciso de productos y dirección */}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-sub text-slate-500">
                     <span className="font-medium text-slate-700">
-                      {order.deliveryType === 'delivery' ? 'Envío a domicilio' : 'Retiro en local'}
+                      {order.deliveryType === 'delivery'
+                        ? order.isFreeDelivery
+                          ? 'Envío a domicilio (Gratis)'
+                          : 'Envío a domicilio'
+                        : 'Retiro en local'}
                     </span>
                     {order.address && (
                       <span className="truncate max-w-xs">• {order.address}</span>
@@ -823,7 +827,11 @@ export const LotteryOrdersSection = ({
               <div className="flex justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-500">Modalidad</span>
                 <span className="font-semibold text-slate-900">
-                  {selectedOrderDetails.deliveryType === 'delivery' ? 'Envío a domicilio' : 'Retiro en local'}
+                  {selectedOrderDetails.deliveryType === 'delivery'
+                    ? selectedOrderDetails.isFreeDelivery
+                      ? 'Envío a domicilio (Gratis / Bonificado)'
+                      : 'Envío a domicilio'
+                    : 'Retiro en local'}
                 </span>
               </div>
               {selectedOrderDetails.address && (

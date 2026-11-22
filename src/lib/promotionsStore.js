@@ -8,6 +8,10 @@ import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firesto
 const PROMOTIONS_KEY = 'tricos_promotions_data';
 
 export const DEFAULT_PROMOTIONS_DATA = {
+  freeDelivery: {
+    active: true,
+    minAmount: 55000,
+  },
   giveaway: {
     active: true,
     deleted: false,
@@ -75,7 +79,17 @@ export const getPromotions = () => {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
         const gw = parsed.giveaway || {};
+        const fd = parsed.freeDelivery || {};
         return {
+          freeDelivery: {
+            ...DEFAULT_PROMOTIONS_DATA.freeDelivery,
+            ...fd,
+            active: fd.active !== undefined ? Boolean(fd.active) : DEFAULT_PROMOTIONS_DATA.freeDelivery.active,
+            minAmount:
+              fd.minAmount !== undefined
+                ? Math.max(0, Number(fd.minAmount) || 0)
+                : DEFAULT_PROMOTIONS_DATA.freeDelivery.minAmount,
+          },
           giveaway: {
             ...DEFAULT_PROMOTIONS_DATA.giveaway,
             ...gw,
@@ -249,6 +263,25 @@ export const toggleCouponActive = (code, currentActive) => {
   const next = {
     ...current,
     coupons: current.coupons.map((c) => (c.code === code ? { ...c, active: !currentActive } : c)),
+  };
+  savePromotions(next, true);
+  return next;
+};
+
+export const updateFreeDelivery = (updates) => {
+  const current = getPromotions();
+  const currentFd = current.freeDelivery || DEFAULT_PROMOTIONS_DATA.freeDelivery;
+  const next = {
+    ...current,
+    freeDelivery: {
+      ...currentFd,
+      ...updates,
+      active: updates.active !== undefined ? Boolean(updates.active) : currentFd.active,
+      minAmount:
+        updates.minAmount !== undefined
+          ? Math.max(0, Number(updates.minAmount) || 0)
+          : currentFd.minAmount,
+    },
   };
   savePromotions(next, true);
   return next;

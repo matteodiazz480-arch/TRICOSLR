@@ -22,6 +22,7 @@ import {
   addCoupon,
   deleteCoupon,
   toggleCouponActive,
+  updateFreeDelivery,
   DEFAULT_PROMOTIONS_DATA,
 } from '../../lib/promotionsStore';
 import { compressImageFile } from '../../lib/imageCompressor';
@@ -168,6 +169,16 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     active: promoData?.giveaway?.active !== false,
   }));
 
+  const [deliveryForm, setDeliveryForm] = useState(() => {
+    const fd = promoData?.freeDelivery || DEFAULT_PROMOTIONS_DATA.freeDelivery;
+    const min = Number(fd?.minAmount ?? 55000);
+    return {
+      active: fd?.active !== false,
+      mode: min === 0 ? 'free_all' : 'min_amount',
+      minAmount: min === 0 ? 55000 : min,
+    };
+  });
+
   const [couponForm, setCouponForm] = useState({
     code: '',
     discount: 10,
@@ -193,6 +204,14 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
             drawDate: data.giveaway.drawDate || prev.drawDate,
             active: data.giveaway.active !== false,
           }));
+        }
+        if (data.freeDelivery) {
+          const min = Number(data.freeDelivery.minAmount ?? 55000);
+          setDeliveryForm({
+            active: data.freeDelivery.active !== false,
+            mode: min === 0 ? 'free_all' : 'min_amount',
+            minAmount: min === 0 ? 55000 : min,
+          });
         }
       }
     });
@@ -238,6 +257,35 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
     const nextActive = !giveawayForm.active;
     setGiveawayForm((prev) => ({ ...prev, active: nextActive }));
     updateGiveaway({ active: nextActive });
+  };
+
+  const handleSaveDeliveryConfig = (e) => {
+    if (e) e.preventDefault();
+    const finalMin =
+      deliveryForm.mode === 'free_all' ? 0 : Math.max(0, Number(deliveryForm.minAmount) || 0);
+    updateFreeDelivery({
+      active: deliveryForm.active,
+      minAmount: finalMin,
+    });
+    setPromoMessage('Configuración de delivery gratis guardada con éxito.');
+    setTimeout(() => setPromoMessage(''), 3000);
+  };
+
+  const handleToggleDeliveryActive = () => {
+    const nextActive = !deliveryForm.active;
+    const finalMin =
+      deliveryForm.mode === 'free_all' ? 0 : Math.max(0, Number(deliveryForm.minAmount) || 0);
+    setDeliveryForm((prev) => ({ ...prev, active: nextActive }));
+    updateFreeDelivery({
+      active: nextActive,
+      minAmount: finalMin,
+    });
+    setPromoMessage(
+      nextActive
+        ? 'Beneficio de delivery gratis activado en web y tienda.'
+        : 'Beneficio de delivery gratis desactivado y oculto.'
+    );
+    setTimeout(() => setPromoMessage(''), 3000);
   };
 
   const handleAddCouponSubmit = (e) => {
@@ -876,10 +924,10 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
           <div className="space-y-6 animate-fadeIn">
             <div>
               <h3 className="font-display text-xl sm:text-2xl text-cartoon-ink">
-                Configuración de Sorteo y Cupones
+                Configuración de Sorteo, Delivery y Cupones
               </h3>
               <p className="font-sub font-semibold text-xs sm:text-sm text-gray-500 mt-0.5">
-                Administrá el sorteo de la tienda y creá cupones de descuento.
+                Administrá el sorteo de la tienda, el beneficio de delivery gratis y los cupones de descuento.
               </p>
             </div>
 
@@ -956,6 +1004,208 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                     {orders.filter((o) => o.isWinner).length} / {promoData?.giveaway?.winnersCount || 4} asignados
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Beneficio de Delivery Gratis Administrable */}
+            <div className="bg-white rounded-3xl border-2 sm:border-3 border-cartoon-ink shadow-cartoon-xs p-5 sm:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b-2 border-cartoon-ink/15">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-cartoon-teal/30 border border-cartoon-ink flex items-center justify-center text-cartoon-ink flex-shrink-0">
+                      <Icon name="local_shipping" size={18} />
+                    </div>
+                    <h4 className="font-display text-lg sm:text-xl text-cartoon-ink">Beneficio de Delivery Gratis</h4>
+                    {deliveryForm.active ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-sub font-bold text-[10px] uppercase">
+                        Activo en Web
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-sub font-bold text-[10px] uppercase">
+                        Desactivado (Oculto)
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-sub text-xs text-gray-500 mt-1 block">
+                    Controlá si el envío es bonificado, establecé el monto mínimo o desactivá la promoción en toda la tienda.
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleDeliveryActive}
+                    className={`py-2 px-3.5 rounded-2xl border-2 border-cartoon-ink font-sub font-black text-xs cursor-pointer shadow-cartoon-xs transition-transform active:scale-95 flex items-center gap-1.5 ${
+                      deliveryForm.active
+                        ? 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                        : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                    }`}
+                  >
+                    <Icon name={deliveryForm.active ? 'power_settings_new' : 'check'} size={15} />
+                    <span>{deliveryForm.active ? 'Desactivar Beneficio' : 'Activar Beneficio'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Selector de Modalidad */}
+              <div className="space-y-2">
+                <label className="font-sub font-bold text-xs text-cartoon-ink block">
+                  Modalidad de Entrega Bonificada:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryForm((prev) => ({ ...prev, mode: 'min_amount' }))}
+                    className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      deliveryForm.mode === 'min_amount'
+                        ? 'bg-cartoon-yellow/20 border-cartoon-ink shadow-cartoon-xs font-bold text-cartoon-ink'
+                        : 'bg-white border-cartoon-ink/20 text-gray-600 hover:border-cartoon-ink/40'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      deliveryForm.mode === 'min_amount' ? 'border-cartoon-ink bg-cartoon-yellow' : 'border-gray-400 bg-white'
+                    }`}>
+                      {deliveryForm.mode === 'min_amount' && <div className="w-2 h-2 rounded-full bg-cartoon-ink" />}
+                    </div>
+                    <div>
+                      <span className="font-display text-xs sm:text-sm text-cartoon-ink block">
+                        Con Monto Mínimo de Compra
+                      </span>
+                      <span className="font-sub text-[11px] text-gray-500 block mt-0.5">
+                        El cliente accede a envío gratis si su pedido iguala o supera la cantidad configurada.
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryForm((prev) => ({ ...prev, mode: 'free_all' }))}
+                    className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      deliveryForm.mode === 'free_all'
+                        ? 'bg-cartoon-yellow/20 border-cartoon-ink shadow-cartoon-xs font-bold text-cartoon-ink'
+                        : 'bg-white border-cartoon-ink/20 text-gray-600 hover:border-cartoon-ink/40'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      deliveryForm.mode === 'free_all' ? 'border-cartoon-ink bg-cartoon-yellow' : 'border-gray-400 bg-white'
+                    }`}>
+                      {deliveryForm.mode === 'free_all' && <div className="w-2 h-2 rounded-full bg-cartoon-ink" />}
+                    </div>
+                    <div>
+                      <span className="font-display text-xs sm:text-sm text-cartoon-ink block">
+                        Siempre Gratis ($0 / Sin Mínimo)
+                      </span>
+                      <span className="font-sub text-[11px] text-gray-500 block mt-0.5">
+                        100% bonificado en todos los pedidos a domicilio sin requerir importe mínimo.
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Si eligió con monto mínimo, campo numérico + accesos rápidos */}
+              {deliveryForm.mode === 'min_amount' && (
+                <div className="p-4 rounded-2xl bg-cartoon-cream/50 border-2 border-cartoon-ink/20 space-y-3">
+                  <div>
+                    <label className="font-sub font-bold text-xs text-cartoon-ink block mb-1">
+                      Monto mínimo para calificar ($ ARS):
+                    </label>
+                    <div className="relative max-w-sm">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-display text-base text-cartoon-ink/60 pointer-events-none">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1000"
+                        value={deliveryForm.minAmount}
+                        onChange={(e) =>
+                          setDeliveryForm((prev) => ({
+                            ...prev,
+                            minAmount: Math.max(0, Number(e.target.value) || 0),
+                          }))
+                        }
+                        placeholder="55000"
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border-2 border-cartoon-ink font-display text-base text-cartoon-ink focus:outline-none focus:bg-cartoon-yellow/10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="font-sub font-bold text-[11px] text-gray-500 block mb-1.5 uppercase">
+                      Montos sugeridos rápidos:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[35000, 40000, 45000, 50000, 55000, 60000, 70000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setDeliveryForm((prev) => ({ ...prev, minAmount: amt }))}
+                          className={`px-2.5 py-1 rounded-xl border text-xs font-sub font-bold cursor-pointer transition-colors ${
+                            deliveryForm.minAmount === amt
+                              ? 'bg-cartoon-yellow text-cartoon-ink border-cartoon-ink font-black'
+                              : 'bg-white text-gray-600 border-gray-300 hover:border-cartoon-ink'
+                          }`}
+                        >
+                          ${amt.toLocaleString('es-AR')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Previsualización en Vivo de Todos los Escenarios */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="font-sub font-bold text-[10px] text-slate-500 uppercase tracking-wider block">
+                  Impacto en vivo en la tienda:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-sub">
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                    <span className="font-bold text-gray-500 block text-[10px] uppercase">1. Scroll / Marquee</span>
+                    <span className="font-display text-xs text-cartoon-ink block mt-0.5">
+                      {deliveryForm.active
+                        ? deliveryForm.mode === 'free_all'
+                          ? 'DELIVERY 100% GRATIS'
+                          : `DELIVERY GRATIS DESDE $${Number(deliveryForm.minAmount).toLocaleString('es-AR')}`
+                        : 'ENVÍOS A TODO LA RIOJA CAPITAL'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                    <span className="font-bold text-gray-500 block text-[10px] uppercase">2. Sección de Promos</span>
+                    <span className="font-display text-xs text-cartoon-ink block mt-0.5">
+                      {deliveryForm.active
+                        ? deliveryForm.mode === 'free_all'
+                          ? 'Tarjeta: Envío 100% GRATIS'
+                          : `Tarjeta: Envío GRATIS desde $${Number(deliveryForm.minAmount).toLocaleString('es-AR')}`
+                        : 'Tarjeta oculta de la web'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                    <span className="font-bold text-gray-500 block text-[10px] uppercase">3. Carrito al Pedir</span>
+                    <span className="font-display text-xs text-cartoon-ink block mt-0.5">
+                      {deliveryForm.active
+                        ? deliveryForm.mode === 'free_all'
+                          ? 'Barra 100% llena (Envío gratis)'
+                          : `Barra dinámica hasta $${Number(deliveryForm.minAmount).toLocaleString('es-AR')}`
+                        : 'Sin barra de delivery gratis'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón Guardar */}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveDeliveryConfig}
+                  className="btn-cartoon-primary py-2.5 px-6 text-xs sm:text-sm flex items-center gap-2 cursor-pointer"
+                >
+                  <Icon name="save" size={17} />
+                  <span>Guardar Configuración de Delivery</span>
+                </button>
               </div>
             </div>
 

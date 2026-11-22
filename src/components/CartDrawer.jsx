@@ -4,14 +4,13 @@ import { Icon } from './Icon';
 import DeliveryMap from './DeliveryMap';
 import { RESTAURANT_INFO } from '../data/products';
 import { isProductOutOfStock } from '../lib/firebase';
-import { getPromotions } from '../lib/promotionsStore';
+import { getPromotions, subscribeToPromotions, DEFAULT_PROMOTIONS_DATA } from '../lib/promotionsStore';
 import { buildWhatsAppUrl, openWhatsApp } from '../lib/whatsapp';
 import { searchAddress, reverseAddress, buildGoogleMapsUrl } from '../lib/delivery';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
 const STORAGE_FORM_KEY = 'tricos_customer_form_v2';
 const STORAGE_LOCATION_KEY = 'tricos_customer_location_v1';
-const FREE_DELIVERY_THRESHOLD = RESTAURANT_INFO.freeDeliveryThreshold || 55000;
 
 const getInitialFormData = () => {
   try {
@@ -76,6 +75,17 @@ export const CartDrawer = ({
   const [geoError, setGeoError] = useState('');
   const [isGeoLoading, setIsGeoLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
+
+  // Sincronización dinámica de promociones y delivery gratis
+  const [promoData, setPromoData] = useState(() => getPromotions());
+  useEffect(() => {
+    const unsub = subscribeToPromotions((data) => {
+      if (data) setPromoData(data);
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
 
   // Persistir datos del formulario
   useEffect(() => {
@@ -158,10 +168,19 @@ export const CartDrawer = ({
 
   if (!isOpen) return null;
 
-  // Cálculos de totales y progreso de delivery gratis desde $55.000
+  // Configuración dinámica de Delivery Gratis desde promociones
+  const freeDeliveryConfig = promoData?.freeDelivery || DEFAULT_PROMOTIONS_DATA.freeDelivery;
+  const isFreeDeliveryEnabled = freeDeliveryConfig?.active !== false;
+  const freeDeliveryThreshold = Math.max(0, Number(freeDeliveryConfig?.minAmount ?? 55000));
+
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const isFreeDeliveryQualified = subtotal >= FREE_DELIVERY_THRESHOLD;
-  const progressPercent = Math.min(100, Math.round((subtotal / FREE_DELIVERY_THRESHOLD) * 100));
+  const isFreeDeliveryQualified =
+    isFreeDeliveryEnabled && (freeDeliveryThreshold === 0 || subtotal >= freeDeliveryThreshold);
+  const progressPercent = !isFreeDeliveryEnabled
+    ? 0
+    : freeDeliveryThreshold === 0
+    ? 100
+    : Math.min(100, Math.round((subtotal / freeDeliveryThreshold) * 100));
 
   const discountAmount = appliedCoupon
     ? Math.round(
@@ -544,28 +563,32 @@ export const CartDrawer = ({
                 </div>
               ) : (
                 <>
-                  {/* Barra de progreso de Delivery Gratis desde $55.000 */}
-                  <div className={`rounded-xl border-2 sm:border-3 border-cartoon-ink p-2.5 shadow-cartoon-xs transition-colors ${
-                    isFreeDeliveryQualified ? 'bg-cartoon-green' : 'bg-white'
-                  }`}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Icon name="local_shipping" size={16} className="text-cartoon-ink" />
-                      <p className="font-display text-xs sm:text-sm text-cartoon-ink">
-                        {isFreeDeliveryQualified
-                          ? '¡Genial! Tenés delivery gratis'
-                          : `Te faltan ${money(FREE_DELIVERY_THRESHOLD - subtotal)} para delivery gratis`}
-                      </p>
+                  {/* Barra de progreso de Delivery Gratis (Dinámico) */}
+                  {isFreeDeliveryEnabled && (
+                    <div className={`rounded-xl border-2 sm:border-3 border-cartoon-ink p-2.5 shadow-cartoon-xs transition-colors ${
+                      isFreeDeliveryQualified ? 'bg-cartoon-green' : 'bg-white'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Icon name="local_shipping" size={16} className="text-cartoon-ink" />
+                        <p className="font-display text-xs sm:text-sm text-cartoon-ink">
+                          {isFreeDeliveryQualified
+                            ? (freeDeliveryThreshold === 0
+                                ? '¡Genial! Tenés delivery gratis en este pedido'
+                                : '¡Genial! Tenés delivery gratis')
+                            : `Te faltan ${money(freeDeliveryThreshold - subtotal)} para delivery gratis`}
+                        </p>
+                      </div>
+                      <div className="h-2.5 rounded-full bg-cartoon-cream-dark border-2 border-cartoon-ink overflow-hidden">
+                        <div
+                          className="h-full bg-cartoon-yellow border-r-2 border-cartoon-ink transition-all duration-300"
+                          style={{
+                            width: `${progressPercent}%`,
+                            borderRightWidth: progressPercent >= 100 ? 0 : undefined,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2.5 rounded-full bg-cartoon-cream-dark border-2 border-cartoon-ink overflow-hidden">
-                      <div
-                        className="h-full bg-cartoon-yellow border-r-2 border-cartoon-ink transition-all duration-300"
-                        style={{
-                          width: `${progressPercent}%`,
-                          borderRightWidth: progressPercent >= 100 ? 0 : undefined,
-                        }}
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   {/* Listado de Productos con Nombres, Cantidades, Precios y Subtotales */}
                   <div className="space-y-2">

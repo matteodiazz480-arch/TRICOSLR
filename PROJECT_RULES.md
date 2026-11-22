@@ -124,6 +124,17 @@
   3. Mayor legibilidad y confort táctil en pedidos móviles: se aumentaron las miniaturas a `w-14 h-14 sm:w-16 sm:h-16`, botones de cantidad y borrado a 28px-32px con sombras cartoon, subtotales destacados en rojo cómic y títulos multilínea sin cortes bruscos.
   4. Animaciones de scroll estilo Motion reutilizables y bidireccionales: se reconstruyó `Reveal.jsx` con `IntersectionObserver` continuo (`setIsVisible(entry.isIntersecting)`), umbral suave (`threshold: 0.08`, `rootMargin: '0px 0px -35px 0px'`) y transiciones de hardware (`transform: translate3d(...)` y `opacity` con curva `cubic-bezier(0.23, 1, 0.32, 1)`), logrando entradas sutiles y elegantes tanto al bajar como al subir el scroll en cualquier dispositivo.
 
+### Error 10: Falta de gestión dinámica de beneficio de delivery gratis y valor rígido no sincronizado
+- **Causa raíz:** El umbral de envío gratis estaba fijado estáticamente en código a `$55.000` en `BrandRibbon.jsx`, `CartDrawer.jsx`, `PromosSection.jsx` y `products.js`. El administrador no tenía capacidad de activar, pausar o modificar el monto mínimo de envío gratis, ni de ofrecer delivery 100% gratis ($0) o desactivarlo, lo que provocaba inconsistencias si el negocio decidía cambiar la promoción o pausarla temporalmente.
+- **Solución implementada:**
+  1. Se incorporó `freeDelivery: { active: boolean, minAmount: number }` en `promotionsStore.js` con persistencia en Firestore (`promotions/main`), `localStorage` y canal `BroadcastChannel`.
+  2. Se creó el panel de gestión en el apartado de Promociones de `AdminDashboard.jsx`: interruptor de activación/desactivación inmediata, selector entre "Con monto mínimo" o "Siempre gratis ($0)", ajuste numérico con montos sugeridos y previsualización en vivo.
+  3. Sincronización automática reactiva sin recargar página:
+     - **Cinta animada (Scroll de la página / `BrandRibbon`):** Si está activo muestra `DELIVERY GRATIS DESDE $X` o `DELIVERY 100% GRATIS`; si está desactivado conmuta a `ENVÍOS A TODO LA RIOJA CAPITAL` sin prometer envíos bonificados.
+     - **Sección de Promociones (`PromosSection`):** Muestra la tarjeta actualizada según el monto configurado o se oculta automáticamente si el beneficio fue desactivado.
+     - **Tienda y Carrito (`CartDrawer`):** La barra de progreso calcula dinámicamente la meta según el monto configurado; si es $0 califica 100% de inmediato; y si está desactivado no exhibe la barra ni aplica bonificación engañosa.
+     - **Despacho y Panel de Pedidos (`LotteryOrdersSection`):** Muestra claramente en el listado y detalle si el pedido calificó con envío gratis bonificado.
+
 ---
 
 ## 3. ARQUITECTURA DE DATOS EN FIREBASE FIRESTORE
@@ -132,10 +143,9 @@
 | :--- | :--- | :--- |
 | `orders` | Registro individual de cada pedido para despacho y sorteo | `setDoc(doc(db, 'orders', id), newOrder)` |
 | `finances` | Registro de movimientos contables (ingresos y gastos) | `setDoc` / `deleteDoc` |
+| `promotions/main` | Configuración oficial de Sorteo, Premios, Cupones y Delivery Gratis (`freeDelivery: { active, minAmount }`) | `setDoc(doc(db, 'promotions', 'main'), data, { merge: true })` |
 | `promotions/inventory` | Stock en tiempo real de todos los insumos e ingredientes | Array de objetos `items` sincronizado |
 | `promotions/recipes` | Diccionario de recetas base y sus proporciones granulares | Mapa `recipes[productId]` |
-| `promotions/giveaway` | Configuración oficial del sorteo y premios | Objeto `{ active, prizes, nextDrawDate }` |
-| `promotions/coupons` | Cupones de descuento activos | Array de objetos `coupons` |
 | `promotions/*_sync` | Canales rápidos de pulsación en tiempo real para navegadores móviles | Snapshot listeners con deduplicación |
 
 ---
