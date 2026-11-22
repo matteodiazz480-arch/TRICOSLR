@@ -1155,47 +1155,6 @@ export const AdminDashboard = ({ onLogout, onGoToStore }) => {
                 </div>
               )}
 
-              {/* Previsualización en Vivo de Todos los Escenarios */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="font-sub font-bold text-[10px] text-slate-500 uppercase tracking-wider block">
-                  Impacto en vivo en la tienda:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-sub">
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                    <span className="font-bold text-gray-500 block text-[10px] uppercase">1. Scroll / Marquee</span>
-                    <span className="font-display text-xs text-cartoon-ink block mt-0.5">
-                      {deliveryForm.active
-                        ? deliveryForm.mode === 'free_all'
-                          ? 'DELIVERY 100% GRATIS'
-                          : `DELIVERY GRATIS DESDE $${Number(deliveryForm.minAmount).toLocaleString('es-AR')}`
-                        : 'ENVÍOS A TODO LA RIOJA CAPITAL'}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                    <span className="font-bold text-gray-500 block text-[10px] uppercase">2. Sección de Promos</span>
-                    <span className="font-display text-xs text-cartoon-ink block mt-0.5">
-                      {deliveryForm.active
-                        ? deliveryForm.mode === 'free_all'
-                          ? 'Tarjeta: Envío 100% GRATIS'
-                          : `Tarjeta: Envío GRATIS desde $${Number(deliveryForm.minAmount).toLocaleString('es-AR')}`
-                        : 'Tarjeta oculta de la web'}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                    <span className="font-bold text-gray-500 block text-[10px] uppercase">3. Carrito al Pedir</span>
-                    <span className="font-display text-xs text-cartoon-ink block mt-0.5">
-                      {deliveryForm.active
-                        ? deliveryForm.mode === 'free_all'
-                          ? 'Barra 100% llena (Envío gratis)'
-                          : `Barra dinámica hasta $${Number(deliveryForm.minAmount).toLocaleString('es-AR')}`
-                        : 'Sin barra de delivery gratis'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {/* Botón Guardar */}
               <div className="flex justify-end pt-1">
                 <button
